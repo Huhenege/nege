@@ -1,33 +1,33 @@
 import React from 'react';
+import { CheckCircle2, Sparkles, Layers, Target } from 'lucide-react';
 
 const WhyNege = () => {
     const reasons = [
-        { title: "Ойлгомжтой шийдэл", desc: "Төвөгтэй зүйлсгүй, энгийн бөгөөд тодорхой." },
-        { title: "Танд зориулсан систем", desc: "Бэлэн загварт баригдахгүй, зөвхөн танай онцлогт нийцнэ." },
-        { title: "Бодит үр дүн", desc: "Хийсвэр амлалт биш, хэмжигдэхүйц өсөлт." },
-        { title: "Нэгдмэл логик", desc: "Бүх үйл явц нэг л зарчмаар уялдана." }
+        { title: "Ойлгомжтой шийдэл", desc: "Төвөгтэй зүйлсгүй, энгийн бөгөөд тодорхой.", icon: CheckCircle2 },
+        { title: "Танд зориулсан систем", desc: "Бэлэн загварт баригдахгүй, зөвхөн танай онцлогт нийцнэ.", icon: Layers },
+        { title: "Бодит үр дүн", desc: "Хийсвэр амлалт биш, хэмжигдэхүйц өсөлт.", icon: Target },
+        { title: "Нэгдмэл логик", desc: "Бүх үйл явц нэг л зарчмаар уялдана.", icon: Sparkles }
     ];
 
     return (
-        <section className="section">
-            <div className="container">
-                <h2 className="text-center">Яагаад NEGE гэж?</h2>
+        <section className="home-section" id="why-nege">
+            <div className="home-container">
+                <div className="home-section-header">
+                    <span className="home-eyebrow">Яагаад NEGE гэж?</span>
+                    <h2 className="home-section-title">Бидний давуу тал</h2>
+                    <p className="home-section-subtitle">
+                        Илүү энгийн, илүү ухаалаг, илүү хэмжигдэхүйц шийдэл.
+                    </p>
+                </div>
 
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                    gap: 'var(--spacing-lg)',
-                    marginTop: 'var(--spacing-lg)'
-                }}>
+                <div className="home-reason-grid">
                     {reasons.map((reason, index) => (
-                        <div key={index} style={{
-                            padding: 'var(--spacing-md)',
-                            border: '1px solid var(--border-light)',
-                            borderRadius: '8px',
-                            backgroundColor: 'var(--bg-primary)'
-                        }}>
-                            <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--spacing-sm)' }}>{reason.title}</h3>
-                            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{reason.desc}</p>
+                        <div key={index} className="home-reason-card">
+                            <div className="home-reason-icon">
+                                <reason.icon size={20} />
+                            </div>
+                            <h3>{reason.title}</h3>
+                            <p>{reason.desc}</p>
                         </div>
                     ))}
                 </div>

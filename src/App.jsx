@@ -14,10 +14,17 @@ import SocialInsuranceHoliday from './pages/SocialInsuranceHoliday';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
+import AdminLayout from './layout/AdminLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import UserManagement from './pages/admin/UserManagement';
+import AuditLogs from './pages/admin/AuditLogs';
+import AdminSettings from './pages/admin/AdminSettings';
+import './pages/Home.css';
 
 function Home() {
   return (
-    <main>
+    <main className="home">
       <Hero />
       <WhoWeAre />
       <WhatWeDo />
@@ -54,6 +61,18 @@ function App() {
                 <SocialInsuranceHoliday />
               </ProtectedRoute>
             } />
+
+            {/* Admin Routes */}
+            <Route path="/admin" element={
+              <AdminRoute>
+                <AdminLayout />
+              </AdminRoute>
+            }>
+              <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="logs" element={<AuditLogs />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
           </Routes>
         </div>
       </AuthProvider>

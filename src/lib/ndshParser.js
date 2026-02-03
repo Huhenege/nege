@@ -148,7 +148,11 @@ export async function extractNDSHFromImage(imageDataUrl, mimeType, apiKey) {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // Using 2.0-flash as it's typically available/fast
+        // Model name can change over time; allow override via env.
+        const modelName =
+            import.meta.env.VITE_GEMINI_MODEL ||
+            "gemini-2.5-flash";
+        const model = genAI.getGenerativeModel({ model: modelName });
 
         // Convert Data URL to base64 for Gemini SDK
         // Data URL format: "data:image/png;base64,....."

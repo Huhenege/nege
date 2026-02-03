@@ -1,0 +1,216 @@
+/* src/pages/AIAssistant.css */
+
+:root {
+    --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+    --secondary-gradient: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    --card-bg: rgba(255, 255, 255, 0.7);
+    --card-border: 1px solid rgba(255, 255, 255, 0.8);
+    --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+    --hover-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.2);
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+}
+
+.ai-page {
+    min-height: 100vh;
+    background-color: #f8fafc;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(147, 51, 234, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.1) 0px, transparent 50%);
+    padding-top: calc(var(--header-height, 70px) + 2rem);
+    padding-bottom: 4rem;
+    font-family: 'Inter', sans-serif;
+}
+
+.ai-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+/* Hero Section */
+.ai-hero {
+    text-align: center;
+    margin-bottom: 4rem;
+    animation: fadeIn 0.8s ease-out;
+}
+
+.ai-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: rgba(79, 70, 229, 0.1);
+    color: #4f46e5;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+.ai-title {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
+
+.ai-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* Grid Layout */
+.ai-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+    perspective: 1000px;
+}
+
+/* Card Styles */
+.ai-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: var(--card-border);
+    border-radius: 24px;
+    padding: 2rem;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.ai-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: var(--hover-shadow);
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(79, 70, 229, 0.3);
+}
+
+.ai-card-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    transition: transform 0.4s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-card:hover .ai-card-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* Icon Variants */
+.icon-blue {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    color: #2563eb;
+}
+
+.icon-purple {
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+    color: #7c3aed;
+}
+
+.icon-pink {
+    background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+    color: #db2777;
+}
+
+.ai-card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ai-card-desc {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    flex-grow: 1;
+}
+
+.ai-card-arrow {
+    margin-top: 1.5rem;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #4f46e5;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s ease;
+}
+
+.ai-card:hover .ai-card-arrow {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+/* Coming Soon Card */
+.ai-card.coming-soon {
+    opacity: 0.7;
+    cursor: default;
+    border-style: dashed;
+}
+
+.ai-card.coming-soon:hover {
+    transform: none;
+    box-shadow: var(--card-shadow);
+}

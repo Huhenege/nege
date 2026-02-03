@@ -10,34 +10,23 @@ const Process = () => {
     ];
 
     return (
-        <section className="section" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-            <div className="container">
-                <h2 className="text-center">Ажлын явц</h2>
+        <section className="home-section home-section--alt" id="process">
+            <div className="home-container">
+                <div className="home-section-header">
+                    <span className="home-eyebrow">Ажлын явц</span>
+                    <h2 className="home-section-title">Алхам бүр тодорхой</h2>
+                    <p className="home-section-subtitle">
+                        Бидний хамтын ажиллагаа тодорхой дарааллаар, хэмжигдэхүйц үр дүнд хүрдэг.
+                    </p>
+                </div>
 
-                <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center',
-                    gap: 'var(--spacing-lg)',
-                    marginTop: 'var(--spacing-lg)'
-                }}>
+                <div className="home-process-grid">
                     {steps.map((step, index) => (
-                        <div key={index} style={{
-                            flex: '1 1 200px',
-                            maxWidth: '250px',
-                            padding: 'var(--spacing-md)',
-                            borderTop: '2px solid var(--text-tertiary)'
-                        }}>
-                            <div style={{
-                                fontSize: '0.9rem',
-                                color: 'var(--text-tertiary)',
-                                marginBottom: 'var(--spacing-xs)'
-                            }}>
-                                0{index + 1}
-                            </div>
-                            <h3 style={{ fontSize: '1.25rem', marginBottom: 'var(--spacing-xs)' }}>{step.title}</h3>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)', marginBottom: 'var(--spacing-sm)' }}>{step.subtitle}</p>
-                            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{step.desc}</p>
+                        <div key={index} className="home-process-card">
+                            <div className="home-process-index">0{index + 1}</div>
+                            <h3>{step.title}</h3>
+                            <span>{step.subtitle}</span>
+                            <p>{step.desc}</p>
                         </div>
                     ))}
                 </div>

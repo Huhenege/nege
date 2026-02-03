@@ -1,32 +1,52 @@
 import React from 'react';
+import { Brain, LineChart, Cpu } from 'lucide-react';
 
 const WhatWeDo = () => {
     return (
-        <section className="section">
-            <div className="container">
-                <h2 className="text-center">Бид юу хийдэг вэ</h2>
+        <section className="home-section" id="what-we-do">
+            <div className="home-container">
+                <div className="home-section-header">
+                    <span className="home-eyebrow">Бид юу хийдэг вэ</span>
+                    <h2 className="home-section-title">Логик, систем, гүйцэтгэл</h2>
+                    <p className="home-section-subtitle">
+                        Байгууллагын стратегиас эхлээд AI суурьтай автоматжуулалт хүртэлх бүтэн шийдлийг гаргана.
+                    </p>
+                </div>
 
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                    gap: 'var(--spacing-xl)',
-                    marginTop: 'var(--spacing-lg)'
-                }}>
-                    {/* Advisory */}
-                    <div style={{ padding: 'var(--spacing-lg)' }}>
+                <div className="home-grid">
+                    <div className="home-feature-card">
+                        <div className="home-feature-icon">
+                            <LineChart size={20} />
+                        </div>
                         <h3>Зөвлөх үйлчилгээ</h3>
-                        <p style={{ color: 'var(--text-secondary)' }}>Advisory</p>
-                        <p className="description">
-                            Байгууллагын засаглал, менежмент, маркетингийн стратегид дүн шинжилгээ хийж, оновчтой логик бүтэц, процессийн зураглалыг гаргана. "Юуг, яагаад" хийх суурь логикийг бид бүрдүүлдэг.
+                        <p className="home-feature-tag">Advisory</p>
+                        <p>
+                            Засаглал, менежмент, маркетингийн стратегид дүн шинжилгээ хийж,
+                            оновчтой логик бүтэц, процессийн зураглалыг гаргана.
                         </p>
                     </div>
 
-                    {/* AI Platform */}
-                    <div style={{ padding: 'var(--spacing-lg)', borderLeft: '1px solid var(--border-light)' }}>
+                    <div className="home-feature-card">
+                        <div className="home-feature-icon">
+                            <Brain size={20} />
+                        </div>
                         <h3>AI Дотоод Удирдлагын Систем</h3>
-                        <p style={{ color: 'var(--text-secondary)' }}>Internal AI Platform</p>
-                        <p className="description">
-                            Тодорхойлсон логик, процессийн дагуу танай байгууллагын үйл ажиллагааг хөнгөвчлөх, автоматжуулах хиймэл оюун ухаант системийг бүтээнэ. Энэ нь "Яаж" хийх хурд, оновчлолыг бий болгоно.
+                        <p className="home-feature-tag">Internal AI Platform</p>
+                        <p>
+                            Танай байгууллагын үйл ажиллагааг хөнгөвчлөх, автоматжуулах хиймэл
+                            оюун ухаант системийг бүтээнэ.
+                        </p>
+                    </div>
+
+                    <div className="home-feature-card">
+                        <div className="home-feature-icon">
+                            <Cpu size={20} />
+                        </div>
+                        <h3>Өгөгдлийн ухаалаг шийдэл</h3>
+                        <p className="home-feature-tag">Data Intelligence</p>
+                        <p>
+                            Өгөгдлийг утгатай шийдвэр болгон хувиргаж,
+                            бодит хэмжигдэхүйц өсөлтийг бий болгоно.
                         </p>
                     </div>
                 </div>

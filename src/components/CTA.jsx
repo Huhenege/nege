@@ -1,29 +1,43 @@
 import React from 'react';
+import { Phone, Mail, Globe, Facebook } from 'lucide-react';
 
 const CTA = () => {
     return (
         <>
-            <section className="section" id="contact" style={{ backgroundColor: 'var(--bg-secondary)', textAlign: 'center' }}>
-                <div className="container">
-                    <h2 style={{ marginBottom: 'var(--spacing-lg)' }}>Ирээдүйг илүү тодорхой бүтээцгээе.</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', fontSize: '1.1rem', color: 'var(--text-primary)' }}>
-                        <a href="tel:88104099" style={{ color: 'inherit', textDecoration: 'none' }}>8810 4099</a>
-                        <a href="mailto:hello@nege.mn" style={{ color: 'inherit', textDecoration: 'none' }}>hello@nege.mn</a>
-                        <a href="https://facebook.com/nege.mn" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>facebook.com/nege.mn</a>
-                        <a href="https://www.nege.mn" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>www.nege.mn</a>
+            <section className="home-section home-section--alt" id="contact">
+                <div className="home-container">
+                    <div className="home-cta">
+                        <div>
+                            <span className="home-eyebrow">Холбогдох</span>
+                            <h2 className="home-section-title">Ирээдүйг илүү тодорхой бүтээцгээе.</h2>
+                            <p className="home-section-subtitle">
+                                Танд тохирсон AI шийдлийг хамтдаа хөгжүүлье.
+                            </p>
+                        </div>
+                        <div className="home-cta-grid">
+                            <a href="tel:88104099" className="home-cta-card">
+                                <Phone size={18} />
+                                <span>8810 4099</span>
+                            </a>
+                            <a href="mailto:hello@nege.mn" className="home-cta-card">
+                                <Mail size={18} />
+                                <span>hello@nege.mn</span>
+                            </a>
+                            <a href="https://facebook.com/nege.mn" target="_blank" rel="noopener noreferrer" className="home-cta-card">
+                                <Facebook size={18} />
+                                <span>facebook.com/nege.mn</span>
+                            </a>
+                            <a href="https://www.nege.mn" target="_blank" rel="noopener noreferrer" className="home-cta-card">
+                                <Globe size={18} />
+                                <span>www.nege.mn</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <footer style={{
-                padding: 'var(--spacing-lg) 0',
-                borderTop: '1px solid var(--border-light)',
-                marginTop: 'auto',
-                textAlign: 'center',
-                color: 'var(--text-tertiary)',
-                fontSize: '0.875rem'
-            }}>
-                <div className="container">
+            <footer className="home-footer">
+                <div className="home-container">
                     <p>© {new Date().getFullYear()} NEGE. All rights reserved.</p>
                 </div>
             </footer>

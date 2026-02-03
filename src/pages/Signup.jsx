@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import { db } from '../lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const Signup = () => {
     const emailRef = useRef();
@@ -21,9 +23,22 @@ const Signup = () => {
         try {
             setError('');
             setLoading(true);
-            await signup(emailRef.current.value, passwordRef.current.value);
-            navigate('/ai-assistant'); // Redirect to protected area after signup
+
+            // 1. Create Auth User
+            const userCredential = await signup(emailRef.current.value, passwordRef.current.value);
+            const user = userCredential.user;
+
+            // 2. Create User Document in Firestore
+            await setDoc(doc(db, "users", user.uid), {
+                email: user.email,
+                role: 'user', // Default role
+                createdAt: serverTimestamp(),
+                status: 'active'
+            });
+
+            navigate('/ai-assistant');
         } catch (err) {
+            console.error(err);
             setError('Бүртгэл үүсгэхэд алдаа гарлаа: ' + err.message);
         }
 

@@ -1,67 +1,149 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-    ArrowLeft, Brain, Upload, FileText, CheckCircle,
-    AlertTriangle, Loader2, Calendar, LayoutDashboard, Key
+    ArrowLeft,
+    Brain,
+    Upload,
+    FileText,
+    Loader2,
+    CheckCircle2,
+    AlertTriangle,
+    Building2,
+    CalendarDays,
+    TrendingUp,
+    FileImage,
+    Download,
+    Sparkles,
+    Save,
+    RefreshCw,
+    Heart,
+    ChevronDown,
+    ChevronRight,
+    ChevronsUpDown,
 } from 'lucide-react';
 import { extractNDSHFromImage } from '../lib/ndshParser';
+import './SocialInsuranceHoliday.css';
+
+const STORAGE_KEY = 'ndsh-saved-data';
 
 const SocialInsuranceHoliday = () => {
-    const [file, setFile] = useState(null);
-    const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '');
-    const [step, setStep] = useState('idle'); // idle, uploading, analyzing, complete, error
-    const [progress, setProgress] = useState(0);
-    const [error, setError] = useState(null);
-    const [parsedData, setParsedData] = useState(null);
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-    // Calculation state
-    const [baseVacationDays, setBaseVacationDays] = useState(15);
-    const [includeVoluntary, setIncludeVoluntary] = useState(true);
-    const [abnormalMonths, setAbnormalMonths] = useState({}); // { 2024: 5, 2023: 12 }
+    const [file, setFile] = React.useState(null);
+    const [step, setStep] = React.useState('idle');
+    const [progress, setProgress] = React.useState(0);
+    const [error, setError] = React.useState(null);
+    const [parsedData, setParsedData] = React.useState(null);
+    const [savedData, setSavedData] = React.useState(null);
+    const [isSaving, setIsSaving] = React.useState(false);
+    const [showUpload, setShowUpload] = React.useState(false);
+    const [includeVoluntary, setIncludeVoluntary] = React.useState(true);
+    const [expandedYears, setExpandedYears] = React.useState(new Set());
+    const [abnormalMonths, setAbnormalMonths] = React.useState({});
+    const [baseVacationDays, setBaseVacationDays] = React.useState(15);
+    const [toast, setToast] = React.useState(null);
+    const [isPrinting, setIsPrinting] = React.useState(false);
 
-    const fileInputRef = useRef(null);
+    const fileInputRef = React.useRef(null);
+    const previousExpandedRef = React.useRef(new Set());
 
-    // Save API key
-    const handleApiKeyChange = (e) => {
-        const key = e.target.value;
-        setApiKey(key);
-        localStorage.setItem('gemini_api_key', key);
+    React.useEffect(() => {
+        const handleAfterPrint = () => {
+            setIsPrinting(false);
+            setExpandedYears(new Set(previousExpandedRef.current));
+        };
+
+        window.addEventListener('afterprint', handleAfterPrint);
+        return () => window.removeEventListener('afterprint', handleAfterPrint);
+    }, []);
+
+    React.useEffect(() => {
+        try {
+            const savedRaw = localStorage.getItem(STORAGE_KEY);
+            if (!savedRaw) return;
+            const saved = JSON.parse(savedRaw);
+            if (saved?.parsedData) {
+                setParsedData(saved.parsedData);
+                setAbnormalMonths(saved.abnormalMonths || {});
+                setBaseVacationDays(saved.baseVacationDays || 15);
+                setSavedData(saved);
+                setStep('complete');
+            }
+        } catch (e) {
+            console.error('Failed to load saved NDSH data', e);
+        }
+    }, []);
+
+    const showToast = React.useCallback((payload) => {
+        setToast(payload);
+        window.setTimeout(() => setToast(null), 3200);
+    }, []);
+
+    const updateAbnormalMonths = (year, value, maxMonths) => {
+        const clampedValue = Math.max(0, Math.min(value, maxMonths));
+        setAbnormalMonths((prev) => ({
+            ...prev,
+            [year]: clampedValue,
+        }));
     };
 
-    // --- File Handling ---
+    const totalAbnormalMonths = React.useMemo(() => {
+        return Object.values(abnormalMonths).reduce((sum, val) => sum + (val || 0), 0);
+    }, [abnormalMonths]);
+
     const handleFileSelect = (e) => {
         const selectedFile = e.target.files?.[0];
-        if (selectedFile) validateAndSetFile(selectedFile);
+        if (!selectedFile) return;
+
+        const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+        if (!validTypes.includes(selectedFile.type)) {
+            showToast({
+                variant: 'error',
+                title: 'Буруу файл төрөл',
+                description: 'PDF, JPG, PNG файл оруулна уу',
+            });
+            return;
+        }
+        if (selectedFile.size > 20 * 1024 * 1024) {
+            showToast({
+                variant: 'error',
+                title: 'Файл хэт том',
+                description: 'Файлын хэмжээ 20MB-аас бага байх ёстой',
+            });
+            return;
+        }
+        setFile(selectedFile);
+        setError(null);
     };
 
     const handleDrop = (e) => {
         e.preventDefault();
         const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile) validateAndSetFile(droppedFile);
-    };
-
-    const validateAndSetFile = (f) => {
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!validTypes.includes(f.type)) {
-            setError('Зөвхөн зурган файл (JPG, PNG) оруулна уу. PDF одоогоор дэмжигдээгүй.');
-            return;
+        if (!droppedFile) return;
+        const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+        if (validTypes.includes(droppedFile.type)) {
+            setFile(droppedFile);
+            setError(null);
         }
-        setFile(f);
-        setError(null);
     };
 
     const processFile = async () => {
         if (!file) return;
         if (!apiKey) {
-            setError('API Key оруулна уу');
+            setStep('error');
+            setError('API Key тохируулагдаагүй байна (.env).');
+            showToast({
+                variant: 'error',
+                title: 'Алдаа',
+                description: 'API Key тохируулагдаагүй байна (.env).',
+            });
             return;
         }
 
         try {
-            setStep('analyzing');
-            setProgress(10);
+            setStep('uploading');
+            setProgress(20);
 
-            // Convert file to base64 data URL
             const dataUrl = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result);
@@ -70,387 +152,883 @@ const SocialInsuranceHoliday = () => {
             });
 
             setProgress(40);
+            setStep('analyzing');
 
-            // Call AI Parser
             const result = await extractNDSHFromImage(dataUrl, file.type, apiKey);
 
-            setProgress(80);
+            setProgress(90);
             setParsedData(result);
             setStep('complete');
             setProgress(100);
+            setShowUpload(false);
 
+            const paymentCount = result?.payments?.length || 0;
+            if (paymentCount === 0) {
+                showToast({
+                    variant: 'error',
+                    title: 'Анхааруулга',
+                    description: 'Файлаас НДШ төлөлтийн мэдээлэл олдсонгүй.',
+                });
+            } else {
+                showToast({
+                    variant: 'success',
+                    title: 'Амжилттай!',
+                    description: `${paymentCount} бүртгэл олдлоо`,
+                });
+            }
         } catch (err) {
-            console.error(err);
-            setError(err.message || 'Алдаа гарлаа');
+            const errorMessage = err instanceof Error ? err.message : 'Алдаа гарлаа';
+            console.error('NDSH processing error:', errorMessage);
             setStep('error');
+            setError(errorMessage);
+            showToast({
+                variant: 'error',
+                title: 'Алдаа',
+                description: errorMessage,
+            });
         }
     };
 
-    const reset = () => {
+    const resetState = () => {
         setFile(null);
         setStep('idle');
-        setParsedData(null);
-        setError(null);
         setProgress(0);
+        setError(null);
+        setParsedData(null);
+        setShowUpload(false);
     };
 
-    // --- Calculation Logic ---
+    const handleSave = async () => {
+        if (!parsedData) return;
+        setIsSaving(true);
+        try {
+            const payload = {
+                parsedData,
+                abnormalMonths,
+                baseVacationDays,
+                updatedAt: new Date().toISOString(),
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            setSavedData(payload);
+            showToast({
+                variant: 'success',
+                title: 'Амжилттай хадгалагдлаа!',
+                description: `Амралтын хоног: ${vacationCalculation.total} өдөр`,
+            });
+        } catch (e) {
+            showToast({
+                variant: 'error',
+                title: 'Алдаа',
+                description: 'Хадгалахад алдаа гарлаа',
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
-    // Group payments by year for UI toggle
-    const yearlyStats = useMemo(() => {
+    const hasUnsavedChanges = React.useMemo(() => {
+        if (!parsedData) return false;
+        if (!savedData?.parsedData) return true;
+        if ((parsedData.payments?.length || 0) !== (savedData.parsedData.payments?.length || 0)) return true;
+        const savedAbnormal = savedData.abnormalMonths || {};
+        if (JSON.stringify(abnormalMonths) !== JSON.stringify(savedAbnormal)) return true;
+        const savedBaseDays = savedData.baseVacationDays || 15;
+        if (baseVacationDays !== savedBaseDays) return true;
+        return false;
+    }, [parsedData, savedData, abnormalMonths, baseVacationDays]);
+
+    const groupedByYear = React.useMemo(() => {
         if (!parsedData) return {};
+        const grouped = {};
+        parsedData.payments.forEach((payment) => {
+            if (!grouped[payment.year]) grouped[payment.year] = {};
+            if (!grouped[payment.year][payment.organization]) {
+                grouped[payment.year][payment.organization] = Array(12).fill(false);
+            }
+            if (payment.month >= 1 && payment.month <= 12) {
+                grouped[payment.year][payment.organization][payment.month - 1] = payment.paid;
+            }
+        });
+        return grouped;
+    }, [parsedData]);
 
+    const isVoluntaryInsurance = (org) => {
+        return org.toLowerCase().includes('сайн дурын') || org.toLowerCase().includes('сайн дурын даатгал');
+    };
+
+    const voluntaryStats = React.useMemo(() => {
+        if (!parsedData) return { totalMonths: 0, uniqueMonths: new Set() };
+        const uniqueMonths = new Set();
+        parsedData.payments.forEach((payment) => {
+            if (payment.paid && isVoluntaryInsurance(payment.organization)) {
+                uniqueMonths.add(`${payment.year}-${payment.month}`);
+            }
+        });
+        return { totalMonths: uniqueMonths.size, uniqueMonths };
+    }, [parsedData]);
+
+    const yearlyStats = React.useMemo(() => {
+        if (!parsedData) return {};
         const stats = {};
-        parsedData.payments.forEach(p => {
-            if (!stats[p.year]) stats[p.year] = { total: 0, voluntary: 0, regular: 0, months: new Set() };
-            if (p.paid) {
-                stats[p.year].months.add(p.month);
-                if (p.organization.toLowerCase().includes('сайн дур')) {
-                    stats[p.year].voluntary++;
+        parsedData.payments.forEach((payment) => {
+            if (!stats[payment.year]) {
+                stats[payment.year] = {
+                    paidMonths: 0,
+                    uniqueMonths: new Set(),
+                    voluntaryMonths: new Set(),
+                    regularMonths: new Set(),
+                };
+            }
+            if (payment.paid && payment.month >= 1 && payment.month <= 12) {
+                stats[payment.year].uniqueMonths.add(payment.month);
+                if (isVoluntaryInsurance(payment.organization)) {
+                    stats[payment.year].voluntaryMonths.add(payment.month);
                 } else {
-                    stats[p.year].regular++;
+                    stats[payment.year].regularMonths.add(payment.month);
                 }
             }
         });
 
-        Object.keys(stats).forEach(y => {
-            stats[y].total = stats[y].months.size;
+        Object.keys(stats).forEach((year) => {
+            stats[year].paidMonths = stats[year].uniqueMonths.size;
         });
 
         return stats;
     }, [parsedData]);
 
-    // Calculate total abnormal months from inputs
-    const totalAbnormalMonths = useMemo(() => {
-        return Object.values(abnormalMonths).reduce((sum, val) => sum + (val || 0), 0);
-    }, [abnormalMonths]);
-
-    // Core Vacation Logic
-    const vacationCalculation = useMemo(() => {
-        if (!parsedData) return { total: 0 };
-
-        let totalMonths = 0;
-
-        // Sum user's effective months
-        Object.entries(yearlyStats).forEach(([year, stat]) => {
-            // Simple logic: Use total unique months
-            totalMonths += stat.total;
-        });
-
-        // Abnormal logic
-        const ABNORMAL_INTERVALS = [
-            { days: 5, min: 61, max: 120 },
-            { days: 7, min: 121, max: 180 },
-            { days: 9, min: 181, max: 240 },
-            { days: 12, min: 241, max: 300 },
-            { days: 15, min: 301, max: 372 },
-            { days: 18, min: 373, max: Infinity },
-        ];
-
-        let matchedInterval = null;
-        for (let i = ABNORMAL_INTERVALS.length - 1; i >= 0; i--) {
-            if (totalAbnormalMonths >= ABNORMAL_INTERVALS[i].min) {
-                matchedInterval = ABNORMAL_INTERVALS[i];
-                break;
-            }
+    const totalStats = React.useMemo(() => {
+        const entries = Object.entries(yearlyStats);
+        if (entries.length === 0) {
+            return {
+                totalMonths: 0,
+                totalYears: 0,
+                yearsCount: 0,
+                remainingMonths: 0,
+                fullYears: 0,
+                regularMonths: 0,
+            };
         }
 
+        let totalMonths = 0;
+        let regularMonths = 0;
+        let yearsWithFullPayment = 0;
+
+        entries.forEach(([, stats]) => {
+            if (includeVoluntary) {
+                totalMonths += stats.uniqueMonths.size;
+            } else {
+                totalMonths += stats.regularMonths.size;
+            }
+            regularMonths += stats.regularMonths.size;
+            if (stats.paidMonths === 12) {
+                yearsWithFullPayment++;
+            }
+        });
+
+        return {
+            totalMonths,
+            totalYears: entries.length,
+            yearsCount: Math.floor(totalMonths / 12),
+            remainingMonths: totalMonths % 12,
+            fullYears: yearsWithFullPayment,
+            regularMonths,
+        };
+    }, [yearlyStats, includeVoluntary]);
+
+    const sortedYears = Object.keys(groupedByYear).map(Number).sort((a, b) => b - a);
+
+    const toggleYear = (year) => {
+        setExpandedYears((prev) => {
+            const newSet = new Set(prev);
+            if (newSet.has(year)) {
+                newSet.delete(year);
+            } else {
+                newSet.add(year);
+            }
+            return newSet;
+        });
+    };
+
+    const toggleAllYears = () => {
+        if (expandedYears.size === sortedYears.length) {
+            setExpandedYears(new Set());
+        } else {
+            setExpandedYears(new Set(sortedYears));
+        }
+    };
+
+    const ABNORMAL_INTERVALS = [
+        { days: 5, min: 61, max: 120, label: '6–10 жил' },
+        { days: 7, min: 121, max: 180, label: '11–15 жил' },
+        { days: 9, min: 181, max: 240, label: '16–20 жил' },
+        { days: 12, min: 241, max: 300, label: '21–25 жил' },
+        { days: 15, min: 301, max: 372, label: '26–31 жил' },
+        { days: 18, min: 373, max: Infinity, label: '32+ жил' },
+    ];
+
+    const getAdditionalDays = (months, isAbnormal) => {
+        if (isAbnormal) {
+            if (months >= 373) return 18;
+            if (months >= 301) return 15;
+            if (months >= 241) return 12;
+            if (months >= 181) return 9;
+            if (months >= 121) return 7;
+            if (months >= 61) return 5;
+            return 0;
+        }
+        if (months >= 373) return 14;
+        if (months >= 301) return 11;
+        if (months >= 241) return 9;
+        if (months >= 181) return 7;
+        if (months >= 121) return 5;
+        if (months >= 61) return 3;
+        return 0;
+    };
+
+    const getAbnormalInterval = (months) => {
+        for (let i = ABNORMAL_INTERVALS.length - 1; i >= 0; i--) {
+            if (months >= ABNORMAL_INTERVALS[i].min) {
+                return ABNORMAL_INTERVALS[i];
+            }
+        }
+        return null;
+    };
+
+    const vacationCalculation = React.useMemo(() => {
+        const matchedInterval = getAbnormalInterval(totalAbnormalMonths);
         const abnormalQualifies = matchedInterval !== null;
         const effectiveAbnormalMonths = abnormalQualifies ? matchedInterval.min : 0;
+        const excessAbnormalMonths = abnormalQualifies ? totalAbnormalMonths - matchedInterval.min : totalAbnormalMonths;
+        const normalMonths = Math.max(0, totalStats.totalMonths - effectiveAbnormalMonths);
 
-        // Normal months = Total - Effective Abnormal
-        const normalMonths = Math.max(0, totalMonths - effectiveAbnormalMonths);
-
-        // Calculate Additional Days
-        const getNormalAdditional = (m) => {
-            if (m >= 373) return 14;
-            if (m >= 301) return 11;
-            if (m >= 241) return 9;
-            if (m >= 181) return 7;
-            if (m >= 121) return 5;
-            if (m >= 61) return 3;
-            return 0;
-        };
-
-        const normalAdditional = getNormalAdditional(normalMonths);
-        const abnormalAdditional = abnormalQualifies ? matchedInterval.days : getNormalAdditional(effectiveAbnormalMonths); // Fallback if not qualified but has months (treated as normal)
-
-        // Note: If abnormal doesn't qualify as abnormal interval (e.g. < 61), 
-        // those months are verified as "normal" in this simplified logic 
-        // by subtracting 0 from total.
-
+        const normalAdditional = getAdditionalDays(normalMonths, false);
+        const abnormalAdditional = getAdditionalDays(effectiveAbnormalMonths, true);
         const total = baseVacationDays + normalAdditional + abnormalAdditional;
 
         return {
-            total,
             base: baseVacationDays,
             normalMonths,
             normalAdditional,
             effectiveAbnormalMonths,
+            excessAbnormalMonths,
             abnormalAdditional,
-            abnormalQualifies
+            abnormalQualifies,
+            matchedInterval,
+            total,
         };
-    }, [parsedData, yearlyStats, totalAbnormalMonths, baseVacationDays]);
+    }, [baseVacationDays, totalStats.totalMonths, totalAbnormalMonths]);
 
+    const isProcessing = step === 'uploading' || step === 'analyzing';
+    const showUploadSection = step === 'idle' || step === 'uploading' || step === 'analyzing' || step === 'error' || showUpload;
+
+    const handleExportPdf = () => {
+        if (!parsedData) return;
+        previousExpandedRef.current = new Set(expandedYears);
+        setExpandedYears(new Set(sortedYears));
+        setIsPrinting(true);
+
+        window.setTimeout(() => {
+            window.print();
+        }, 120);
+    };
 
     return (
-        <div style={{ paddingTop: 'calc(var(--header-height) + 2rem)', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-            <div className="container" style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 1rem' }}>
-                <Link to="/ai-assistant" style={{ display: 'inline-flex', alignItems: 'center', color: '#64748b', textDecoration: 'none', marginBottom: '2rem' }}>
-                    <ArrowLeft size={20} style={{ marginRight: '0.5rem' }} /> Буцах
-                </Link>
+        <div className={`ndsh2-page ${isPrinting ? 'ndsh2-printing' : ''}`}>
+            <div className="ndsh2-header">
+                <div className="ndsh2-header-inner">
+                    <div>
+                        <h1>Ажилсан жил тооцоолох</h1>
+                        <p>НДШ төлөлтийн лавлагаагаар ажилласан жил тооцоолох</p>
+                    </div>
+                    <Link to="/ai-assistant" className="ndsh2-btn ndsh2-btn--ghost">
+                        <ArrowLeft className="ndsh2-icon" />
+                        Буцах
+                    </Link>
+                </div>
+            </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: parsedData ? '1fr 1fr' : '1fr', gap: '2rem' }}>
+            <div className="ndsh2-content">
+                {toast && (
+                    <div className={`ndsh2-toast ndsh2-toast--${toast.variant || 'success'}`}>
+                        <div>
+                            <p className="ndsh2-toast-title">{toast.title}</p>
+                            <p className="ndsh2-toast-desc">{toast.description}</p>
+                        </div>
+                    </div>
+                )}
 
-                    {/* Left: Upload & Config */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {/* API Key Input */}
-                        {!parsedData && (
-                            <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.9rem' }}>
-                                    Gemini API Key
-                                </label>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <div style={{ position: 'relative', flex: 1 }}>
-                                        <input
-                                            type="password"
-                                            value={apiKey}
-                                            onChange={handleApiKeyChange}
-                                            placeholder="AI Key оруулна уу..."
-                                            style={{ width: '100%', padding: '0.6rem 0.8rem 0.6rem 2.2rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-                                        />
-                                        <Key size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                                    </div>
-                                </div>
-                                <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
-                                    Зөвхөн таны хөтөч дээр хадгалагдана.
-                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" style={{ color: '#2563eb', marginLeft: '4px' }}>Key авах</a>
-                                </p>
+                {showUploadSection && (
+                    <div className="ndsh2-card ndsh2-card--stack">
+                        <div className="ndsh2-card-header">
+                            <div className="ndsh2-card-title">
+                                <Sparkles className="ndsh2-icon" />
+                                НДШ төлөлтийн лавлагаа оруулах
                             </div>
-                        )}
-
-                        {/* Upload Card */}
-                        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Upload size={20} className="text-blue-600" />
-                                НДШ Тайлбар (Лавлагаа)
-                            </h2>
-
-                            {!parsedData ? (
-                                <div
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={handleDrop}
-                                    onClick={() => fileInputRef.current?.click()}
-                                    style={{
-                                        border: '2px dashed #cbd5e1',
-                                        borderRadius: '12px',
-                                        padding: '3rem 1rem',
-                                        textAlign: 'center',
-                                        cursor: 'pointer',
-                                        backgroundColor: '#f8fafc',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileSelect} />
-
-                                    {step === 'analyzing' ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <Loader2 size={40} className="animate-spin text-blue-600" />
-                                            <p style={{ marginTop: '1rem', fontWeight: '500' }}>AI шинжилж байна...</p>
-                                            <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Түр хүлээнэ үү ({progress}%)</p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div style={{ width: '48px', height: '48px', backgroundColor: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto', color: '#4f46e5' }}>
-                                                <Brain size={24} />
+                        </div>
+                        <div className="ndsh2-card-body">
+                            {step === 'idle' && (
+                                <>
+                                    <div
+                                        className={`ndsh2-dropzone ${file ? 'ndsh2-dropzone--active' : ''}`}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        onDrop={handleDrop}
+                                        onDragOver={(e) => e.preventDefault()}
+                                    >
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                            onChange={handleFileSelect}
+                                            className="ndsh2-hidden"
+                                        />
+                                        {file ? (
+                                            <div className="ndsh2-dropzone-file">
+                                                <div className="ndsh2-file-icon">
+                                                    <FileText className="ndsh2-icon" />
+                                                </div>
+                                                <p className="ndsh2-file-name">{file.name}</p>
+                                                <p className="ndsh2-file-meta">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                                             </div>
-                                            <p style={{ fontWeight: '500', color: '#334155' }}>Зурган файл оруулна уу</p>
-                                            <p style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '0.25rem' }}>JPG, PNG</p>
-                                        </>
-                                    )}
-                                </div>
-                            ) : (
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#16a34a', marginBottom: '1rem' }}>
-                                        <CheckCircle size={20} />
-                                        <span style={{ fontWeight: '600' }}>Амжилттай уншлаа</span>
+                                        ) : (
+                                            <div className="ndsh2-dropzone-empty">
+                                                <div className="ndsh2-upload-icon">
+                                                    <Upload className="ndsh2-icon" />
+                                                </div>
+                                                <p className="ndsh2-dropzone-title">НДШ лавлагааг энд чирж оруулна уу</p>
+                                                <p className="ndsh2-dropzone-sub">эсвэл дарж сонгоно уу</p>
+                                                <div className="ndsh2-badge-row">
+                                                    <span className="ndsh2-badge ndsh2-badge--secondary">
+                                                        <FileText className="ndsh2-icon" />
+                                                        PDF
+                                                    </span>
+                                                    <span className="ndsh2-badge ndsh2-badge--secondary">
+                                                        <FileImage className="ndsh2-icon" />
+                                                        JPG/PNG
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <button onClick={reset} style={{ color: '#64748b', fontSize: '0.9rem', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer' }}>
-                                        Өөр файл оруулах
+
+                                    <div className="ndsh2-action-row">
+                                        <button
+                                            type="button"
+                                            className="ndsh2-btn ndsh2-btn--outline"
+                                            onClick={() => {
+                                                if (parsedData) {
+                                                    setShowUpload(false);
+                                                    setFile(null);
+                                                } else {
+                                                    resetState();
+                                                }
+                                            }}
+                                        >
+                                            {parsedData ? 'Болих' : 'Цэвэрлэх'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="ndsh2-btn ndsh2-btn--primary"
+                                            onClick={processFile}
+                                            disabled={!file}
+                                        >
+                                            <Brain className="ndsh2-icon" />
+                                            AI-аар шинжлэх
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+                            {isProcessing && (
+                                <div className="ndsh2-processing">
+                                    <div className="ndsh2-processing-icon">
+                                        <Brain className="ndsh2-icon" />
+                                        <span className="ndsh2-processing-spinner">
+                                            <Loader2 className="ndsh2-icon" />
+                                        </span>
+                                    </div>
+                                    <div className="ndsh2-processing-text">
+                                        <p>{step === 'uploading' ? 'Файл уншиж байна...' : 'AI шинжилж байна...'}</p>
+                                        <span>Түр хүлээнэ үү</span>
+                                    </div>
+                                    <div className="ndsh2-progress">
+                                        <div style={{ width: `${progress}%` }} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {step === 'error' && (
+                                <div className="ndsh2-error">
+                                    <div className="ndsh2-error-icon">
+                                        <AlertTriangle className="ndsh2-icon" />
+                                    </div>
+                                    <div>
+                                        <p>Алдаа гарлаа</p>
+                                        <span>{error}</span>
+                                    </div>
+                                    <button type="button" className="ndsh2-btn ndsh2-btn--outline" onClick={resetState}>
+                                        Дахин оролдох
                                     </button>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                )}
 
-                            {error && (
-                                <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                                    <AlertTriangle size={18} className="text-red-600" style={{ flexShrink: 0, marginTop: '2px' }} />
-                                    <p style={{ fontSize: '0.9rem', color: '#b91c1c' }}>{error}</p>
+                {step === 'complete' && parsedData && !showUpload && (
+                    <div className="ndsh2-results">
+                        <div className="ndsh2-hero">
+                            <div className="ndsh2-hero-main">
+                                <div className="ndsh2-hero-icon">
+                                    <CalendarDays className="ndsh2-icon" />
                                 </div>
-                            )}
-
-                            {!parsedData && (
-                                <button
-                                    onClick={processFile}
-                                    disabled={!file || step === 'analyzing'}
-                                    style={{
-                                        width: '100%',
-                                        marginTop: '1.5rem',
-                                        backgroundColor: '#2563eb',
-                                        color: 'white',
-                                        padding: '0.75rem',
-                                        borderRadius: '8px',
-                                        border: 'none',
-                                        fontWeight: '600',
-                                        cursor: (!file || step === 'analyzing') ? 'not-allowed' : 'pointer',
-                                        opacity: (!file || step === 'analyzing') ? 0.7 : 1
-                                    }}
-                                >
-                                    {step === 'analyzing' ? 'Уншиж байна...' : 'Тооцоолох'}
-                                </button>
+                                <div>
+                                    <p>Нийт амралтын хоног</p>
+                                    <h2>
+                                        {vacationCalculation.total}
+                                        <span>өдөр</span>
+                                    </h2>
+                                </div>
+                            </div>
+                            <div className="ndsh2-hero-breakdown">
+                                <div className="ndsh2-hero-pill">
+                                    <p>Суурь</p>
+                                    <strong>{vacationCalculation.base}</strong>
+                                    <span>{baseVacationDays === 15 ? 'Ердийн' : 'ХБИ/18-'}</span>
+                                </div>
+                                <span className="ndsh2-hero-plus">+</span>
+                                <div className="ndsh2-hero-pill">
+                                    <p>Хэвийн нэмэлт</p>
+                                    <strong>{vacationCalculation.normalAdditional}</strong>
+                                    <span>{vacationCalculation.normalMonths} сар</span>
+                                </div>
+                                <span className="ndsh2-hero-plus">+</span>
+                                <div className={`ndsh2-hero-pill ${vacationCalculation.abnormalQualifies ? '' : 'ndsh2-hero-pill--muted'}`}>
+                                    <p>Хэв. бус нэмэлт</p>
+                                    <strong>{vacationCalculation.abnormalAdditional}</strong>
+                                    <span>
+                                        {vacationCalculation.abnormalQualifies
+                                            ? `${vacationCalculation.effectiveAbnormalMonths} сар`
+                                            : `${totalAbnormalMonths} сар < 61`}
+                                    </span>
+                                </div>
+                            </div>
+                            {totalAbnormalMonths > 0 && (
+                                <div className="ndsh2-hero-note">
+                                    {!vacationCalculation.abnormalQualifies ? (
+                                        <span>
+                                            Хэвийн бус <strong>{totalAbnormalMonths}</strong> сар нь 61 сарын доогуур учир бүгд хэвийн нөхцөлд шилжив.
+                                            <span className="ndsh2-hero-note-muted"> (Хэвийн: {vacationCalculation.normalMonths} сар)</span>
+                                        </span>
+                                    ) : (
+                                        <span>
+                                            Хэвийн бус <strong>{totalAbnormalMonths}</strong> сар →
+                                            <strong className="ndsh2-hero-note-accent"> {vacationCalculation.effectiveAbnormalMonths}</strong> сар
+                                            ({vacationCalculation.matchedInterval?.min}–
+                                            {vacationCalculation.matchedInterval?.max === Infinity ? '∞' : vacationCalculation.matchedInterval?.max} интервал).
+                                            {vacationCalculation.excessAbnormalMonths > 0 && (
+                                                <span className="ndsh2-hero-note-success">
+                                                    Илүүдэл <strong>{vacationCalculation.excessAbnormalMonths}</strong> сар хэвийн рүү шилжив.
+                                                </span>
+                                            )}
+                                            <span className="ndsh2-hero-note-muted"> (Хэвийн: {vacationCalculation.normalMonths} сар)</span>
+                                        </span>
+                                    )}
+                                </div>
                             )}
                         </div>
 
-                        {/* Abnormal Months Input Section (Visible only after parsing) */}
-                        {parsedData && (
-                            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '1rem' }}>Хэвийн бус нөхцөл</h3>
-                                <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.5rem' }}>
-                                    Тухайн жилд хэвийн бус нөхцөлд ажилласан сарыг гараар оруулна уу.
-                                </p>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                                    {Object.entries(yearlyStats).sort((a, b) => b[0] - a[0]).map(([year, stats]) => (
-                                        <div key={year} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', border: '1px solid #f1f5f9', borderRadius: '8px' }}>
-                                            <div>
-                                                <span style={{ fontWeight: '600', color: '#334155' }}>{year} он</span>
-                                                <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '0.5rem' }}>
-                                                    (Нийт {stats.total} сар)
-                                                </span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    max={stats.total}
-                                                    value={abnormalMonths[year] || ''}
-                                                    onChange={(e) => {
-                                                        const val = Math.min(stats.total, Math.max(0, parseInt(e.target.value) || 0));
-                                                        setAbnormalMonths(prev => ({ ...prev, [year]: val }));
-                                                    }}
-                                                    placeholder="0"
-                                                    style={{ width: '60px', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}
-                                                />
-                                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>сар</span>
-                                            </div>
-                                        </div>
-                                    ))}
+                        {parsedData.employeeInfo && (parsedData.employeeInfo.lastName || parsedData.employeeInfo.firstName) && (
+                            <div className="ndsh2-card ndsh2-card--compact">
+                                <div className="ndsh2-card-body ndsh2-employee">
+                                    <div className="ndsh2-employee-icon">👤</div>
+                                    <div>
+                                        <p className="ndsh2-employee-label">Даатгуулагч</p>
+                                        <p className="ndsh2-employee-name">
+                                            {parsedData.employeeInfo.lastName} {parsedData.employeeInfo.firstName}
+                                            {parsedData.employeeInfo.registrationNumber && (
+                                                <span className="ndsh2-employee-reg">({parsedData.employeeInfo.registrationNumber})</span>
+                                            )}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         )}
-                    </div>
 
-                    {/* Right: Results Dashboard */}
-                    {parsedData && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            {/* Summary Card */}
-                            <div style={{
-                                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                                borderRadius: '20px',
-                                padding: '2rem',
-                                color: 'white',
-                                boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.3)'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                                    <div style={{ padding: '10px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '12px' }}>
-                                        <Calendar size={32} />
+                        <div className="ndsh2-card ndsh2-card--compact ndsh2-card--accent">
+                            <div className="ndsh2-card-body ndsh2-base-days">
+                                <div className="ndsh2-base-info">
+                                    <div className="ndsh2-base-icon">
+                                        <CalendarDays className="ndsh2-icon" />
                                     </div>
                                     <div>
-                                        <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '2px' }}>Нийт амралтын хоног</p>
-                                        <h1 style={{ fontSize: '3rem', fontWeight: '800', lineHeight: 1 }}>
-                                            {vacationCalculation.total} <span style={{ fontSize: '1.25rem', fontWeight: '500', opacity: 0.9 }}>өдөр</span>
-                                        </h1>
+                                        <p>Жилийн суурь амралт</p>
+                                        <span>Ажилтны ангилал сонгох</span>
                                     </div>
                                 </div>
+                                <div className="ndsh2-base-actions">
+                                    <button
+                                        type="button"
+                                        onClick={() => setBaseVacationDays(15)}
+                                        className={`ndsh2-toggle ${baseVacationDays === 15 ? 'ndsh2-toggle--active' : ''}`}
+                                    >
+                                        <strong>15 өдөр</strong>
+                                        <span>Ердийн ажилтан</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setBaseVacationDays(20)}
+                                        className={`ndsh2-toggle ${baseVacationDays === 20 ? 'ndsh2-toggle--active' : ''}`}
+                                    >
+                                        <strong>20 өдөр</strong>
+                                        <span>ХБИ / 18-аас доош</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr', gap: '0.5rem', alignItems: 'center' }}>
-                                    {/* Base */}
-                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '12px', padding: '1rem 0.5rem', textAlign: 'center' }}>
-                                        <p style={{ fontSize: '0.7rem', opacity: 0.7, textTransform: 'uppercase', fontWeight: 'bold' }}>СУУРЬ</p>
-                                        <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{vacationCalculation.base}</p>
+                        {voluntaryStats.totalMonths > 0 && (
+                            <div className="ndsh2-card ndsh2-card--compact ndsh2-card--voluntary">
+                                <div className="ndsh2-card-body ndsh2-voluntary">
+                                    <div className="ndsh2-voluntary-info">
+                                        <div className="ndsh2-voluntary-icon">
+                                            <Heart className="ndsh2-icon" />
+                                        </div>
+                                        <div>
+                                            <p>Сайн дурын даатгал</p>
+                                            <span>{voluntaryStats.totalMonths} сар илэрсэн</span>
+                                        </div>
                                     </div>
-                                    <span style={{ fontSize: '1.5rem', opacity: 0.5 }}>+</span>
-
-                                    {/* Normal Add */}
-                                    <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '12px', padding: '1rem 0.5rem', textAlign: 'center' }}>
-                                        <p style={{ fontSize: '0.7rem', opacity: 0.7, textTransform: 'uppercase', fontWeight: 'bold' }}>ХЭВИЙН</p>
-                                        <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{vacationCalculation.normalAdditional}</p>
-                                    </div>
-                                    <span style={{ fontSize: '1.5rem', opacity: 0.5 }}>+</span>
-
-                                    {/* Abnormal Add */}
-                                    <div style={{ backgroundColor: vacationCalculation.abnormalQualifies ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)', borderRadius: '12px', padding: '1rem 0.5rem', textAlign: 'center', border: vacationCalculation.abnormalQualifies ? '1px solid rgba(255,255,255,0.5)' : 'none' }}>
-                                        <p style={{ fontSize: '0.7rem', opacity: 0.7, textTransform: 'uppercase', fontWeight: 'bold' }}>ХЭВ. БУС</p>
-                                        <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{vacationCalculation.abnormalAdditional}</p>
+                                    <div className="ndsh2-voluntary-actions">
+                                        <label className="ndsh2-checkbox">
+                                            <input
+                                                type="checkbox"
+                                                checked={includeVoluntary}
+                                                onChange={(e) => setIncludeVoluntary(e.target.checked)}
+                                            />
+                                            <span>Нийт хугацаанд оруулах</span>
+                                        </label>
+                                        <span className={`ndsh2-badge ${includeVoluntary ? 'ndsh2-badge--success' : 'ndsh2-badge--muted'}`}>
+                                            {includeVoluntary ? 'Оруулсан' : 'Оруулаагүй'}
+                                        </span>
                                     </div>
                                 </div>
+                            </div>
+                        )}
 
-                                {totalAbnormalMonths > 0 && (
-                                    <div style={{ marginTop: '1.5rem', backgroundColor: 'rgba(0,0,0,0.1)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
-                                        ℹ️ Хэвийн бус <b>{totalAbnormalMonths}</b> сар сонгосноос
-                                        <b> {vacationCalculation.effectiveAbnormalMonths}</b> сар нь нэмэгдэлд тооцогдож байна.
+                        <div className="ndsh2-summary-grid">
+                            <div className="ndsh2-card ndsh2-card--compact">
+                                <div className="ndsh2-card-header ndsh2-card-header--plain">
+                                    <div className="ndsh2-card-title">
+                                        <TrendingUp className="ndsh2-icon" />
+                                        Нэмэлт хоног (жилд)
                                     </div>
-                                )}
+                                </div>
+                                <div className="ndsh2-card-body ndsh2-table-stack">
+                                    <div>
+                                        <p className="ndsh2-table-label ndsh2-table-label--success">
+                                            <CheckCircle2 className="ndsh2-icon" />
+                                            Хэвийн нөхцөлд ({vacationCalculation.normalMonths} сар)
+                                        </p>
+                                        <div className="ndsh2-table">
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th className="ndsh2-right">Нэмэлт</th>
+                                                        <th>Интервал</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {[
+                                                        { days: 3, range: '61–120', years: '6–10 жил', min: 61, max: 120 },
+                                                        { days: 5, range: '121–180', years: '11–15 жил', min: 121, max: 180 },
+                                                        { days: 7, range: '181–240', years: '16–20 жил', min: 181, max: 240 },
+                                                        { days: 9, range: '241–300', years: '21–25 жил', min: 241, max: 300 },
+                                                        { days: 11, range: '301–372', years: '26–31 жил', min: 301, max: 372 },
+                                                        { days: 14, range: '373+', years: '32+ жил', min: 373, max: Infinity },
+                                                    ].map((row, idx) => {
+                                                        const isActive = vacationCalculation.normalMonths >= row.min && vacationCalculation.normalMonths <= row.max;
+                                                        return (
+                                                            <tr key={idx} className={isActive ? 'is-active' : ''}>
+                                                                <td className="ndsh2-right">
+                                                                    {row.days} өдөр {isActive && '✓'}
+                                                                </td>
+                                                                <td>
+                                                                    {row.range} сар <span>({row.years})</span>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p className="ndsh2-table-label ndsh2-table-label--danger">
+                                            <AlertTriangle className="ndsh2-icon" />
+                                            Хэвийн бус нөхцөлд
+                                            {totalAbnormalMonths > 0 && (
+                                                <span>
+                                                    ({totalAbnormalMonths} сар
+                                                    {vacationCalculation.abnormalQualifies
+                                                        ? ` → ${vacationCalculation.effectiveAbnormalMonths} сар`
+                                                        : ' → хэвийн рүү'}
+                                                    {vacationCalculation.excessAbnormalMonths > 0 && ` +${vacationCalculation.excessAbnormalMonths} хэвийн`})
+                                                </span>
+                                            )}
+                                        </p>
+                                        <div className={`ndsh2-table ${vacationCalculation.abnormalQualifies ? '' : 'ndsh2-table--muted'}`}>
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th className="ndsh2-right">Нэмэлт</th>
+                                                        <th>Интервал</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {[
+                                                        { days: 5, range: '61–120', years: '6–10 жил', min: 61, max: 120 },
+                                                        { days: 7, range: '121–180', years: '11–15 жил', min: 121, max: 180 },
+                                                        { days: 9, range: '181–240', years: '16–20 жил', min: 181, max: 240 },
+                                                        { days: 12, range: '241–300', years: '21–25 жил', min: 241, max: 300 },
+                                                        { days: 15, range: '301–372', years: '26–31 жил', min: 301, max: 372 },
+                                                        { days: 18, range: '373+', years: '32+ жил', min: 373, max: Infinity },
+                                                    ].map((row, idx) => {
+                                                        const isActive =
+                                                            vacationCalculation.abnormalQualifies &&
+                                                            vacationCalculation.effectiveAbnormalMonths >= row.min &&
+                                                            vacationCalculation.effectiveAbnormalMonths <= row.max;
+                                                        return (
+                                                            <tr key={idx} className={isActive ? 'is-active' : ''}>
+                                                                <td className="ndsh2-right">
+                                                                    {row.days} өдөр {isActive && '✓'}
+                                                                </td>
+                                                                <td>
+                                                                    {row.range} сар <span>({row.years})</span>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Employee Info */}
-                            {parsedData.employeeInfo && (
-                                <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '16px' }}>
-                                    <h3 style={{ fontSize: '0.9rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '1rem', fontWeight: '600' }}>Ажилтны мэдээлэл</h3>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Овог Нэр</p>
-                                            <p style={{ fontWeight: '600', color: '#1e293b' }}>
-                                                {parsedData.employeeInfo.lastName} {parsedData.employeeInfo.firstName}
-                                            </p>
+                            <div className="ndsh2-summary-cards">
+                                <div className="ndsh2-summary-card ndsh2-summary-card--emerald">
+                                    <CalendarDays className="ndsh2-icon" />
+                                    <div>
+                                        <p>Нийт хугацаа</p>
+                                        <strong>
+                                            {totalStats.yearsCount > 0 ? `${totalStats.yearsCount} жил ` : ''}
+                                            {totalStats.remainingMonths > 0
+                                                ? `${totalStats.remainingMonths} сар`
+                                                : totalStats.yearsCount === 0
+                                                    ? '0 сар'
+                                                    : ''}
+                                        </strong>
+                                    </div>
+                                </div>
+                                <div className="ndsh2-summary-card ndsh2-summary-card--blue">
+                                    <CheckCircle2 className="ndsh2-icon" />
+                                    <div>
+                                        <p>Нийт сар</p>
+                                        <strong>{totalStats.totalMonths}</strong>
+                                    </div>
+                                </div>
+                                <div className="ndsh2-summary-card ndsh2-summary-card--violet">
+                                    <TrendingUp className="ndsh2-icon" />
+                                    <div>
+                                        <p>Хамрагдсан жил</p>
+                                        <strong>{totalStats.totalYears}</strong>
+                                    </div>
+                                </div>
+                                <div className="ndsh2-summary-card ndsh2-summary-card--amber">
+                                    <Building2 className="ndsh2-icon" />
+                                    <div>
+                                        <p>Байгууллага</p>
+                                        <strong>
+                                            {Object.keys(
+                                                Object.values(groupedByYear).reduce((acc, orgs) => ({
+                                                    ...acc,
+                                                    ...orgs,
+                                                }), {})
+                                            ).length}
+                                        </strong>
+                                    </div>
+                                </div>
+                                <div className="ndsh2-summary-card ndsh2-summary-card--rose">
+                                    <AlertTriangle className="ndsh2-icon" />
+                                    <div>
+                                        <p>Хэвийн бус нөхцөл</p>
+                                        <strong>{totalAbnormalMonths} сар</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {parsedData.summary?.longestEmployment?.organization && (
+                            <div className="ndsh2-card ndsh2-card--compact">
+                                <div className="ndsh2-card-body ndsh2-longest">
+                                    <div className="ndsh2-longest-icon">
+                                        <Building2 className="ndsh2-icon" />
+                                    </div>
+                                    <div>
+                                        <p>Хамгийн удаан ажилласан байгууллага</p>
+                                        <strong>{parsedData.summary.longestEmployment.organization}</strong>
+                                    </div>
+                                    <span className="ndsh2-badge ndsh2-badge--indigo">
+                                        {parsedData.summary.longestEmployment.months} сар
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {sortedYears.length === 0 && (
+                            <div className="ndsh2-card ndsh2-card--compact ndsh2-empty">
+                                <AlertTriangle className="ndsh2-icon" />
+                                <h3>Өгөгдөл олдсонгүй</h3>
+                                <p>
+                                    Файлаас НДШ төлөлтийн мэдээлэл олдсонгүй. Зөв форматтай файл оруулсан эсэхээ шалгана уу.
+                                    НДШ-ийн лавлагаа нь он, сар, байгууллагын нэр, төлөлтийн мэдээллийг агуулсан байх ёстой.
+                                </p>
+                            </div>
+                        )}
+
+                        {sortedYears.length > 0 && (
+                            <div className="ndsh2-expand-row">
+                                <button type="button" className="ndsh2-btn ndsh2-btn--ghost" onClick={toggleAllYears}>
+                                    <ChevronsUpDown className="ndsh2-icon" />
+                                    {expandedYears.size === sortedYears.length ? 'Бүгдийг хураах' : 'Бүгдийг дэлгэх'}
+                                </button>
+                            </div>
+                        )}
+
+                        {sortedYears.map((year) => {
+                            const yearStat = yearlyStats[year];
+                            const paidMonths = yearStat?.paidMonths || 0;
+                            const isFullYear = paidMonths === 12;
+                            const isExpanded = expandedYears.has(year);
+                            const orgCount = Object.keys(groupedByYear[year] || {}).length;
+                            const yearAbnormal = abnormalMonths[year] || 0;
+
+                            return (
+                                <div key={year} className="ndsh2-card ndsh2-card--table">
+                                    <div className="ndsh2-table-header" onClick={() => toggleYear(year)}>
+                                        <div className="ndsh2-table-title">
+                                            {isExpanded ? <ChevronDown className="ndsh2-icon" /> : <ChevronRight className="ndsh2-icon" />}
+                                            <span>🗓️ {year} он</span>
+                                            <span className="ndsh2-table-sub">({orgCount} байгууллага)</span>
                                         </div>
-                                        <div>
-                                            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Регистр</p>
-                                            <p style={{ fontWeight: '600', color: '#1e293b' }}>
-                                                {parsedData.employeeInfo.registrationNumber || '-'}
-                                            </p>
+                                        <div className="ndsh2-table-actions" onClick={(e) => e.stopPropagation()}>
+                                            <div className="ndsh2-abnormal-input">
+                                                <AlertTriangle className="ndsh2-icon" />
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    max={paidMonths}
+                                                    value={yearAbnormal || ''}
+                                                    onChange={(e) => updateAbnormalMonths(year, parseInt(e.target.value) || 0, paidMonths)}
+                                                    placeholder="0"
+                                                />
+                                                <span>/{paidMonths}</span>
+                                            </div>
+                                            <span className={`ndsh2-badge ${isFullYear ? 'ndsh2-badge--success' : paidMonths >= 6 ? 'ndsh2-badge--blue' : 'ndsh2-badge--amber'}`}>
+                                                {paidMonths}/12 сар {isFullYear && '✓'}
+                                            </span>
                                         </div>
-                                        <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-                                            <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Нийт ажилласан хугацаа</p>
-                                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
-                                                <p style={{ fontWeight: '600' }}>{parsedData.summary.totalYears} жил</p>
-                                                <p style={{ fontWeight: '600' }}>{parsedData.summary.totalMonths} сар</p>
+                                    </div>
+
+                                    {isExpanded && (
+                                        <div className="ndsh2-table-body">
+                                            <div className="ndsh2-scroll">
+                                                <table>
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Байгууллага</th>
+                                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
+                                                                <th key={month} className="ndsh2-month">{month}</th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {Object.entries(groupedByYear[year]).map(([org, months], idx) => {
+                                                            const isVoluntary = isVoluntaryInsurance(org);
+                                                            return (
+                                                                <tr key={`${year}-${org}-${idx}`} className={isVoluntary && !includeVoluntary ? 'is-muted' : ''}>
+                                                                    <td className="ndsh2-org" title={org}>
+                                                                        <div>
+                                                                            <span>{org}</span>
+                                                                            {isVoluntary && (
+                                                                                <span className="ndsh2-badge ndsh2-badge--pink">СД</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                    {months.map((paid, monthIdx) => (
+                                                                        <td key={monthIdx} className="ndsh2-check">
+                                                                            <span className={paid ? '' : 'is-empty'}>{paid ? '✅' : '⬜'}</span>
+                                                                        </td>
+                                                                    ))}
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
+                            );
+                        })}
+
+                        <div className="ndsh2-action-row ndsh2-action-row--end">
+                            <button
+                                type="button"
+                                className="ndsh2-btn ndsh2-btn--outline"
+                                onClick={handleExportPdf}
+                                disabled={isPrinting}
+                            >
+                                <Download className="ndsh2-icon" />
+                                PDF татах
+                            </button>
+                            <button
+                                type="button"
+                                className={`ndsh2-btn ${hasUnsavedChanges ? 'ndsh2-btn--success' : 'ndsh2-btn--dark'}`}
+                                onClick={handleSave}
+                                disabled={isSaving}
+                            >
+                                {isSaving ? <Loader2 className="ndsh2-icon ndsh2-spin" /> : <Save className="ndsh2-icon" />}
+                                {hasUnsavedChanges ? 'Хадгалах' : 'Дахин хадгалах'}
+                            </button>
+                            {!hasUnsavedChanges && savedData && (
+                                <span className="ndsh2-badge ndsh2-badge--success-outline">
+                                    <CheckCircle2 className="ndsh2-icon" />
+                                    Хадгалагдсан
+                                </span>
                             )}
-
-                            {/* Settings */}
-                            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '16px' }}>
-                                <h3 style={{ fontSize: '0.9rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '1rem', fontWeight: '600' }}>Тохиргоо</h3>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                                    <span style={{ fontSize: '0.95rem' }}>Суурь амралтын хоног</span>
-                                    <select
-                                        value={baseVacationDays}
-                                        onChange={(e) => setBaseVacationDays(Number(e.target.value))}
-                                        style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                                    >
-                                        <option value={15}>15 өдөр (Ердийн)</option>
-                                        <option value={20}>20 өдөр (18- / ХБИ)</option>
-                                    </select>
-                                </div>
-                            </div>
-
+                            <button
+                                type="button"
+                                className="ndsh2-btn ndsh2-btn--outline"
+                                onClick={() => {
+                                    resetState();
+                                    setShowUpload(true);
+                                }}
+                            >
+                                <RefreshCw className="ndsh2-icon" />
+                                Шинэчлэх
+                            </button>
+                            <Link to="/ai-assistant" className="ndsh2-btn ndsh2-btn--primary">
+                                <ArrowLeft className="ndsh2-icon" />
+                                Буцах
+                            </Link>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
+
 export default SocialInsuranceHoliday;

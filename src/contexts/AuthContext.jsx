@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from "react"
-import { auth } from "../lib/firebase"
+import { auth, db } from "../lib/firebase"
+import { doc, getDoc } from "firebase/firestore"
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
@@ -30,13 +31,27 @@ export function AuthProvider({ children }) {
     }
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setCurrentUser(user)
-            setLoading(false)
-        })
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Fetch user role from Firestore
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        // Merge Firestore data into the user object
+                        user.role = userData.role;
+                        user.firestoreData = userData;
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                }
+            }
+            setCurrentUser(user);
+            setLoading(false);
+        });
 
-        return unsubscribe
-    }, [])
+        return unsubscribe;
+    }, []);
 
     const value = {
         currentUser,
