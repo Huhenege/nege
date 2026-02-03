@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "qpay:server": "node server/qpay-server.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

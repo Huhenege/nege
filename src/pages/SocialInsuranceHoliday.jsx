@@ -21,13 +21,14 @@ import {
     ChevronRight,
     ChevronsUpDown,
 } from 'lucide-react';
-import { extractNDSHFromImage } from '../lib/ndshParser';
 import './SocialInsuranceHoliday.css';
 
 const STORAGE_KEY = 'ndsh-saved-data';
+const PAYMENT_STORAGE_KEY = 'ndsh-payment-grant';
+const PAYMENT_PRICE = 100;
 
 const SocialInsuranceHoliday = () => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const qpayApiBase = (import.meta.env.VITE_QPAY_API_BASE || '/api').replace(/\/$/, '');
 
     const [file, setFile] = React.useState(null);
     const [step, setStep] = React.useState('idle');
@@ -43,6 +44,11 @@ const SocialInsuranceHoliday = () => {
     const [baseVacationDays, setBaseVacationDays] = React.useState(15);
     const [toast, setToast] = React.useState(null);
     const [isPrinting, setIsPrinting] = React.useState(false);
+    const [paymentStatus, setPaymentStatus] = React.useState('idle'); // idle, creating, pending, paid, error
+    const [paymentInvoice, setPaymentInvoice] = React.useState(null);
+    const [paymentGrant, setPaymentGrant] = React.useState(null);
+    const [paymentError, setPaymentError] = React.useState(null);
+    const [isCheckingPayment, setIsCheckingPayment] = React.useState(false);
 
     const fileInputRef = React.useRef(null);
     const previousExpandedRef = React.useRef(new Set());
@@ -71,6 +77,20 @@ const SocialInsuranceHoliday = () => {
             }
         } catch (e) {
             console.error('Failed to load saved NDSH data', e);
+        }
+    }, []);
+
+    React.useEffect(() => {
+        try {
+            const savedPaymentRaw = localStorage.getItem(PAYMENT_STORAGE_KEY);
+            if (!savedPaymentRaw) return;
+            const savedPayment = JSON.parse(savedPaymentRaw);
+            if (savedPayment?.grantToken) {
+                setPaymentGrant(savedPayment);
+                setPaymentStatus(savedPayment.used ? 'used' : 'paid');
+            }
+        } catch (e) {
+            console.error('Failed to load payment grant', e);
         }
     }, []);
 
@@ -127,15 +147,119 @@ const SocialInsuranceHoliday = () => {
         }
     };
 
-    const processFile = async () => {
-        if (!file) return;
-        if (!apiKey) {
-            setStep('error');
-            setError('API Key тохируулагдаагүй байна (.env).');
+    const createPaymentInvoice = async () => {
+        try {
+            setPaymentStatus('creating');
+            setPaymentError(null);
+
+            const response = await fetch(`${qpayApiBase}/qpay/invoice`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: PAYMENT_PRICE,
+                    description: 'НДШ AI нэг удаагийн уншилт',
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+            }
+
+            setPaymentInvoice(data);
+            setPaymentStatus('pending');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Төлбөрийн системд алдаа гарлаа';
+            setPaymentStatus('error');
+            setPaymentError(message);
             showToast({
                 variant: 'error',
-                title: 'Алдаа',
-                description: 'API Key тохируулагдаагүй байна (.env).',
+                title: 'Төлбөрийн алдаа',
+                description: message,
+            });
+        }
+    };
+
+    const checkPaymentStatus = async () => {
+        if (!paymentInvoice?.invoice_id) return;
+        setIsCheckingPayment(true);
+        try {
+            const response = await fetch(`${qpayApiBase}/qpay/check`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+            }
+
+            if (data.paid) {
+                if (!data.grantToken) {
+                    throw new Error('Төлбөрийн эрх олдсонгүй.');
+                }
+                const grant = {
+                    invoice_id: paymentInvoice.invoice_id,
+                    paidAt: new Date().toISOString(),
+                    amount: PAYMENT_PRICE,
+                    grantToken: data.grantToken,
+                    used: false,
+                };
+                localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(grant));
+                setPaymentGrant(grant);
+                setPaymentStatus('paid');
+                showToast({
+                    variant: 'success',
+                    title: 'Төлбөр баталгаажлаа',
+                    description: '1 удаагийн эрх идэвхжлээ.',
+                });
+            } else {
+                showToast({
+                    variant: 'info',
+                    title: 'Төлбөр хүлээгдэж байна',
+                    description: 'QPay дээр төлбөрийг баталгаажуулна уу.',
+                });
+            }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Төлбөр шалгахад алдаа гарлаа';
+            setPaymentStatus('error');
+            setPaymentError(message);
+            showToast({
+                variant: 'error',
+                title: 'Төлбөр шалгах',
+                description: message,
+            });
+        } finally {
+            setIsCheckingPayment(false);
+        }
+    };
+
+    const consumePaymentGrant = () => {
+        if (!paymentGrant) return;
+        const updated = {
+            ...paymentGrant,
+            used: true,
+            consumedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(updated));
+        setPaymentGrant(updated);
+    };
+
+    const resetPayment = () => {
+        setPaymentInvoice(null);
+        setPaymentGrant(null);
+        setPaymentStatus('idle');
+        setPaymentError(null);
+        localStorage.removeItem(PAYMENT_STORAGE_KEY);
+    };
+
+    const processFile = async () => {
+        if (!file) return;
+        if (!paymentGrant || !paymentGrant.grantToken || paymentGrant.used) {
+            showToast({
+                variant: 'error',
+                title: 'Төлбөр шаардлагатай',
+                description: 'AI шинжилгээ эхлэхийн өмнө нэг удаагийн төлбөр төлнө үү.',
             });
             return;
         }
@@ -154,15 +278,31 @@ const SocialInsuranceHoliday = () => {
             setProgress(40);
             setStep('analyzing');
 
-            const result = await extractNDSHFromImage(dataUrl, file.type, apiKey);
+            const response = await fetch(`${qpayApiBase}/ndsh/parse`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    imageDataUrl: dataUrl,
+                    mimeType: file.type,
+                    grantToken: paymentGrant.grantToken,
+                }),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                if (response.status === 403 || response.status === 402) {
+                    consumePaymentGrant();
+                }
+                throw new Error(result?.error || 'AI шинжилгээнд алдаа гарлаа');
+            }
 
             setProgress(90);
-            setParsedData(result);
+            setParsedData(result.data);
             setStep('complete');
             setProgress(100);
             setShowUpload(false);
+            consumePaymentGrant();
 
-            const paymentCount = result?.payments?.length || 0;
+            const paymentCount = result?.data?.payments?.length || 0;
             if (paymentCount === 0) {
                 showToast({
                     variant: 'error',
@@ -420,6 +560,7 @@ const SocialInsuranceHoliday = () => {
 
     const isProcessing = step === 'uploading' || step === 'analyzing';
     const showUploadSection = step === 'idle' || step === 'uploading' || step === 'analyzing' || step === 'error' || showUpload;
+    const paymentUsed = paymentGrant && paymentGrant.used;
 
     const handleExportPdf = () => {
         if (!parsedData) return;
@@ -458,118 +599,196 @@ const SocialInsuranceHoliday = () => {
                 )}
 
                 {showUploadSection && (
-                    <div className="ndsh2-card ndsh2-card--stack">
-                        <div className="ndsh2-card-header">
-                            <div className="ndsh2-card-title">
-                                <Sparkles className="ndsh2-icon" />
-                                НДШ төлөлтийн лавлагаа оруулах
+                    <div className="ndsh2-stack">
+                        <div className="ndsh2-card ndsh2-card--stack">
+                            <div className="ndsh2-card-header">
+                                <div className="ndsh2-card-title">
+                                    <Sparkles className="ndsh2-icon" />
+                                    Нэг удаагийн төлбөр (QPay)
+                                </div>
                             </div>
-                        </div>
-                        <div className="ndsh2-card-body">
-                            {step === 'idle' && (
-                                <>
-                                    <div
-                                        className={`ndsh2-dropzone ${file ? 'ndsh2-dropzone--active' : ''}`}
-                                        onClick={() => fileInputRef.current?.click()}
-                                        onDrop={handleDrop}
-                                        onDragOver={(e) => e.preventDefault()}
-                                    >
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                            onChange={handleFileSelect}
-                                            className="ndsh2-hidden"
-                                        />
-                                        {file ? (
-                                            <div className="ndsh2-dropzone-file">
-                                                <div className="ndsh2-file-icon">
-                                                    <FileText className="ndsh2-icon" />
-                                                </div>
-                                                <p className="ndsh2-file-name">{file.name}</p>
-                                                <p className="ndsh2-file-meta">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                                            </div>
+                            <div className="ndsh2-card-body ndsh2-pay">
+                                <div className="ndsh2-pay-summary">
+                                    <div>
+                                        <p>AI шинжилгээ эхлэхийн өмнө нэг удаа төлбөр төлнө.</p>
+                                        <h4>{PAYMENT_PRICE} төгрөг</h4>
+                                    </div>
+                                    <div className="ndsh2-pay-status">
+                                        {paymentGrant?.grantToken && !paymentGrant.used ? (
+                                            <span className="ndsh2-badge ndsh2-badge--success">Төлсөн</span>
+                                        ) : paymentUsed ? (
+                                            <span className="ndsh2-badge ndsh2-badge--muted">Ашигласан</span>
                                         ) : (
-                                            <div className="ndsh2-dropzone-empty">
-                                                <div className="ndsh2-upload-icon">
-                                                    <Upload className="ndsh2-icon" />
-                                                </div>
-                                                <p className="ndsh2-dropzone-title">НДШ лавлагааг энд чирж оруулна уу</p>
-                                                <p className="ndsh2-dropzone-sub">эсвэл дарж сонгоно уу</p>
-                                                <div className="ndsh2-badge-row">
-                                                    <span className="ndsh2-badge ndsh2-badge--secondary">
-                                                        <FileText className="ndsh2-icon" />
-                                                        PDF
-                                                    </span>
-                                                    <span className="ndsh2-badge ndsh2-badge--secondary">
-                                                        <FileImage className="ndsh2-icon" />
-                                                        JPG/PNG
-                                                    </span>
-                                                </div>
-                                            </div>
+                                            <span className="ndsh2-badge ndsh2-badge--amber">Төлбөр хүлээгдэж байна</span>
                                         )}
                                     </div>
+                                </div>
 
-                                    <div className="ndsh2-action-row">
-                                        <button
-                                            type="button"
-                                            className="ndsh2-btn ndsh2-btn--outline"
-                                            onClick={() => {
-                                                if (parsedData) {
-                                                    setShowUpload(false);
-                                                    setFile(null);
-                                                } else {
-                                                    resetState();
-                                                }
-                                            }}
-                                        >
-                                            {parsedData ? 'Болих' : 'Цэвэрлэх'}
+                                {paymentGrant?.grantToken && !paymentGrant.used ? (
+                                    <div className="ndsh2-pay-success">
+                                        <CheckCircle2 className="ndsh2-icon" />
+                                        1 удаагийн эрх идэвхтэй байна.
+                                        <button type="button" className="ndsh2-btn ndsh2-btn--ghost" onClick={resetPayment}>
+                                            Дахин төлөх
                                         </button>
-                                        <button
-                                            type="button"
-                                            className="ndsh2-btn ndsh2-btn--primary"
-                                            onClick={processFile}
-                                            disabled={!file}
+                                    </div>
+                                ) : (
+                                    <div className="ndsh2-pay-grid">
+                                        <div className="ndsh2-pay-actions">
+                                            <button
+                                                type="button"
+                                                className="ndsh2-btn ndsh2-btn--primary"
+                                                onClick={createPaymentInvoice}
+                                                disabled={paymentStatus === 'creating'}
+                                            >
+                                                <Sparkles className="ndsh2-icon" />
+                                                QPay QR үүсгэх
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="ndsh2-btn ndsh2-btn--outline"
+                                                onClick={checkPaymentStatus}
+                                                disabled={!paymentInvoice || isCheckingPayment}
+                                            >
+                                                <CheckCircle2 className="ndsh2-icon" />
+                                                {isCheckingPayment ? 'Шалгаж байна...' : 'Төлбөр шалгах'}
+                                            </button>
+                                            {paymentError && <p className="ndsh2-pay-error">{paymentError}</p>}
+                                        </div>
+
+                                        <div className="ndsh2-pay-qr">
+                                            {paymentInvoice?.qr_image ? (
+                                                <img
+                                                    src={`data:image/png;base64,${paymentInvoice.qr_image}`}
+                                                    alt="QPay QR"
+                                                />
+                                            ) : (
+                                                <div className="ndsh2-pay-placeholder">
+                                                    QR код энд гарна
+                                                </div>
+                                            )}
+                                            {paymentInvoice?.qr_text && (
+                                                <textarea readOnly value={paymentInvoice.qr_text} />
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="ndsh2-card ndsh2-card--stack">
+                            <div className="ndsh2-card-header">
+                                <div className="ndsh2-card-title">
+                                    <Sparkles className="ndsh2-icon" />
+                                    НДШ төлөлтийн лавлагаа оруулах
+                                </div>
+                            </div>
+                            <div className="ndsh2-card-body">
+                                {step === 'idle' && (
+                                    <>
+                                        <div
+                                            className={`ndsh2-dropzone ${file ? 'ndsh2-dropzone--active' : ''}`}
+                                            onClick={() => fileInputRef.current?.click()}
+                                            onDrop={handleDrop}
+                                            onDragOver={(e) => e.preventDefault()}
                                         >
+                                            <input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                                onChange={handleFileSelect}
+                                                className="ndsh2-hidden"
+                                            />
+                                            {file ? (
+                                                <div className="ndsh2-dropzone-file">
+                                                    <div className="ndsh2-file-icon">
+                                                        <FileText className="ndsh2-icon" />
+                                                    </div>
+                                                    <p className="ndsh2-file-name">{file.name}</p>
+                                                    <p className="ndsh2-file-meta">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                                </div>
+                                            ) : (
+                                                <div className="ndsh2-dropzone-empty">
+                                                    <div className="ndsh2-upload-icon">
+                                                        <Upload className="ndsh2-icon" />
+                                                    </div>
+                                                    <p className="ndsh2-dropzone-title">НДШ лавлагааг энд чирж оруулна уу</p>
+                                                    <p className="ndsh2-dropzone-sub">эсвэл дарж сонгоно уу</p>
+                                                    <div className="ndsh2-badge-row">
+                                                        <span className="ndsh2-badge ndsh2-badge--secondary">
+                                                            <FileText className="ndsh2-icon" />
+                                                            PDF
+                                                        </span>
+                                                        <span className="ndsh2-badge ndsh2-badge--secondary">
+                                                            <FileImage className="ndsh2-icon" />
+                                                            JPG/PNG
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="ndsh2-action-row">
+                                            <button
+                                                type="button"
+                                                className="ndsh2-btn ndsh2-btn--outline"
+                                                onClick={() => {
+                                                    if (parsedData) {
+                                                        setShowUpload(false);
+                                                        setFile(null);
+                                                    } else {
+                                                        resetState();
+                                                    }
+                                                }}
+                                            >
+                                                {parsedData ? 'Болих' : 'Цэвэрлэх'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="ndsh2-btn ndsh2-btn--primary"
+                                                onClick={processFile}
+                                                disabled={!file || !paymentGrant || paymentGrant.used}
+                                            >
+                                                <Brain className="ndsh2-icon" />
+                                                AI-аар шинжлэх
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+
+                                {isProcessing && (
+                                    <div className="ndsh2-processing">
+                                        <div className="ndsh2-processing-icon">
                                             <Brain className="ndsh2-icon" />
-                                            AI-аар шинжлэх
+                                            <span className="ndsh2-processing-spinner">
+                                                <Loader2 className="ndsh2-icon" />
+                                            </span>
+                                        </div>
+                                        <div className="ndsh2-processing-text">
+                                            <p>{step === 'uploading' ? 'Файл уншиж байна...' : 'AI шинжилж байна...'}</p>
+                                            <span>Түр хүлээнэ үү</span>
+                                        </div>
+                                        <div className="ndsh2-progress">
+                                            <div style={{ width: `${progress}%` }} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {step === 'error' && (
+                                    <div className="ndsh2-error">
+                                        <div className="ndsh2-error-icon">
+                                            <AlertTriangle className="ndsh2-icon" />
+                                        </div>
+                                        <div>
+                                            <p>Алдаа гарлаа</p>
+                                            <span>{error}</span>
+                                        </div>
+                                        <button type="button" className="ndsh2-btn ndsh2-btn--outline" onClick={resetState}>
+                                            Дахин оролдох
                                         </button>
                                     </div>
-                                </>
-                            )}
-
-                            {isProcessing && (
-                                <div className="ndsh2-processing">
-                                    <div className="ndsh2-processing-icon">
-                                        <Brain className="ndsh2-icon" />
-                                        <span className="ndsh2-processing-spinner">
-                                            <Loader2 className="ndsh2-icon" />
-                                        </span>
-                                    </div>
-                                    <div className="ndsh2-processing-text">
-                                        <p>{step === 'uploading' ? 'Файл уншиж байна...' : 'AI шинжилж байна...'}</p>
-                                        <span>Түр хүлээнэ үү</span>
-                                    </div>
-                                    <div className="ndsh2-progress">
-                                        <div style={{ width: `${progress}%` }} />
-                                    </div>
-                                </div>
-                            )}
-
-                            {step === 'error' && (
-                                <div className="ndsh2-error">
-                                    <div className="ndsh2-error-icon">
-                                        <AlertTriangle className="ndsh2-icon" />
-                                    </div>
-                                    <div>
-                                        <p>Алдаа гарлаа</p>
-                                        <span>{error}</span>
-                                    </div>
-                                    <button type="button" className="ndsh2-btn ndsh2-btn--outline" onClick={resetState}>
-                                        Дахин оролдох
-                                    </button>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}

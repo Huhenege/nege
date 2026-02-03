@@ -9,6 +9,7 @@
 .ndsh2-page h1,
 .ndsh2-page h2,
 .ndsh2-page h3,
+.ndsh2-page h4,
 .ndsh2-page p {
   margin: 0;
 }
@@ -170,6 +171,97 @@
 
 .ndsh2-card-body {
   padding: 1.5rem;
+}
+
+.ndsh2-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ndsh2-pay {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ndsh2-pay-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ndsh2-pay-summary h4 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 0.25rem;
+}
+
+.ndsh2-pay-status {
+  display: flex;
+  align-items: center;
+}
+
+.ndsh2-pay-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.ndsh2-pay-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ndsh2-pay-error {
+  font-size: 0.75rem;
+  color: #dc2626;
+}
+
+.ndsh2-pay-qr img {
+  width: 100%;
+  max-width: 240px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  padding: 0.5rem;
+}
+
+.ndsh2-pay-qr textarea {
+  width: 100%;
+  min-height: 80px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  padding: 0.6rem;
+  font-size: 0.7rem;
+  color: #475569;
+  margin-top: 0.5rem;
+  resize: none;
+}
+
+.ndsh2-pay-placeholder {
+  border: 1px dashed #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
+.ndsh2-pay-success {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ecfdf3;
+  border: 1px solid #bbf7d0;
+  color: #047857;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
 }
 
 .ndsh2-dropzone {
@@ -1065,6 +1157,10 @@
   border-color: #fecaca;
 }
 
+.ndsh2-toast--info {
+  border-color: #bfdbfe;
+}
+
 .ndsh2-toast-title {
   font-weight: 700;
   font-size: 0.85rem;
@@ -1148,5 +1244,9 @@
   .ndsh2-table-actions {
     flex-direction: column;
     align-items: flex-end;
+  }
+
+  .ndsh2-pay-grid {
+    grid-template-columns: 1fr;
   }
 }
