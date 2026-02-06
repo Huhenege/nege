@@ -3,14 +3,22 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const AdminRoute = ({ children }) => {
-    const { currentUser } = useAuth();
+    const { currentUser, loading } = useAuth();
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <div className="animate-spin" style={{ width: '40px', height: '40px', border: '4px solid #f3f4f6', borderTopColor: '#2563eb', borderRadius: '50%' }}></div>
+            </div>
+        );
+    }
 
     if (!currentUser) {
         return <Navigate to="/login" />;
     }
 
     if (currentUser.role !== 'admin') {
-        return <Navigate to="/ai-assistant" />; // Or a "Not Authorized" page
+        return <Navigate to="/" />;
     }
 
     return children;

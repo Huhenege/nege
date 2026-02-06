@@ -5,9 +5,14 @@ import { useAuth } from '../contexts/AuthContext';
 import './AdminLayout.css';
 
 const AdminLayout = () => {
-    const { logout } = useAuth();
+    const { currentUser, logout } = useAuth();
     const location = useLocation();
     const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+    if (currentUser?.role !== 'admin') {
+        window.location.href = '/';
+        return null;
+    }
 
     const menuItems = [
         { path: '/admin', icon: LayoutDashboard, label: 'Хяналтын самбар' },
