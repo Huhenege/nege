@@ -1,0 +1,128 @@
+.header-user-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.user-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    background: none;
+    color: var(--text-secondary);
+}
+
+.user-dropdown-trigger:hover {
+    background-color: #f3f4f6;
+    border-color: #e5e7eb;
+}
+
+.user-dropdown-trigger.active {
+    background-color: #f3f4f6;
+    border-color: #e5e7eb;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    background-color: #2563eb;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    width: 240px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    padding: 0.5rem;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    animation: dropdownFadeIn 0.2s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-header {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+    margin-bottom: 0.5rem;
+}
+
+.dropdown-user-email {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dropdown-user-role {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: capitalize;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    color: #374151;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: #f9fafb;
+    color: #111827;
+}
+
+.dropdown-item.logout {
+    color: #dc2626;
+}
+
+.dropdown-item.logout:hover {
+    background-color: #fef2f2;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: #f3f4f6;
+    margin: 0.5rem 0;
+}
