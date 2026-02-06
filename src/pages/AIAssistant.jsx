@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Cpu, Calculator, Sparkles, ArrowRight, Clock } from 'lucide-react';
+import { FileText, Cpu, Calculator, Sparkles, ArrowRight, Clock, GraduationCap } from 'lucide-react';
 import './AIAssistant.css';
 
 const AIAssistant = () => {
@@ -68,14 +68,29 @@ const AIAssistant = () => {
                         </div>
                     </Link>
 
+                    {/* Tool 4: Business Training */}
+                    <Link to="/ai-assistant/business-training" className="ai-card">
+                        <div className="ai-card-icon icon-orange">
+                            <GraduationCap size={32} />
+                        </div>
+                        <h3 className="ai-card-title">AI Бизнес сургалт</h3>
+                        <p className="ai-card-desc">
+                            "AI-д тулгуурласан Бизнесийн бүтээмжийг өсгөх нь"
+                            сургалтанд бүртгүүлж, цаг товлох.
+                        </p>
+                        <div className="ai-card-arrow">
+                            Бүртгүүлэх <ArrowRight size={16} style={{ marginLeft: '4px' }} />
+                        </div>
+                    </Link>
+
                     {/* Coming Soon */}
                     <div className="ai-card coming-soon">
-                        <div className="ai-card-icon icon-orange">
+                        <div className="ai-card-icon icon-blue">
                             <Clock size={32} />
                         </div>
                         <h3 className="ai-card-title">
                             Тун удахгүй
-                            <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#fff7ed', color: '#c2410c', marginLeft: 'auto' }}>Soon</span>
+                            <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#f0f9ff', color: '#0369a1', marginLeft: 'auto' }}>Soon</span>
                         </h3>
                         <p className="ai-card-desc">
                             Бид цалингийн тооцоолол, гэрээ боловсруулах зэрэг

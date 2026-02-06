@@ -58,14 +58,7 @@ const Header = () => {
             </div>
 
             <nav style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                <a href="#contact" className="btn-nav" style={{
-                    fontSize: '0.9rem',
-                    fontWeight: '500',
-                    color: 'var(--text-secondary)',
-                    textDecoration: 'none'
-                }}>
-                    Холбогдох
-                </a>
+
 
                 {currentUser ? (
                     <div className="header-user-container" ref={dropdownRef}>
@@ -92,10 +85,7 @@ const Header = () => {
                                     </span>
                                 </div>
 
-                                <Link to="/ai-assistant" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
-                                    <Sparkles size={18} color="#2563eb" />
-                                    AI Туслах
-                                </Link>
+
 
                                 {currentUser.role === 'admin' && (
                                     <Link to="/admin" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>

@@ -1,13 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Header from './components/Header';
-import Hero from './components/Hero';
-import WhoWeAre from './components/WhoWeAre';
-import WhatWeDo from './components/WhatWeDo';
-import Process from './components/Process';
-import WhyNege from './components/WhyNege';
-import Philosophy from './components/Philosophy';
-import CTA from './components/CTA';
+import Footer from './components/Footer';
 import AIAssistant from './pages/AIAssistant';
 import AccountStatementOrganizer from './pages/AccountStatementOrganizer';
 import SocialInsuranceHoliday from './pages/SocialInsuranceHoliday';
@@ -21,22 +15,13 @@ import UserManagement from './pages/admin/UserManagement';
 import AuditLogs from './pages/admin/AuditLogs';
 import AdminSettings from './pages/admin/AdminSettings';
 import PaymentManagement from './pages/admin/PaymentManagement';
+import TrainingManagement from './pages/admin/TrainingManagement';
+import BookingManagement from './pages/admin/BookingManagement';
 import OfficialLetterheadGenerator from './pages/OfficialLetterheadGenerator';
+import BusinessTraining from './pages/BusinessTraining';
 import './pages/Home.css';
 
-function Home() {
-  return (
-    <main className="home">
-      <Hero />
-      <WhoWeAre />
-      <WhatWeDo />
-      <Process />
-      <WhyNege />
-      <Philosophy />
-      <CTA />
-    </main>
-  );
-}
+
 
 function App() {
   return (
@@ -45,14 +30,13 @@ function App() {
         <div className="app-wrapper">
           <Header />
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/ai-assistant" element={
+            <Route path="/" element={
               <ProtectedRoute>
                 <AIAssistant />
               </ProtectedRoute>
             } />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="/ai-assistant/account-statement-organizer" element={
               <ProtectedRoute>
                 <AccountStatementOrganizer />
@@ -68,6 +52,11 @@ function App() {
                 <OfficialLetterheadGenerator />
               </ProtectedRoute>
             } />
+            <Route path="/ai-assistant/business-training" element={
+              <ProtectedRoute>
+                <BusinessTraining />
+              </ProtectedRoute>
+            } />
 
             {/* Admin Routes */}
             <Route path="/admin" element={
@@ -79,9 +68,12 @@ function App() {
               <Route path="users" element={<UserManagement />} />
               <Route path="logs" element={<AuditLogs />} />
               <Route path="payments" element={<PaymentManagement />} />
+              <Route path="trainings" element={<TrainingManagement />} />
+              <Route path="bookings" element={<BookingManagement />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
           </Routes>
+          <Footer />
         </div>
       </AuthProvider>
     </Router>
