@@ -1,0 +1,135 @@
+.admin-container {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f1f5f9;
+}
+
+.admin-mobile-header {
+    display: none;
+    /* Hidden by default on desktop */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: #1e293b;
+    align-items: center;
+    padding: 0 1rem;
+    color: white;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.admin-sidebar {
+    width: 250px;
+    background-color: #1e293b;
+    color: white;
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 102;
+    transition: left 0.3s ease;
+}
+
+.admin-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3rem;
+}
+
+.admin-sidebar-close {
+    display: none;
+    /* Hidden on desktop */
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+}
+
+.admin-overlay {
+    display: none;
+}
+
+.admin-main {
+    flex: 1;
+    padding: 2rem;
+    min-width: 0;
+}
+
+.admin-nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 8px;
+    color: #94a3b8;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.admin-nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.admin-nav-link.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.admin-logout-btn {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    color: #ef4444;
+    cursor: pointer;
+    margin-top: auto;
+    background: none;
+    border: none;
+    font-size: 1rem;
+    width: 100%;
+}
+
+.admin-logout-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-radius: 8px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .admin-mobile-header {
+        display: flex;
+    }
+
+    .admin-sidebar {
+        position: fixed;
+        left: -250px;
+    }
+
+    .admin-sidebar.open {
+        left: 0;
+    }
+
+    .admin-sidebar-close {
+        display: block;
+    }
+
+    .admin-overlay {
+        display: block;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 101;
+    }
+
+    .admin-main {
+        padding: 5rem 1rem 2rem;
+    }
+}

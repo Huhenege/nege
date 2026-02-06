@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Settings, LogOut, Activity, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Activity, Settings, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import './AdminLayout.css';
 
 const AdminLayout = () => {
     const { logout } = useAuth();
@@ -16,25 +17,12 @@ const AdminLayout = () => {
     ];
 
     const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
+    const closeSidebar = () => setSidebarOpen(false);
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f1f5f9' }}>
+        <div className="admin-container">
             {/* Mobile Header */}
-            <div style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '60px',
-                backgroundColor: '#1e293b',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0 1rem',
-                color: 'white',
-                zIndex: 100,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                display: window.innerWidth <= 768 ? 'flex' : 'none'
-            }}>
+            <div className="admin-mobile-header">
                 <button onClick={toggleSidebar} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
                     <Menu size={24} />
                 </button>
@@ -42,42 +30,19 @@ const AdminLayout = () => {
             </div>
 
             {/* Sidebar Overlay */}
-            {isSidebarOpen && window.innerWidth <= 768 && (
-                <div onClick={toggleSidebar} style={{
-                    position: 'fixed',
-                    top: 0,
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    zIndex: 101
-                }} />
+            {isSidebarOpen && (
+                <div onClick={closeSidebar} className="admin-overlay" />
             )}
 
             {/* Sidebar */}
-            <aside style={{
-                width: '250px',
-                backgroundColor: '#1e293b',
-                color: 'white',
-                padding: '2rem 1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                position: window.innerWidth <= 768 ? 'fixed' : 'relative',
-                left: window.innerWidth <= 768 ? (isSidebarOpen ? 0 : '-250px') : 0,
-                top: 0,
-                bottom: 0,
-                zIndex: 102,
-                transition: 'left 0.3s ease'
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+            <aside className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}>
+                <div className="admin-sidebar-header">
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', paddingLeft: '0.75rem' }}>
                         SaaS Admin
                     </h2>
-                    {window.innerWidth <= 768 && (
-                        <button onClick={toggleSidebar} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
-                            <X size={20} />
-                        </button>
-                    )}
+                    <button onClick={closeSidebar} className="admin-sidebar-close">
+                        <X size={20} />
+                    </button>
                 </div>
 
                 <nav style={{ flex: 1 }}>
@@ -88,17 +53,8 @@ const AdminLayout = () => {
                                 <li key={item.path} style={{ marginBottom: '0.5rem' }}>
                                     <Link
                                         to={item.path}
-                                        onClick={() => window.innerWidth <= 768 && setSidebarOpen(false)}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            padding: '0.75rem',
-                                            borderRadius: '8px',
-                                            backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                            color: isActive ? 'white' : '#94a3b8',
-                                            textDecoration: 'none',
-                                            transition: 'all 0.2s'
-                                        }}
+                                        onClick={closeSidebar}
+                                        className={`admin-nav-link ${isActive ? 'active' : ''}`}
                                     >
                                         <item.icon size={20} style={{ marginRight: '0.75rem' }} />
                                         {item.label}
@@ -109,31 +65,14 @@ const AdminLayout = () => {
                     </ul>
                 </nav>
 
-                <button
-                    onClick={logout}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '0.75rem',
-                        color: '#ef4444',
-                        cursor: 'pointer',
-                        marginTop: 'auto',
-                        background: 'none',
-                        border: 'none',
-                        fontSize: '1rem'
-                    }}
-                >
+                <button onClick={logout} className="admin-logout-btn">
                     <LogOut size={20} style={{ marginRight: '0.75rem' }} />
                     Гарах
                 </button>
             </aside>
 
             {/* Main Content */}
-            <main style={{
-                flex: 1,
-                padding: window.innerWidth <= 768 ? '5rem 1rem 2rem' : '2rem',
-                minWidth: 0 // Prevent content from expanding sidebar
-            }}>
+            <main className="admin-main">
                 <Outlet />
             </main>
         </div>
@@ -141,3 +80,4 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
+

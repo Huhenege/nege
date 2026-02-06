@@ -1,0 +1,50 @@
+{
+  "invoices": {
+    "mock-invoice-1770338949371": {
+      "invoice_id": "mock-invoice-1770338949371",
+      "sender_invoice_no": "NDSH-1770338949371-0",
+      "amount": 100,
+      "status": "PAID",
+      "createdAt": "2026-02-06T00:49:09.371Z",
+      "updatedAt": "2026-02-06T00:49:22.451Z",
+      "grantToken": "514a34bf-a245-4c08-bd19-a16d50081f6c"
+    },
+    "mock-invoice-1770339202853": {
+      "invoice_id": "mock-invoice-1770339202853",
+      "sender_invoice_no": "NDSH-1770339202853-826",
+      "amount": 100,
+      "status": "PAID",
+      "createdAt": "2026-02-06T00:53:22.856Z",
+      "updatedAt": "2026-02-06T00:53:25.524Z",
+      "grantToken": "5a158b2d-8f35-4715-a63e-d153f4aebd2f"
+    },
+    "c371203b-2d94-4191-a30f-73758c6410b2": {
+      "invoice_id": "c371203b-2d94-4191-a30f-73758c6410b2",
+      "sender_invoice_no": "NDSH-1770340512272-923",
+      "amount": 100,
+      "status": "CREATED",
+      "createdAt": "2026-02-06T01:15:13.096Z",
+      "updatedAt": "2026-02-06T01:15:13.097Z"
+    },
+    "a2e7bcf2-6fc6-45a1-988a-80fabd7b470c": {
+      "invoice_id": "a2e7bcf2-6fc6-45a1-988a-80fabd7b470c",
+      "sender_invoice_no": "NDSH-1770340534761-112",
+      "amount": 100,
+      "status": "CREATED",
+      "createdAt": "2026-02-06T01:15:35.147Z",
+      "updatedAt": "2026-02-06T01:15:35.147Z"
+    }
+  },
+  "grants": {
+    "514a34bf-a245-4c08-bd19-a16d50081f6c": {
+      "invoice_id": "mock-invoice-1770338949371",
+      "remainingUses": 1,
+      "createdAt": "2026-02-06T00:49:22.451Z"
+    },
+    "5a158b2d-8f35-4715-a63e-d153f4aebd2f": {
+      "invoice_id": "mock-invoice-1770339202853",
+      "remainingUses": 1,
+      "createdAt": "2026-02-06T00:53:25.524Z"
+    }
+  }
+}

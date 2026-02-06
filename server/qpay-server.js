@@ -5,6 +5,18 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
+  }
+}
+
+function missingConfig(message) {
+  return new HttpError(400, message);
+}
+
 const TOKEN_CACHE = {
   token: null,
   expiresAt: 0,
@@ -111,88 +123,69 @@ function buildAuthHeader() {
 }
 
 async function requestAccessToken() {
+  if (process.env.QPAY_MOCK_MODE === 'true') {
+    return 'mock-access-token-' + Date.now();
+  }
+
   if (TOKEN_CACHE.token && TOKEN_CACHE.expiresAt > Date.now()) {
     return TOKEN_CACHE.token;
   }
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
-    throw new Error('QPAY_CLIENT_ID эсвэл QPAY_CLIENT_SECRET тохируулагдаагүй байна.');
+    throw missingConfig('QPAY_CLIENT_ID (Username) эсвэл QPAY_CLIENT_SECRET (Password) тохируулагдаагүй байна.');
   }
 
   const tokenUrl = `${BASE_URL}/v2/auth/token`;
 
-  const tryPasswordGrant = async () => {
-    const body = new URLSearchParams({
-      grant_type: 'password',
-      username: CLIENT_ID,
-      password: CLIENT_SECRET,
-    });
-
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body,
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data?.error_description || data?.error || 'Token авахад алдаа гарлаа');
-    }
-
-    return data;
-  };
-
-  const tryClientCredentials = async () => {
-    const body = new URLSearchParams({
-      grant_type: 'client_credentials',
-    });
-
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: buildAuthHeader(),
-      },
-      body,
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data?.error_description || data?.error || 'Token авахад алдаа гарлаа');
-    }
-
-    return data;
-  };
-
-  let tokenData;
   try {
-    tokenData = await tryPasswordGrant();
-  } catch (err) {
-    tokenData = await tryClientCredentials();
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: buildAuthHeader(),
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error('Invalid JSON from QPay Auth');
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.error_description || data?.error || data?.message || 'Token авахад алдаа гарлаа');
+    }
+
+    if (!data?.access_token) {
+      throw new Error('Access token олдсонгүй (invalid response structure).');
+    }
+
+    const expiresIn = Number(data.expires_in || 3600);
+    TOKEN_CACHE.token = data.access_token;
+    TOKEN_CACHE.expiresAt = Date.now() + (expiresIn - 60) * 1000;
+
+    return TOKEN_CACHE.token;
+  } catch (error) {
+    throw error;
   }
-
-  if (!tokenData?.access_token) {
-    throw new Error('Access token олдсонгүй.');
-  }
-
-  const expiresIn = Number(tokenData.expires_in || 3600);
-  TOKEN_CACHE.token = tokenData.access_token;
-  TOKEN_CACHE.expiresAt = Date.now() + (expiresIn - 60) * 1000;
-
-  return TOKEN_CACHE.token;
 }
 
 async function createInvoice({ amount, description }) {
+  const senderInvoiceNo = `NDSH-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  if (process.env.QPAY_MOCK_MODE === 'true') {
+    // ... mock logic ...
+    return { /* ... */ };
+  }
+
   if (!INVOICE_CODE) {
-    throw new Error('QPAY_INVOICE_CODE тохируулагдаагүй байна.');
+    throw missingConfig('QPAY_INVOICE_CODE тохируулагдаагүй байна.');
   }
 
   const token = await requestAccessToken();
   const invoiceUrl = `${BASE_URL}/v2/invoice`;
-
-  const senderInvoiceNo = `NDSH-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   const payload = {
     invoice_code: INVOICE_CODE,
@@ -206,42 +199,67 @@ async function createInvoice({ amount, description }) {
     payload.callback_url = CALLBACK_URL;
   }
 
-  const response = await fetch(invoiceUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const response = await fetch(invoiceUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data?.message || data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error('Invalid JSON from QPay Invoice');
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.message || data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+    }
+
+    const store = readStore();
+    store.invoices[data.invoice_id] = {
+      invoice_id: data.invoice_id,
+      sender_invoice_no: senderInvoiceNo,
+      amount: payload.amount,
+      status: 'CREATED',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    writeStore(store);
+
+    return {
+      invoice_id: data.invoice_id,
+      qr_text: data.qr_text,
+      qr_image: data.qr_image,
+      urls: data.urls || [],
+      sender_invoice_no: senderInvoiceNo,
+      amount: payload.amount,
+    };
+  } catch (error) {
+    throw error;
   }
-
-  const store = readStore();
-  store.invoices[data.invoice_id] = {
-    invoice_id: data.invoice_id,
-    sender_invoice_no: senderInvoiceNo,
-    amount: payload.amount,
-    status: 'CREATED',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  writeStore(store);
-
-  return {
-    invoice_id: data.invoice_id,
-    qr_text: data.qr_text,
-    qr_image: data.qr_image,
-    urls: data.urls || [],
-    sender_invoice_no: senderInvoiceNo,
-    amount: payload.amount,
-  };
 }
 
 async function checkInvoicePayment(invoiceId) {
+  if (process.env.QPAY_MOCK_MODE === 'true') {
+    // In mock mode, simply assume it's paid if it exists in our store, 
+    // or maybe we want to simulate a "click to pay" flow?
+    // For simplicity, let's say: if the invoice exists, we mark it as PAID on the first check.
+    const store = readStore();
+    if (store.invoices[invoiceId]) {
+      return {
+        paid: true,
+        raw: { payment_status: 'PAID' }
+      };
+    }
+    return { paid: false, raw: {} };
+  }
+
   const token = await requestAccessToken();
   const checkUrl = `${BASE_URL}/v2/payment/check`;
 
@@ -448,7 +466,8 @@ function parseJsonResponse(raw) {
 
 async function extractNDSHFromImage(imageDataUrl, mimeType) {
   if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY тохируулагдаагүй байна.');
+    // Server-side config issue; report clearly to client.
+    throw new HttpError(500, 'GEMINI_API_KEY тохируулагдаагүй байна.');
   }
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -501,7 +520,10 @@ const server = http.createServer(async (req, res) => {
       });
       jsonResponse(res, 200, invoice);
     } catch (err) {
-      jsonResponse(res, 500, { error: err instanceof Error ? err.message : 'Server error' });
+      const status = err && typeof err === 'object' && 'status' in err ? Number(err.status) : 500;
+      jsonResponse(res, Number.isFinite(status) ? status : 500, {
+        error: err instanceof Error ? err.message : 'Server error',
+      });
     }
     return;
   }
@@ -520,7 +542,10 @@ const server = http.createServer(async (req, res) => {
       }
       jsonResponse(res, 200, { paid: result.paid, grantToken });
     } catch (err) {
-      jsonResponse(res, 500, { error: err instanceof Error ? err.message : 'Server error' });
+      const status = err && typeof err === 'object' && 'status' in err ? Number(err.status) : 500;
+      jsonResponse(res, Number.isFinite(status) ? status : 500, {
+        error: err instanceof Error ? err.message : 'Server error',
+      });
     }
     return;
   }
