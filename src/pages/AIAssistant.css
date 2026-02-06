@@ -45,15 +45,16 @@
     border-radius: 9999px;
     font-size: 0.875rem;
     font-weight: 600;
-    margin-bottom: 1.5rem;
+    margin-top: 0.5rem;
+    margin-bottom: 2rem;
     border: 1px solid rgba(79, 70, 229, 0.2);
 }
 
 .ai-title {
-    font-size: 3rem;
+    font-size: 3.5rem;
     font-weight: 800;
     color: var(--text-primary);
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
     letter-spacing: -0.02em;
     background: var(--primary-gradient);
     -webkit-background-clip: text;

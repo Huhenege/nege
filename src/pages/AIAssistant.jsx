@@ -9,11 +9,11 @@ const AIAssistant = () => {
             <div className="ai-container">
                 {/* Hero Section */}
                 <div className="ai-hero">
+                    <h1 className="ai-title">Ухаалаг Туслах</h1>
                     <div className="ai-badge">
                         <Sparkles size={16} style={{ marginRight: '8px' }} />
                         <span>AI Powered Tools</span>
                     </div>
-                    <h1 className="ai-title">Ухаалаг Туслах</h1>
                     <p className="ai-subtitle">
                         Таны өдөр тутмын ажлыг хөнгөвчлөх хиймэл оюун ухаанд суурилсан
                         хэрэгслүүдийн цуглуулга.
