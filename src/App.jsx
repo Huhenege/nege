@@ -21,6 +21,7 @@ import UserManagement from './pages/admin/UserManagement';
 import AuditLogs from './pages/admin/AuditLogs';
 import AdminSettings from './pages/admin/AdminSettings';
 import PaymentManagement from './pages/admin/PaymentManagement';
+import OfficialLetterheadGenerator from './pages/OfficialLetterheadGenerator';
 import './pages/Home.css';
 
 function Home() {
@@ -60,6 +61,11 @@ function App() {
             <Route path="/ai-assistant/social-insurance-holiday" element={
               <ProtectedRoute>
                 <SocialInsuranceHoliday />
+              </ProtectedRoute>
+            } />
+            <Route path="/ai-assistant/official-letterhead" element={
+              <ProtectedRoute>
+                <OfficialLetterheadGenerator />
               </ProtectedRoute>
             } />
 

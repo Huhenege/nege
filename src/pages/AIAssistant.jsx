@@ -53,14 +53,29 @@ const AIAssistant = () => {
                         </div>
                     </Link>
 
+                    {/* Tool 3: Official Letterhead */}
+                    <Link to="/ai-assistant/official-letterhead" className="ai-card">
+                        <div className="ai-card-icon icon-pink">
+                            <FileText size={32} />
+                        </div>
+                        <h3 className="ai-card-title">Албан бланк үүсгэгч</h3>
+                        <p className="ai-card-desc">
+                            Байгууллагын албан бичгийг стандартаар үүсгэж,
+                            PDF форматаар татаж авах хөнгөвчлөх хэрэгсэл.
+                        </p>
+                        <div className="ai-card-arrow">
+                            Эхлүүлэх <ArrowRight size={16} style={{ marginLeft: '4px' }} />
+                        </div>
+                    </Link>
+
                     {/* Coming Soon */}
                     <div className="ai-card coming-soon">
-                        <div className="ai-card-icon icon-pink">
+                        <div className="ai-card-icon icon-orange">
                             <Clock size={32} />
                         </div>
                         <h3 className="ai-card-title">
                             Тун удахгүй
-                            <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#fce7f3', color: '#db2777', marginLeft: 'auto' }}>Soon</span>
+                            <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#fff7ed', color: '#c2410c', marginLeft: 'auto' }}>Soon</span>
                         </h3>
                         <p className="ai-card-desc">
                             Бид цалингийн тооцоолол, гэрээ боловсруулах зэрэг

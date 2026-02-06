@@ -1,0 +1,445 @@
+.ob-page {
+    min-height: 100vh;
+    background: #f1f5f9;
+    color: #0f172a;
+    text-align: left;
+}
+
+.ob-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.ob-header-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ob-header h1 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.ob-header p {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.ob-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .ob-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Sidebar Styling */
+.ob-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.ob-sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ob-sidebar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.ob-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.ob-card-header {
+    padding: 1rem 1.25rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.ob-card-body {
+    padding: 1.25rem;
+}
+
+.ob-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.ob-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.ob-input-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.ob-input-group input,
+.ob-input-group textarea {
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.9rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.ob-input-group input:focus,
+.ob-input-group textarea:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.ob-input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.ob-toggle-row {
+    display: flex;
+    background: #f1f5f9;
+    padding: 3px;
+    border-radius: 8px;
+}
+
+.ob-toggle-btn {
+    flex: 1;
+    border: none;
+    padding: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    color: #64748b;
+    transition: all 0.2s;
+}
+
+.ob-toggle-btn.active {
+    background: #ffffff;
+    color: #4f46e5;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.ob-logo-upload {
+    border: 2px dashed #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ob-logo-upload:hover {
+    border-color: #4f46e5;
+    background: #f8fafc;
+}
+
+.ob-logo-upload img {
+    max-width: 100%;
+    max-height: 80px;
+    object-fit: contain;
+}
+
+.ob-logo-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: #94a3b8;
+    font-size: 0.75rem;
+}
+
+/* Action Area */
+.ob-action-sidebar {
+    padding-bottom: 2rem;
+}
+
+.ob-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.ob-btn--primary {
+    background: #4f46e5;
+    color: #ffffff;
+}
+
+.ob-btn--primary:hover {
+    background: #4338ca;
+}
+
+.ob-btn--primary.paid {
+    background: #059669;
+}
+
+.ob-btn--ghost {
+    color: #64748b;
+}
+
+.ob-btn--full {
+    width: 100%;
+}
+
+.ob-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Preview Area */
+.ob-preview-area {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    background: #cbd5e1;
+    padding: 3rem;
+    border-radius: 20px;
+    min-height: 1000px;
+    overflow: hidden;
+}
+
+.ob-paper-wrapper {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transform-origin: top center;
+}
+
+.ob-paper {
+    background: #ffffff;
+    padding: 2.54cm 2cm;
+    /* Standard 1 inch margins */
+    margin: 0 auto;
+    position: relative;
+    color: #334155;
+    font-family: 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+}
+
+.ob-paper * {
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Document Components Inside Paper */
+.ob-doc-header {
+    margin-bottom: 1.5rem;
+}
+
+.ob-header-top {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.ob-doc-logo {
+    max-height: 60px;
+}
+
+.ob-doc-org-name {
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: #1e293b;
+    text-transform: uppercase;
+}
+
+.ob-header-contacts {
+    font-size: 0.7rem;
+    color: #64748b;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+}
+
+.ob-header-contacts span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.ob-header-divider {
+    height: 1px;
+    background: #1e293b;
+    margin-top: 0.5rem;
+}
+
+.ob-header-divider.double {
+    height: 2.5px;
+    margin-top: 1.5px;
+}
+
+.ob-doc-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+}
+
+.ob-meta-left span {
+    border-bottom: 1px dotted #ccc !important;
+}
+
+.ob-doc-addressee {
+    margin-left: auto;
+    width: 50%;
+    margin-bottom: 2.5rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.ob-doc-subject {
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    text-decoration: underline;
+}
+
+.ob-doc-content {
+    flex: 1;
+    font-size: 1rem;
+    line-height: 1.6;
+    text-align: justify;
+}
+
+.ob-doc-content p {
+    margin-bottom: 1rem;
+    text-indent: 1.25cm;
+}
+
+.ob-doc-signature {
+    margin-top: 3rem;
+    padding-top: 2rem;
+}
+
+.ob-sig-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.ob-sig-space {
+    flex: 1;
+    text-align: center;
+    font-style: italic;
+    font-weight: normal;
+    color: #94a3b8;
+}
+
+.ob-doc-footer-mark {
+    margin-top: 2rem;
+}
+
+.ob-footer-line {
+    width: 4cm;
+    height: 1px;
+    background: #cbd5e1;
+}
+
+/* Payment Overlay */
+.ob-payment-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.ob-payment-card {
+    background: #ffffff;
+    padding: 2.5rem;
+    border-radius: 24px;
+    text-align: center;
+    max-width: 400px;
+    width: 100%;
+}
+
+.ob-payment-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.ob-payment-card p {
+    color: #64748b;
+    margin-bottom: 1.5rem;
+}
+
+.ob-payment-card img {
+    width: 100%;
+    max-width: 250px;
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem;
+}
+
+.ob-payment-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
