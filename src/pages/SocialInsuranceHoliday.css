@@ -222,25 +222,105 @@
   color: #dc2626;
 }
 
+.ndsh2-pay-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ndsh2-qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
 .ndsh2-pay-qr img {
   width: 100%;
-  max-width: 240px;
+  max-width: 200px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   background: #ffffff;
   padding: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.ndsh2-pay-qr textarea {
+.ndsh2-qr-text {
   width: 100%;
-  min-height: 80px;
+  min-height: 60px;
   border-radius: 10px;
   border: 1px solid #e2e8f0;
   padding: 0.6rem;
-  font-size: 0.7rem;
-  color: #475569;
-  margin-top: 0.5rem;
+  font-size: 0.65rem;
+  color: #64748b;
+  background: #f8fafc;
   resize: none;
+  font-family: monospace;
+}
+
+.ndsh2-pay-banks {
+  grid-column: 1 / -1;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.ndsh2-banks-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 1rem !important;
+}
+
+.ndsh2-bank-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 1rem;
+}
+
+.ndsh2-bank-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.ndsh2-bank-item:hover {
+  transform: translateY(-3px);
+}
+
+.ndsh2-bank-logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.ndsh2-bank-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ndsh2-bank-name {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #475569;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .ndsh2-pay-placeholder {

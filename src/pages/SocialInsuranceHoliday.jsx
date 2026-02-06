@@ -658,19 +658,42 @@ const SocialInsuranceHoliday = () => {
 
                                         <div className="ndsh2-pay-qr">
                                             {paymentInvoice?.qr_image ? (
-                                                <img
-                                                    src={`data:image/png;base64,${paymentInvoice.qr_image}`}
-                                                    alt="QPay QR"
-                                                />
+                                                <div className="ndsh2-qr-container">
+                                                    <img
+                                                        src={`data:image/png;base64,${paymentInvoice.qr_image}`}
+                                                        alt="QPay QR"
+                                                    />
+                                                    {paymentInvoice?.qr_text && (
+                                                        <textarea readOnly value={paymentInvoice.qr_text} className="ndsh2-qr-text" />
+                                                    )}
+                                                </div>
                                             ) : (
                                                 <div className="ndsh2-pay-placeholder">
                                                     QR код энд гарна
                                                 </div>
                                             )}
-                                            {paymentInvoice?.qr_text && (
-                                                <textarea readOnly value={paymentInvoice.qr_text} />
-                                            )}
                                         </div>
+
+                                        {paymentInvoice?.urls && paymentInvoice.urls.length > 0 && (
+                                            <div className="ndsh2-pay-banks">
+                                                <p className="ndsh2-banks-label">Банкны апп-аар төлөх:</p>
+                                                <div className="ndsh2-bank-grid">
+                                                    {paymentInvoice.urls.map((bank, idx) => (
+                                                        <a
+                                                            key={idx}
+                                                            href={bank.link}
+                                                            className="ndsh2-bank-item"
+                                                            title={bank.description}
+                                                        >
+                                                            <div className="ndsh2-bank-logo">
+                                                                <img src={bank.logo} alt={bank.name} />
+                                                            </div>
+                                                            <span className="ndsh2-bank-name">{bank.description}</span>
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
