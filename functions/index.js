@@ -505,6 +505,53 @@ app.post('/ndsh/parse', async (req, res) => {
   }
 });
 
+const LETTER_GENERATE_PROMPT = `Чи бол мэргэжлийн албан бичиг төлөвлөгч AI. 
+Өгөгдсөн мэдээлэл дээр тулгуурлан Монгол улсын албан хэрэг хөтлөлтийн стандартын дагуу албан бичгийн агуулгыг (текстийг) боловсруулна уу.
+
+ЗААВАЛ БАРИМТЛАХ ДҮРЭМ:
+1. Зөвхөн албан бичгийн гол агуулгын текстийг буцаа.
+2. Гарчиг, огноо, хаяг зэрэг мэдээллийг текст дотор давтаж бичих шаардлагагүй (эдгээр нь бланканд байгаа).
+3. Найруулга нь албан ёсны, тодорхой, товч байх ёстой.
+4. Хэрэв мэдээлэл дутуу бол ерөнхий загвар ашиглаж, хэрэглэгч нөхөж бичих боломжтойгоор [] хаалтанд тэмдэглэ.
+5. Зөвхөн цэвэр текст буцаа, ямар нэгэн тайлбар эсвэл Markdown тэмдэглэгээ (жишээ нь: ''' эсвэл #) бүү ашигла.`;
+
+async function generateLetterAI(params, apiKey, modelName) {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: modelName });
+
+  const prompt = `${LETTER_GENERATE_PROMPT}
+
+Өгөгдөл:
+- Илгээгч байгууллага: ${params.orgName || ''}
+- Хүлээн авагч: ${params.addresseeOrg || ''} ${params.addresseeName || ''}
+- Гарчиг: ${params.subject || ''}
+- Нэмэлт тайлбар/хүсэлт: ${params.contentHint || ''}
+
+Албан бичгийн утгыг боловсруулж бичнэ үү:`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text();
+}
+
+app.post('/ai/generate-letter', async (req, res) => {
+  try {
+    const { orgName, addresseeOrg, addresseeName, subject, contentHint } = req.body;
+
+    // Simple rate limiting or auth could be added here if needed
+    // For now, let's keep it direct as it's part of the user dashboard
+
+    const content = await generateLetterAI(
+      { orgName, addresseeOrg, addresseeName, subject, contentHint },
+      GEMINI_API_KEY.value(),
+      getGeminiModel()
+    );
+
+    res.json({ success: true, content: content.trim() });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'AI generation error' });
+  }
+});
+
 app.use((req, res) => {
   res.status(404).json({
     error: 'Route not found',

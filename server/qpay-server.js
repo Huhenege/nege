@@ -493,6 +493,38 @@ async function extractNDSHFromImage(imageDataUrl, mimeType) {
   return parseJsonResponse(text);
 }
 
+const LETTER_GENERATE_PROMPT = `Чи бол мэргэжлийн албан бичиг төлөвлөгч AI. 
+Өгөгдсөн мэдээлэл дээр тулгуурлан Монгол улсын албан хэрэг хөтлөлтийн стандартын дагуу албан бичгийн агуулгыг (текстийг) боловсруулна уу.
+
+ЗААВАЛ БАРИМТЛАХ ДҮРЭМ:
+1. Зөвхөн албан бичгийн гол агуулгын текстийг буцаа.
+2. Гарчиг, огноо, хаяг зэрэг мэдээллийг текст дотор давтаж бичих шаардлагагүй (эдгээр нь бланканд байгаа).
+3. Найруулга нь албан ёсны, тодорхой, товч байх ёстой.
+4. Хэрэв мэдээлэл дутуу бол ерөнхий загвар ашиглаж, хэрэглэгч нөхөж бичих боломжтойгоор [] хаалтанд тэмдэглэ.
+5. Зөвхөн цэвэр текст буцаа, ямар нэгэн тайлбар эсвэл Markdown тэмдэглэгээ (жишээ нь: ''' эсвэл #) бүү ашигла.`;
+
+async function generateLetterAI(params) {
+  if (!GEMINI_API_KEY) {
+    throw new HttpError(500, 'GEMINI_API_KEY тохируулагдаагүй байна.');
+  }
+
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+
+  const prompt = `${LETTER_GENERATE_PROMPT}
+
+Өгөгдөл:
+- Илгээгч байгууллага: ${params.orgName || ''}
+- Хүлээн авагч: ${params.addresseeOrg || ''} ${params.addresseeName || ''}
+- Гарчиг: ${params.subject || ''}
+- Нэмэлт тайлбар/хүсэлт: ${params.contentHint || ''}
+
+Албан бичгийн утгыг боловсруулж бичнэ үү:`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text();
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
@@ -585,6 +617,20 @@ const server = http.createServer(async (req, res) => {
       jsonResponse(res, 200, { success: true, data });
     } catch (err) {
       jsonResponse(res, 500, { error: err instanceof Error ? err.message : 'Server error' });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/ai/generate-letter') {
+    try {
+      const body = await readJson(req);
+      const content = await generateLetterAI(body);
+      jsonResponse(res, 200, { success: true, content: content.trim() });
+    } catch (err) {
+      const status = err && typeof err === 'object' && 'status' in err ? Number(err.status) : 500;
+      jsonResponse(res, Number.isFinite(status) ? status : 500, {
+        error: err instanceof Error ? err.message : 'AI generation error',
+      });
     }
     return;
   }

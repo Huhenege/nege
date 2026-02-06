@@ -136,6 +136,41 @@ const OfficialLetterheadGenerator = () => {
         });
     };
 
+    const [isAiGenerating, setIsAiGenerating] = useState(false);
+
+    const handleAiGenerateContent = async () => {
+        if (!config.subject) {
+            alert('AI-аар текст үүсгэхийн тулд эхлээд "Гарчиг" хэсгийг бөглөнө үү.');
+            return;
+        }
+
+        setIsAiGenerating(true);
+        try {
+            const response = await fetch(`${qpayApiBase}/ai/generate-letter`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    orgName: config.orgName,
+                    addresseeOrg: config.addresseeOrg,
+                    addresseeName: config.addresseeName,
+                    subject: config.subject,
+                    contentHint: config.content // Use existing content as hint
+                }),
+            });
+            const data = await response.json();
+            if (data.success && data.content) {
+                setConfig(prev => ({ ...prev, content: data.content }));
+            } else {
+                alert('AI текст үүсгэхэд алдаа гарлаа. Та дахин оролдоно уу.');
+            }
+        } catch (error) {
+            console.error('AI generation error:', error);
+            alert('AI сервертэй холбогдоход алдаа гарлаа.');
+        } finally {
+            setIsAiGenerating(false);
+        }
+    };
+
     const handleDownloadClick = () => {
         if (isPaid) {
             generatePDF();
@@ -269,7 +304,17 @@ const OfficialLetterheadGenerator = () => {
                                 <input name="subject" value={config.subject} onChange={handleChange} />
                             </div>
                             <div className="ob-input-group">
-                                <label>Агуулга</label>
+                                <div className="ob-input-header">
+                                    <label>Агуулга</label>
+                                    <button
+                                        className="ob-ai-btn"
+                                        onClick={handleAiGenerateContent}
+                                        disabled={isAiGenerating}
+                                    >
+                                        {isAiGenerating ? <Loader2 size={14} className="ob-spin" /> : <Sparkles size={14} />}
+                                        {isAiGenerating ? 'Үүсгэж байна...' : 'AI-аар үүсгэх'}
+                                    </button>
+                                </div>
                                 <textarea name="content" value={config.content} onChange={handleChange} rows={8} />
                             </div>
                             <div className="ob-input-grid">
