@@ -15,7 +15,7 @@ const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
 const getQpayBaseUrl = () => process.env.QPAY_BASE_URL || 'https://merchant.qpay.mn';
 const getQpayCallbackUrl = () => process.env.QPAY_CALLBACK_URL || '';
-const getQpayAmount = () => Number(process.env.QPAY_AMOUNT || 100);
+const getQpayAmount = () => Number(process.env.QPAY_AMOUNT || 1000);
 const getQpayAllowedOrigin = () => process.env.QPAY_ALLOWED_ORIGIN || '*';
 const getGeminiModel = () => process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
@@ -90,7 +90,7 @@ async function createInvoice({ amount, description, invoiceCode, callbackUrl, ba
     sender_invoice_no: senderInvoiceNo,
     invoice_receiver_code: 'ND-SINGLE',
     invoice_description: description || 'NDSH AI нэг удаагийн уншилт',
-    amount: Number(amount || 100),
+    amount: Number(amount || 1000),
   };
 
   if (callbackUrl) {
@@ -383,22 +383,26 @@ async function extractNDSHFromImage(imageDataUrl, mimeType, apiKey, modelName) {
 
 const app = require('express')();
 
-app.use(cors({
-  origin: (origin, callback) => {
-    const allowed = getQpayAllowedOrigin();
-    if (!origin || allowed === '*' || origin === allowed) {
-      callback(null, true);
-      return;
-    }
-    callback(new Error('Not allowed by CORS'));
-  },
-}));
+// Robust Manual CORS for production
+app.use((req, res, next) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle Preflight
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+  next();
+});
 
 app.use(require('express').json({ limit: '30mb' }));
 app.use(require('express').urlencoded({ extended: false }));
 
-app.get('/qpay/health', (req, res) => {
-  res.json({ ok: true });
+// Health check that works on both root and /api
+app.all(['/', '/health', '/qpay/health'], (req, res) => {
+  res.json({ ok: true, timestamp: new Date().toISOString(), note: 'API is running' });
 });
 
 app.post('/qpay/invoice', async (req, res) => {
@@ -499,6 +503,14 @@ app.post('/ndsh/parse', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Server error' });
   }
+});
+
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
 });
 
 exports.api = onRequest({

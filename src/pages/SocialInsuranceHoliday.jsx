@@ -25,7 +25,7 @@ import './SocialInsuranceHoliday.css';
 
 const STORAGE_KEY = 'ndsh-saved-data';
 const PAYMENT_STORAGE_KEY = 'ndsh-payment-grant';
-const PAYMENT_PRICE = 100;
+const PAYMENT_PRICE = 1000;
 
 const SocialInsuranceHoliday = () => {
     const qpayApiBase = (import.meta.env.VITE_QPAY_API_BASE || '/api').replace(/\/$/, '');
