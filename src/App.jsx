@@ -20,6 +20,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import AuditLogs from './pages/admin/AuditLogs';
 import AdminSettings from './pages/admin/AdminSettings';
+import PaymentManagement from './pages/admin/PaymentManagement';
 import './pages/Home.css';
 
 function Home() {
@@ -71,6 +72,7 @@ function App() {
               <Route index element={<AdminDashboard />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="logs" element={<AuditLogs />} />
+              <Route path="payments" element={<PaymentManagement />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
           </Routes>

@@ -85,10 +85,20 @@ const AdminDashboard = () => {
                     { name: 'Social Insurance', value: 35 },
                 ];
 
+                // 4. Fetch Real Revenue
+                const invoicesColl = collection(db, "qpayInvoices");
+                const revenueQuery = query(invoicesColl, where("status", "==", "PAID"));
+                const revenueSnap = await getDocs(revenueQuery);
+                let totalRevenue = 0;
+                revenueSnap.forEach(doc => {
+                    totalRevenue += (doc.data().amount || 0);
+                });
+
                 setStats({
                     totalUsers: total,
                     activeUsers: active,
-                    newUsersToday: 2 // Mock
+                    newUsersToday: 2, // Mock for now
+                    totalRevenue
                 });
                 setUserGrowthData(mockGrowth);
                 setUsageData(mockUsage);
@@ -162,7 +172,7 @@ const AdminDashboard = () => {
                 />
                 <StatCard
                     title="Нийт Орлого"
-                    value="₮0"
+                    value={`₮${(stats.totalRevenue || 0).toLocaleString()}`}
                     icon={DollarSign}
                     color="#0ea5e9"
                     subtext="MRR (Monthly)"

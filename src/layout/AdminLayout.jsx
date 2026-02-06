@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Activity, Settings, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Activity, Settings, LogOut, Menu, X, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './AdminLayout.css';
 
@@ -12,6 +12,7 @@ const AdminLayout = () => {
     const menuItems = [
         { path: '/admin', icon: LayoutDashboard, label: 'Хяналтын самбар' },
         { path: '/admin/users', icon: Users, label: 'Хэрэглэгчид' },
+        { path: '/admin/payments', icon: CreditCard, label: 'Төлбөр' },
         { path: '/admin/logs', icon: Activity, label: 'Лог' },
         { path: '/admin/settings', icon: Settings, label: 'Тохиргоо' },
     ];
