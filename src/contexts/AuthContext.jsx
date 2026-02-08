@@ -17,6 +17,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState()
+    const [userProfile, setUserProfile] = useState(null)
     const [loading, setLoading] = useState(true)
 
     function signup(email, password) {
@@ -47,6 +48,15 @@ export function AuthProvider({ children }) {
                     role: 'user',
                     createdAt: serverTimestamp(),
                     status: 'active',
+                    subscription: {
+                        status: 'inactive',
+                        startAt: null,
+                        endAt: null
+                    },
+                    credits: {
+                        balance: 0,
+                        updatedAt: serverTimestamp()
+                    },
                     authProvider: 'google'
                 });
             }
@@ -67,10 +77,16 @@ export function AuthProvider({ children }) {
                         // Merge Firestore data into the user object
                         user.role = userData.role;
                         user.firestoreData = userData;
+                        setUserProfile(userData);
+                    } else {
+                        setUserProfile(null);
                     }
                 } catch (error) {
                     console.error("Error fetching user data:", error);
+                    setUserProfile(null);
                 }
+            } else {
+                setUserProfile(null);
             }
             setCurrentUser(user);
             setLoading(false);
@@ -89,6 +105,21 @@ export function AuthProvider({ children }) {
         setIsAuthModalOpen(false);
     }
 
+    async function refreshUserProfile() {
+        if (!currentUser?.uid) return null;
+        try {
+            const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+            if (userDoc.exists()) {
+                const data = userDoc.data();
+                setUserProfile(data);
+                return data;
+            }
+        } catch (error) {
+            console.error("Error refreshing user data:", error);
+        }
+        return null;
+    }
+
     const value = {
         currentUser,
         loading,
@@ -98,7 +129,9 @@ export function AuthProvider({ children }) {
         logout,
         isAuthModalOpen,
         openAuthModal,
-        closeAuthModal
+        closeAuthModal,
+        userProfile,
+        refreshUserProfile
     }
 
     return (

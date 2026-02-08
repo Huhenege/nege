@@ -15,18 +15,18 @@ import {
 } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, color, subtext }) => (
-    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
+    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid var(--ink-100)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-                <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: '500' }}>{title}</p>
-                <h3 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#1e293b', lineHeight: 1 }}>{value}</h3>
+                <p style={{ color: 'var(--ink-500)', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: '500' }}>{title}</p>
+                <h3 style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--ink-900)', lineHeight: 1 }}>{value}</h3>
             </div>
             <div style={{ padding: '12px', backgroundColor: color + '15', borderRadius: '12px', color: color }}>
                 <Icon size={24} />
             </div>
         </div>
         {subtext && (
-            <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+            <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--ink-400)' }}>
                 {subtext}
             </div>
         )}
@@ -106,13 +106,13 @@ const PaymentManagement = () => {
             case 'FAILED':
                 return { bg: '#fef2f2', color: '#dc2626', icon: XCircle, text: 'Амжилтгүй' };
             default:
-                return { bg: '#f8fafc', color: '#64748b', icon: Clock, text: status };
+                return { bg: '#f8fafc', color: 'var(--ink-500)', icon: Clock, text: status };
         }
     };
 
     if (loading) return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-            <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid #e2e8f0', borderTopColor: '#4f46e5', borderRadius: '50%' }}></div>
+            <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid var(--ink-200)', borderTopColor: '#e11d48', borderRadius: '50%' }}></div>
         </div>
     );
 
@@ -120,10 +120,10 @@ const PaymentManagement = () => {
         <div style={{ maxWidth: '1600px', margin: '0 auto' }}>
             {/* Header */}
             <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '1.875rem', fontWeight: '800', color: '#1e293b', marginBottom: '0.5rem' }}>
+                <h1 style={{ fontSize: '1.875rem', fontWeight: '800', color: 'var(--ink-900)', marginBottom: '0.5rem' }}>
                     Төлбөрийн удирдлага
                 </h1>
-                <p style={{ color: '#64748b' }}>QPay гүйлгээний түүх болон орлогын хяналт</p>
+                <p style={{ color: 'var(--ink-500)' }}>QPay гүйлгээний түүх болон орлогын хяналт</p>
             </div>
 
             {/* Stats Grid */}
@@ -132,21 +132,21 @@ const PaymentManagement = () => {
                     title="Нийт Орлого"
                     value={`₮${stats.totalRevenue.toLocaleString()}`}
                     icon={DollarSign}
-                    color="#4f46e5"
+                    color="#e11d48"
                     subtext="Бүх цаг үеийн нийт"
                 />
                 <StatCard
                     title="Өнөөдрийн Орлого"
                     value={`₮${stats.todayRevenue.toLocaleString()}`}
                     icon={ArrowUpRight}
-                    color="#10b981"
+                    color="#16a34a"
                     subtext="Өнөөдрийн амжилттай гүйлгээ"
                 />
                 <StatCard
                     title="Амжилттай гүйлгээ"
                     value={stats.successCount}
                     icon={CheckCircle2}
-                    color="#10b981"
+                    color="#16a34a"
                     subtext="Төлөгдсөн нэхэмжлэл"
                 />
                 <StatCard
@@ -163,7 +163,7 @@ const PaymentManagement = () => {
                 backgroundColor: 'white',
                 padding: '1.25rem',
                 borderRadius: '16px',
-                border: '1px solid #f1f5f9',
+                border: '1px solid var(--ink-100)',
                 marginBottom: '1.5rem',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -172,7 +172,7 @@ const PaymentManagement = () => {
                 gap: '1rem'
             }}>
                 <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
-                    <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-400)' }} />
                     <input
                         type="text"
                         placeholder="Нэхэмжлэлийн ID эсвэл дугаар..."
@@ -182,18 +182,18 @@ const PaymentManagement = () => {
                             width: '100%',
                             padding: '0.625rem 1rem 0.625rem 2.5rem',
                             borderRadius: '10px',
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--ink-200)',
                             fontSize: '0.9rem',
                             outline: 'none',
                             transition: 'border-color 0.2s',
                         }}
-                        onFocus={(e) => e.target.style.borderColor = '#4f46e5'}
-                        onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                        onFocus={(e) => e.target.style.borderColor = '#e11d48'}
+                        onBlur={(e) => e.target.style.borderColor = 'var(--ink-200)'}
                     />
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.875rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--ink-500)', fontSize: '0.875rem' }}>
                         <Filter size={16} /> Төлөв:
                     </div>
                     {['ALL', 'PAID', 'CREATED', 'FAILED'].map(status => (
@@ -208,9 +208,9 @@ const PaymentManagement = () => {
                                 cursor: 'pointer',
                                 border: '1px solid',
                                 transition: 'all 0.2s',
-                                backgroundColor: filterStatus === status ? '#4f46e5' : 'white',
-                                color: filterStatus === status ? 'white' : '#64748b',
-                                borderColor: filterStatus === status ? '#4f46e5' : '#e2e8f0',
+                                backgroundColor: filterStatus === status ? '#e11d48' : 'white',
+                                color: filterStatus === status ? 'white' : 'var(--ink-500)',
+                                borderColor: filterStatus === status ? '#e11d48' : 'var(--ink-200)',
                             }}
                         >
                             {status === 'ALL' ? 'Бүгд' : status === 'PAID' ? 'Төлөгдсөн' : status === 'CREATED' ? 'Хүлээгдэж буй' : 'Алдаатай'}
@@ -220,16 +220,16 @@ const PaymentManagement = () => {
             </div>
 
             {/* Table */}
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #f1f5f9', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid var(--ink-100)', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
-                            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Нэхэмжлэх ID</th>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Огноо</th>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Дүн</th>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Төлөв</th>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Гүйлгээний №</th>
+                            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--ink-100)' }}>
+                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: 'var(--ink-500)', textTransform: 'uppercase' }}>Нэхэмжлэх ID</th>
+                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: 'var(--ink-500)', textTransform: 'uppercase' }}>Огноо</th>
+                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: 'var(--ink-500)', textTransform: 'uppercase' }}>Дүн</th>
+                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: 'var(--ink-500)', textTransform: 'uppercase' }}>Төлөв</th>
+                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: 'var(--ink-500)', textTransform: 'uppercase' }}>Гүйлгээний №</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -237,23 +237,23 @@ const PaymentManagement = () => {
                                 filteredPayments.map((payment) => {
                                     const status = getStatusStyle(payment.status);
                                     return (
-                                        <tr key={payment.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fcfdfe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                        <tr key={payment.id} style={{ borderBottom: '1px solid var(--ink-100)', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fcfdfe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                                             <td style={{ padding: '1rem 1.5rem' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                    <div style={{ padding: '8px', backgroundColor: '#f1f5f9', borderRadius: '8px', color: '#64748b' }}>
+                                                    <div style={{ padding: '8px', backgroundColor: 'var(--ink-100)', borderRadius: '8px', color: 'var(--ink-500)' }}>
                                                         <CreditCard size={16} />
                                                     </div>
-                                                    <span style={{ fontWeight: '600', color: '#1e293b', fontSize: '0.9rem' }}>{payment.invoice_id}</span>
+                                                    <span style={{ fontWeight: '600', color: 'var(--ink-900)', fontSize: '0.9rem' }}>{payment.invoice_id}</span>
                                                 </div>
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.85rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--ink-500)', fontSize: '0.85rem' }}>
                                                     <Calendar size={14} />
                                                     {payment.createdAt ? new Date(payment.createdAt).toLocaleString('mn-MN') : 'N/A'}
                                                 </div>
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem' }}>
-                                                <span style={{ fontWeight: '700', color: '#1e293b' }}>₮{(payment.amount || 0).toLocaleString()}</span>
+                                                <span style={{ fontWeight: '700', color: 'var(--ink-900)' }}>₮{(payment.amount || 0).toLocaleString()}</span>
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem' }}>
                                                 <span style={{
@@ -271,7 +271,7 @@ const PaymentManagement = () => {
                                                     {status.text}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '1rem 1.5rem', color: '#64748b', fontSize: '0.85rem', fontFamily: 'monospace' }}>
+                                            <td style={{ padding: '1rem 1.5rem', color: 'var(--ink-500)', fontSize: '0.85rem', fontFamily: 'monospace' }}>
                                                 {payment.sender_invoice_no || '-'}
                                             </td>
                                         </tr>
@@ -280,7 +280,7 @@ const PaymentManagement = () => {
                             ) : (
                                 <tr>
                                     <td colSpan="5" style={{ padding: '4rem 1.5rem', textAlign: 'center' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: '#94a3b8' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: 'var(--ink-400)' }}>
                                             <SearchX size={48} strokeWidth={1} />
                                             <p>Гүйлгээ олдсонгүй</p>
                                         </div>

@@ -14,10 +14,18 @@ import html2pdf from 'html2pdf.js';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { useBilling } from '../contexts/BillingContext';
+import useAccess from '../hooks/useAccess';
+import { apiFetch } from '../lib/apiClient';
+import { getGuestSessionId } from '../lib/guest';
 import './OfficialLetterheadGenerator.css';
 
+const PAYMENT_STORAGE_KEY = 'letterhead-payment-grant';
+
 const OfficialLetterheadGenerator = () => {
-    const { currentUser } = useAuth();
+    const { currentUser, refreshUserProfile } = useAuth();
+    const { config: billingConfig } = useBilling();
+    const { discountPercent, canUseTemplates } = useAccess();
     const location = useLocation();
     // --- State ---
     const [config, setConfig] = useState({
@@ -53,6 +61,10 @@ const OfficialLetterheadGenerator = () => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [paymentInvoice, setPaymentInvoice] = useState(null);
     const [paymentStatus, setPaymentStatus] = useState('idle'); // idle, creating, pending, success
+    const [paymentGrant, setPaymentGrant] = useState(null);
+    const [paymentError, setPaymentError] = useState(null);
+    const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('pay'); // pay | credits
     const [isPaid, setIsPaid] = useState(false);
     const documentRef = useRef(null);
     const measureRef = useRef(null);
@@ -66,7 +78,10 @@ const OfficialLetterheadGenerator = () => {
     const [templatesLoading, setTemplatesLoading] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
-    const qpayApiBase = (import.meta.env.VITE_QPAY_API_BASE || '/api').replace(/\/$/, '');
+    const toolPricing = billingConfig?.tools?.official_letterhead || { payPerUsePrice: 1000, creditCost: 1 };
+    const basePrice = Number(toolPricing.payPerUsePrice || 0);
+    const discountedPrice = Math.max(0, Math.round(basePrice * (1 - (discountPercent || 0) / 100)));
+    const creditCost = Number(toolPricing.creditCost || 1);
 
     // --- Effects ---
     useEffect(() => {
@@ -77,6 +92,20 @@ const OfficialLetterheadGenerator = () => {
         setTemplates([]);
         setSelectedTemplateId('');
     }, [currentUser?.uid]);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(PAYMENT_STORAGE_KEY);
+            if (!saved) return;
+            const parsed = JSON.parse(saved);
+            if (parsed?.grantToken && !parsed?.used) {
+                setPaymentGrant(parsed);
+                setIsPaid(true);
+            }
+        } catch (error) {
+            console.error('Failed to restore payment grant', error);
+        }
+    }, []);
 
     useEffect(() => {
         const loadTemplates = async () => {
@@ -144,41 +173,123 @@ const OfficialLetterheadGenerator = () => {
         }
     };
 
+    const storeGrant = (grant) => {
+        localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(grant));
+        setPaymentGrant(grant);
+        setIsPaid(true);
+        setPaymentStatus('success');
+    };
+
+    const resetPayment = () => {
+        setPaymentInvoice(null);
+        setPaymentGrant(null);
+        setIsPaid(false);
+        setPaymentStatus('idle');
+        setPaymentError(null);
+        localStorage.removeItem(PAYMENT_STORAGE_KEY);
+    };
+
+    const markGrantUsed = () => {
+        if (!paymentGrant) return;
+        const updated = { ...paymentGrant, used: true, usedAt: new Date().toISOString() };
+        localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(updated));
+        setPaymentGrant(updated);
+        setIsPaid(false);
+        setPaymentStatus('idle');
+    };
+
     const createPaymentInvoice = async () => {
         setPaymentStatus('creating');
+        setPaymentError(null);
         try {
-            const response = await fetch(`${qpayApiBase}/qpay/invoice`, {
+            const response = await apiFetch('/billing/invoice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                auth: true,
                 body: JSON.stringify({
-                    amount: 1000,
-                    description: 'Албан бланк үүсгэх төлбөр',
+                    type: 'tool',
+                    toolKey: 'official_letterhead'
                 }),
             });
             const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+            }
             if (data.invoice_id) {
                 setPaymentInvoice(data);
                 setPaymentStatus('pending');
-                // Start polling or manual check
             }
         } catch (error) {
             console.error('Invoice creation error:', error);
-            setPaymentStatus('idle');
+            setPaymentStatus('error');
+            setPaymentError(error instanceof Error ? error.message : 'Төлбөрийн алдаа');
         }
     };
 
     const checkPaymentStatus = async () => {
         if (!paymentInvoice) return;
+        setIsCheckingPayment(true);
         try {
-            const response = await fetch(`${qpayApiBase}/qpay/check/${paymentInvoice.invoice_id}`);
+            const response = await apiFetch('/billing/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id }),
+            });
             const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+            }
             if (data.paid) {
-                setIsPaid(true);
-                setPaymentStatus('success');
-                generatePDF();
+                storeGrant({
+                    invoice_id: paymentInvoice.invoice_id,
+                    paidAt: new Date().toISOString(),
+                    amount: data.amount || discountedPrice,
+                    grantToken: data.grantToken,
+                    used: false,
+                    creditsUsed: 0,
+                });
+                await refreshUserProfile();
             }
         } catch (error) {
             console.error('Payment check error:', error);
+            setPaymentError(error instanceof Error ? error.message : 'Төлбөр шалгахад алдаа гарлаа');
+        } finally {
+            setIsCheckingPayment(false);
+        }
+    };
+
+    const consumeCredits = async () => {
+        if (!currentUser) {
+            alert('Credits ашиглахын тулд нэвтэрнэ үү.');
+            return;
+        }
+        setPaymentStatus('creating');
+        setPaymentError(null);
+        try {
+            const response = await apiFetch('/credits/consume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({ toolKey: 'official_letterhead' }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Credits ашиглахад алдаа гарлаа');
+            }
+            storeGrant({
+                invoice_id: null,
+                paidAt: new Date().toISOString(),
+                amount: 0,
+                grantToken: data.grantToken,
+                used: false,
+                creditsUsed: data.creditsUsed || creditCost,
+            });
+            await refreshUserProfile();
+        } catch (error) {
+            console.error('Credits consume error:', error);
+            setPaymentStatus('error');
+            setPaymentError(error instanceof Error ? error.message : 'Credits ашиглахад алдаа гарлаа');
         }
     };
 
@@ -196,11 +307,30 @@ const OfficialLetterheadGenerator = () => {
             jsPDF: { unit: 'mm', format: config.paperSize.toLowerCase(), orientation: config.orientation }
         };
 
-        html2pdf().set(opt).from(element).save().then(() => {
+        html2pdf().set(opt).from(element).save().then(async () => {
             if (element) {
                 element.classList.remove('ob-printing');
             }
             setIsGenerating(false);
+            markGrantUsed();
+            try {
+                await apiFetch('/usage/log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    auth: !!currentUser,
+                    body: JSON.stringify({
+                        toolKey: 'official_letterhead',
+                        paymentMethod: paymentGrant?.creditsUsed ? 'credits' : 'pay_per_use',
+                        amount: paymentGrant?.amount || discountedPrice,
+                        creditsUsed: paymentGrant?.creditsUsed || 0,
+                        invoiceId: paymentGrant?.invoice_id || null,
+                        grantToken: paymentGrant?.grantToken || null,
+                        guestSessionId: currentUser ? null : getGuestSessionId(),
+                    }),
+                });
+            } catch (error) {
+                console.error('Usage log error:', error);
+            }
         }).catch(() => {
             if (element) {
                 element.classList.remove('ob-printing');
@@ -222,7 +352,7 @@ const OfficialLetterheadGenerator = () => {
 
         setIsAiGenerating(true);
         try {
-            const response = await fetch(`${qpayApiBase}/ai/generate-letter`, {
+            const response = await apiFetch('/ai/generate-letter', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -250,6 +380,10 @@ const OfficialLetterheadGenerator = () => {
     const handleDownloadClick = () => {
         if (isPaid) {
             generatePDF();
+            return;
+        }
+        if (paymentMethod === 'credits') {
+            consumeCredits();
         } else {
             createPaymentInvoice();
         }
@@ -416,7 +550,13 @@ const OfficialLetterheadGenerator = () => {
                             <FileText size={18} /> Хадгалсан загварууд
                         </div>
                         <div className="ob-card-body ob-stack">
-                            {templatesLoading ? (
+                            {!canUseTemplates ? (
+                                <div className="ob-muted">
+                                    Энэ хэсэг зөвхөн subscriber хэрэглэгчдэд нээлттэй.
+                                    {' '}
+                                    <Link to="/profile">Subscription шалгах</Link>
+                                </div>
+                            ) : templatesLoading ? (
                                 <div className="ob-muted">Уншиж байна...</div>
                             ) : templates.length === 0 ? (
                                 <div className="ob-muted">
@@ -599,13 +739,55 @@ const OfficialLetterheadGenerator = () => {
                     </div>
 
                     <div className="ob-action-sidebar">
+                        <div style={{ marginBottom: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontWeight: '700', marginBottom: '0.5rem' }}>Төлбөрийн сонголт</div>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setPaymentMethod('pay')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.5rem',
+                                        borderRadius: '8px',
+                                        border: paymentMethod === 'pay' ? '2px solid var(--brand-600)' : '1px solid var(--ink-300)',
+                                        background: paymentMethod === 'pay' ? 'var(--brand-600)' : 'white',
+                                        color: paymentMethod === 'pay' ? 'white' : 'var(--ink-800)',
+                                        fontWeight: '600',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    QPay
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPaymentMethod('credits')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.5rem',
+                                        borderRadius: '8px',
+                                        border: paymentMethod === 'credits' ? '2px solid var(--brand-600)' : '1px solid var(--ink-300)',
+                                        background: paymentMethod === 'credits' ? 'var(--brand-600)' : 'white',
+                                        color: paymentMethod === 'credits' ? 'white' : 'var(--ink-800)',
+                                        fontWeight: '600',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Credits
+                                </button>
+                            </div>
+                            <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
+                                {paymentMethod === 'credits'
+                                    ? `${creditCost} credit`
+                                    : `${discountedPrice.toLocaleString()}₮`}
+                            </div>
+                        </div>
                         <button
                             className={`ob-btn ob-btn--primary ob-btn--full ${isPaid ? 'paid' : ''}`}
                             onClick={handleDownloadClick}
                             disabled={isGenerating || paymentStatus === 'creating'}
                         >
                             {isGenerating ? <Loader2 className="ob-spin" /> : <Download size={20} />}
-                            {isPaid ? 'PDF Татах' : 'PDF Татах (1000₮)'}
+                            {isPaid ? 'PDF Татах' : (paymentMethod === 'credits' ? 'Credits ашиглаж татах' : `PDF Татах (${discountedPrice.toLocaleString()}₮)`)}
                         </button>
                     </div>
                 </div>
@@ -616,18 +798,19 @@ const OfficialLetterheadGenerator = () => {
                         <div className="ob-payment-overlay">
                             <div className="ob-payment-card">
                                 <h3>Төлбөр төлөх</h3>
-                                <p>Бланк үүсгэхэд нэг удаа 1000₮ төлнө.</p>
+                                <p>Бланк үүсгэхэд нэг удаа {discountedPrice.toLocaleString()}₮ төлнө.</p>
                                 {paymentInvoice?.qr_image && (
                                     <img src={`data:image/png;base64,${paymentInvoice.qr_image}`} alt="QPay QR" />
                                 )}
                                 <div className="ob-payment-actions">
-                                    <button className="ob-btn ob-btn--primary" onClick={checkPaymentStatus}>
-                                        Төлбөр шалгах
+                                    <button className="ob-btn ob-btn--primary" onClick={checkPaymentStatus} disabled={isCheckingPayment}>
+                                        {isCheckingPayment ? 'Шалгаж байна...' : 'Төлбөр шалгах'}
                                     </button>
-                                    <button className="ob-btn ob-btn--ghost" onClick={() => setPaymentStatus('idle')}>
+                                    <button className="ob-btn ob-btn--ghost" onClick={resetPayment}>
                                         Болих
                                     </button>
                                 </div>
+                                {paymentError && <p style={{ marginTop: '0.75rem', color: '#dc2626' }}>{paymentError}</p>}
                             </div>
                         </div>
                     )}

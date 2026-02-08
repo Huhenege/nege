@@ -4,14 +4,21 @@ import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
 import { LogOut, User, Calendar, CreditCard, Clock, FileText } from 'lucide-react';
+import { useBilling } from '../contexts/BillingContext';
+import { apiFetch } from '../lib/apiClient';
 import './UserProfile.css';
 
 const UserProfile = () => {
-    const { currentUser, logout } = useAuth();
+    const { currentUser, logout, refreshUserProfile } = useAuth();
+    const { config: billingConfig } = useBilling();
     const navigate = useNavigate();
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [userInfo, setUserInfo] = useState(null);
+    const [creditInvoice, setCreditInvoice] = useState(null);
+    const [creditStatus, setCreditStatus] = useState('idle'); // idle, creating, pending, success, error
+    const [creditError, setCreditError] = useState(null);
+    const [isCheckingCredit, setIsCheckingCredit] = useState(false);
 
     useEffect(() => {
         fetchUserData();
@@ -65,6 +72,67 @@ const UserProfile = () => {
 
     const formatAmount = (amount) => {
         return new Intl.NumberFormat('mn-MN').format(amount) + '₮';
+    };
+
+    const subscriptionEndAt = userInfo?.subscription?.endAt
+        ? (userInfo.subscription.endAt.toDate ? userInfo.subscription.endAt.toDate() : new Date(userInfo.subscription.endAt))
+        : null;
+    const subscriptionActive = userInfo?.subscription?.status === 'active' && subscriptionEndAt && subscriptionEndAt.getTime() > Date.now();
+    const creditsBalance = userInfo?.credits?.balance || 0;
+    const creditBundles = (billingConfig?.credits?.bundles || []).filter(b => b?.active !== false);
+
+    const createCreditInvoice = async (bundle) => {
+        if (!bundle) return;
+        setCreditStatus('creating');
+        setCreditError(null);
+        try {
+            const response = await apiFetch('/billing/invoice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({
+                    type: 'credits',
+                    bundleId: bundle.id
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+            }
+            setCreditInvoice(data);
+            setCreditStatus('pending');
+        } catch (error) {
+            setCreditStatus('error');
+            setCreditError(error instanceof Error ? error.message : 'Алдаа гарлаа');
+        }
+    };
+
+    const checkCreditPayment = async () => {
+        if (!creditInvoice?.invoice_id) return;
+        setIsCheckingCredit(true);
+        try {
+            const response = await apiFetch('/billing/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({ invoice_id: creditInvoice.invoice_id }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+            }
+            if (data.paid) {
+                setCreditStatus('success');
+                setCreditInvoice(null);
+                await refreshUserProfile();
+                await fetchUserData();
+            }
+        } catch (error) {
+            setCreditStatus('error');
+            setCreditError(error instanceof Error ? error.message : 'Төлбөр шалгахад алдаа гарлаа');
+        } finally {
+            setIsCheckingCredit(false);
+        }
     };
 
     const getStatusBadge = (status) => {
@@ -122,6 +190,77 @@ const UserProfile = () => {
                         <LogOut size={18} />
                         Гарах
                     </button>
+                </div>
+
+                {/* Subscription & Credits */}
+                <div className="profile-section">
+                    <h3 className="section-title">
+                        <CreditCard size={20} />
+                        Эрх ба Credits
+                    </h3>
+                    <div className="profile-card" style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                            <div>
+                                <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>Subscription төлөв</div>
+                                <div style={{ fontWeight: '700', color: subscriptionActive ? '#10b981' : '#ef4444' }}>
+                                    {subscriptionActive ? 'Идэвхтэй' : 'Идэвхгүй'}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '0.35rem' }}>
+                                    Дуусах огноо: {subscriptionEndAt ? formatDate(subscriptionEndAt) : '-'}
+                                </div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>Credits үлдэгдэл</div>
+                                <div style={{ fontWeight: '700', color: '#1e293b' }}>
+                                    {creditsBalance} credit
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="profile-card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
+                        <h4 style={{ fontWeight: '700', marginBottom: '0.75rem' }}>Credits багц</h4>
+                        {creditBundles.length === 0 ? (
+                            <div style={{ color: '#94a3b8' }}>Одоогоор багц тохируулаагүй байна.</div>
+                        ) : (
+                            <div style={{ display: 'grid', gap: '0.75rem' }}>
+                                {creditBundles.map((bundle) => (
+                                    <div key={bundle.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem 1rem' }}>
+                                        <div>
+                                            <div style={{ fontWeight: '600' }}>{bundle.name || `${bundle.credits} credit`}</div>
+                                            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{bundle.credits} credit · {formatAmount(bundle.price)}</div>
+                                        </div>
+                                        <button
+                                            className="logout-btn"
+                                            style={{ backgroundColor: 'var(--brand-600)', color: 'white', border: 'none' }}
+                                            onClick={() => createCreditInvoice(bundle)}
+                                            disabled={creditStatus === 'creating'}
+                                        >
+                                            Худалдаж авах
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {creditStatus === 'pending' && creditInvoice && (
+                            <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                                <p style={{ fontWeight: '600', marginBottom: '0.5rem' }}>QPay төлбөр</p>
+                                {creditInvoice.qr_image ? (
+                                    <img src={`data:image/png;base64,${creditInvoice.qr_image}`} alt="QPay QR" style={{ width: '180px', marginBottom: '0.75rem' }} />
+                                ) : null}
+                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                    <button className="logout-btn" style={{ backgroundColor: 'var(--brand-600)', color: 'white', border: 'none' }} onClick={checkCreditPayment} disabled={isCheckingCredit}>
+                                        {isCheckingCredit ? 'Шалгаж байна...' : 'Төлбөр шалгах'}
+                                    </button>
+                                    <button className="logout-btn" onClick={() => { setCreditInvoice(null); setCreditStatus('idle'); }}>
+                                        Болих
+                                    </button>
+                                </div>
+                                {creditError && <p style={{ color: '#dc2626', marginTop: '0.75rem' }}>{creditError}</p>}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Quick Links */}

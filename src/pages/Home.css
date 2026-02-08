@@ -1,6 +1,6 @@
 .home {
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--surface-1);
+  color: var(--ink-900);
 }
 
 .home h1,
@@ -38,20 +38,20 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #6366f1;
+  color: var(--brand-600);
   margin-bottom: 0.75rem;
 }
 
 .home-section-title {
   font-size: 2.4rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ink-900);
   margin-bottom: 0.75rem;
 }
 
 .home-section-subtitle {
   font-size: 1rem;
-  color: #64748b;
+  color: var(--ink-500);
   line-height: 1.7;
 }
 
@@ -59,9 +59,9 @@
   position: relative;
   padding: 5rem 0 6rem;
   overflow: hidden;
-  background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.2), transparent 45%),
-    radial-gradient(circle at 70% 0%, rgba(236, 72, 153, 0.18), transparent 40%),
-    #f8fafc;
+  background: radial-gradient(circle at top left, rgba(244, 63, 94, 0.2), transparent 45%),
+    radial-gradient(circle at 70% 0%, rgba(251, 113, 133, 0.18), transparent 40%),
+    var(--surface-1);
 }
 
 .home-hero::after {
@@ -83,8 +83,8 @@
   gap: 0.5rem;
   padding: 0.45rem 0.9rem;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #4f46e5;
+  background: rgba(244, 63, 94, 0.12);
+  color: var(--brand-600);
   font-size: 0.75rem;
   font-weight: 600;
   margin-bottom: 1.5rem;
@@ -94,12 +94,12 @@
   font-size: 3.2rem;
   font-weight: 800;
   line-height: 1.1;
-  color: #0f172a;
+  color: var(--ink-900);
   margin-bottom: 1.5rem;
 }
 
 .home-hero-title span {
-  background: linear-gradient(90deg, #4f46e5, #ec4899);
+  background: linear-gradient(90deg, var(--brand-600), var(--brand-400));
   -webkit-background-clip: text;
   color: transparent;
 }
@@ -107,7 +107,7 @@
 .home-hero-subtitle {
   max-width: 640px;
   font-size: 1.1rem;
-  color: #64748b;
+  color: var(--ink-500);
   line-height: 1.8;
   margin-bottom: 2rem;
 }
@@ -133,22 +133,22 @@
 }
 
 .home-btn--primary {
-  background: #4f46e5;
+  background: var(--brand-600);
   color: #ffffff;
 }
 
 .home-btn--primary:hover {
-  background: #4338ca;
+  background: var(--brand-700);
 }
 
 .home-btn--secondary {
   background: #ffffff;
-  border-color: #e2e8f0;
-  color: #475569;
+  border-color: var(--ink-200);
+  color: var(--ink-600);
 }
 
 .home-btn--secondary:hover {
-  border-color: #cbd5f5;
+  border-color: var(--brand-200);
   color: #1e293b;
 }
 
@@ -162,19 +162,19 @@
   padding: 1.25rem 1.5rem;
   background: #ffffff;
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ink-200);
   box-shadow: 0 12px 24px -20px rgba(15, 23, 42, 0.3);
 }
 
 .home-hero-card p {
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ink-900);
   margin-bottom: 0.4rem;
 }
 
 .home-hero-card span {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--ink-500);
 }
 
 .home-info-card {
@@ -184,19 +184,19 @@
   padding: 1.75rem;
   border-radius: 18px;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ink-200);
   box-shadow: 0 16px 28px -24px rgba(15, 23, 42, 0.35);
 }
 
 .home-info-card h3 {
   font-size: 1.2rem;
   margin-bottom: 0.5rem;
-  color: #0f172a;
+  color: var(--ink-900);
 }
 
 .home-info-card p {
   font-size: 0.95rem;
-  color: #64748b;
+  color: var(--ink-500);
   line-height: 1.7;
 }
 
@@ -205,7 +205,7 @@
   height: 46px;
   border-radius: 14px;
   background: #eef2ff;
-  color: #4f46e5;
+  color: var(--brand-600);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -221,19 +221,19 @@
   padding: 1.75rem;
   border-radius: 18px;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ink-200);
   box-shadow: 0 18px 30px -26px rgba(15, 23, 42, 0.35);
 }
 
 .home-feature-card h3 {
   font-size: 1.15rem;
   margin: 1rem 0 0.5rem;
-  color: #0f172a;
+  color: var(--ink-900);
 }
 
 .home-feature-card p {
   font-size: 0.95rem;
-  color: #64748b;
+  color: var(--ink-500);
   line-height: 1.7;
 }
 
@@ -241,7 +241,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #94a3b8;
+  color: var(--ink-400);
   margin-bottom: 0.75rem;
 }
 
@@ -249,8 +249,8 @@
   width: 46px;
   height: 46px;
   border-radius: 14px;
-  background: #f1f5f9;
-  color: #6366f1;
+  background: var(--ink-100);
+  color: var(--brand-600);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -265,34 +265,34 @@
 .home-process-card {
   padding: 1.25rem 1.5rem;
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ink-200);
   background: #ffffff;
 }
 
 .home-process-index {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #6366f1;
+  color: var(--brand-600);
   margin-bottom: 0.5rem;
 }
 
 .home-process-card h3 {
   font-size: 1.1rem;
   margin-bottom: 0.25rem;
-  color: #0f172a;
+  color: var(--ink-900);
 }
 
 .home-process-card span {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #94a3b8;
+  color: var(--ink-400);
 }
 
 .home-process-card p {
   margin-top: 0.75rem;
   font-size: 0.9rem;
-  color: #64748b;
+  color: var(--ink-500);
 }
 
 .home-reason-grid {
@@ -305,7 +305,7 @@
   padding: 1.5rem;
   border-radius: 16px;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ink-200);
   box-shadow: 0 12px 24px -24px rgba(15, 23, 42, 0.3);
 }
 
@@ -313,8 +313,8 @@
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--ink-100);
+  color: var(--ink-900);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -324,17 +324,17 @@
 .home-reason-card h3 {
   font-size: 1.05rem;
   margin-bottom: 0.5rem;
-  color: #0f172a;
+  color: var(--ink-900);
 }
 
 .home-reason-card p {
   font-size: 0.9rem;
-  color: #64748b;
+  color: var(--ink-500);
   line-height: 1.6;
 }
 
 .home-section--philosophy {
-  background: #0f172a;
+  background: var(--ink-900);
   color: #ffffff;
 }
 
@@ -345,7 +345,7 @@
 .home-philosophy-card {
   padding: 3rem;
   border-radius: 24px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.15));
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.2), rgba(251, 113, 133, 0.15));
   text-align: center;
 }
 
@@ -382,9 +382,9 @@
   gap: 0.75rem;
   padding: 1rem 1.2rem;
   border-radius: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ink-200);
   background: #ffffff;
-  color: #0f172a;
+  color: var(--ink-900);
   text-decoration: none;
   font-weight: 600;
   transition: all 0.2s ease;
@@ -392,15 +392,15 @@
 
 .home-cta-card:hover {
   border-color: #c7d2fe;
-  color: #4f46e5;
+  color: var(--brand-600);
 }
 
 .home-footer {
   padding: 2rem 0 3rem;
   text-align: center;
-  color: #94a3b8;
+  color: var(--ink-400);
   font-size: 0.85rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--ink-200);
   background: #ffffff;
 }
 

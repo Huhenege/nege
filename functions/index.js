@@ -24,6 +24,93 @@ const TOKEN_CACHE = {
   expiresAt: 0,
 };
 
+const DEFAULT_BILLING_CONFIG = {
+  subscription: {
+    monthlyPrice: 0,
+    discountPercent: 20,
+  },
+  tools: {
+    official_letterhead: { payPerUsePrice: 1000, creditCost: 1 },
+    ndsh_holiday: { payPerUsePrice: 1000, creditCost: 1 },
+    account_statement: { payPerUsePrice: 1000, creditCost: 1 },
+  },
+  credits: {
+    bundles: [],
+  },
+};
+
+async function getBillingConfig() {
+  const snap = await db.collection('settings').doc('billing').get();
+  if (!snap.exists) {
+    return DEFAULT_BILLING_CONFIG;
+  }
+  const data = snap.data() || {};
+  return {
+    ...DEFAULT_BILLING_CONFIG,
+    ...data,
+    subscription: {
+      ...DEFAULT_BILLING_CONFIG.subscription,
+      ...(data.subscription || {}),
+    },
+    tools: {
+      ...DEFAULT_BILLING_CONFIG.tools,
+      ...(data.tools || {}),
+    },
+    credits: {
+      ...DEFAULT_BILLING_CONFIG.credits,
+      ...(data.credits || {}),
+    },
+  };
+}
+
+function parseDateValue(value) {
+  if (!value) return null;
+  if (value && typeof value.toDate === 'function') return value.toDate();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isSubscriptionActive(subscription) {
+  if (!subscription) return false;
+  const endAt = parseDateValue(subscription.endAt);
+  return subscription.status === 'active' && endAt && endAt.getTime() > Date.now();
+}
+
+function applyDiscount(amount, discountPercent) {
+  const percent = Number(discountPercent || 0);
+  const base = Number(amount || 0);
+  if (!percent || percent <= 0) return base;
+  return Math.max(0, Math.round(base * (1 - percent / 100)));
+}
+
+async function getAuthUser(req) {
+  const header = req.get('Authorization') || '';
+  if (!header.startsWith('Bearer ')) return null;
+  const token = header.slice(7);
+  if (!token) return null;
+  try {
+    return await admin.auth().verifyIdToken(token);
+  } catch (error) {
+    return null;
+  }
+}
+
+async function createGrantToken({ invoiceId = null, userId = null, toolKey = null, source = 'pay_per_use' }) {
+  const grantToken = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await db.collection('qpayGrants').doc(grantToken).set({
+    invoice_id: invoiceId,
+    userId,
+    toolKey,
+    source,
+    remainingUses: 1,
+    status: 'available',
+    createdAt: now,
+    updatedAt: now,
+  });
+  return grantToken;
+}
+
 function buildAuthHeader(clientId, clientSecret) {
   const token = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
   return `Basic ${token}`;
@@ -75,7 +162,7 @@ async function requestAccessToken(clientId, clientSecret, baseUrl) {
   }
 }
 
-async function createInvoice({ amount, description, invoiceCode, callbackUrl, baseUrl, clientId, clientSecret }) {
+async function createInvoice({ amount, description, invoiceCode, callbackUrl, baseUrl, clientId, clientSecret, metadata = {} }) {
   if (!invoiceCode) {
     throw new Error('QPAY_INVOICE_CODE тохируулагдаагүй байна.');
   }
@@ -115,7 +202,9 @@ async function createInvoice({ amount, description, invoiceCode, callbackUrl, ba
     invoice_id: data.invoice_id,
     sender_invoice_no: senderInvoiceNo,
     amount: payload.amount,
+    description: payload.invoice_description,
     status: 'CREATED',
+    ...metadata,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }, { merge: true });
@@ -177,22 +266,19 @@ async function issueGrantForInvoice(invoiceId) {
     return invoiceData.grantToken;
   }
 
-  const grantToken = crypto.randomUUID();
   const now = new Date().toISOString();
+  const grantToken = await createGrantToken({
+    invoiceId,
+    userId: invoiceData?.userId || null,
+    toolKey: invoiceData?.toolKey || null,
+    source: 'pay_per_use',
+  });
 
   await invoiceRef.set({
     status: 'PAID',
     grantToken,
     updatedAt: now,
   }, { merge: true });
-
-  await db.collection('qpayGrants').doc(grantToken).set({
-    invoice_id: invoiceId,
-    remainingUses: 1,
-    status: 'available',
-    createdAt: now,
-    updatedAt: now,
-  });
 
   return grantToken;
 }
@@ -472,6 +558,335 @@ app.post('/qpay/callback', async (req, res) => {
   }
 });
 
+app.get('/billing/config', async (req, res) => {
+  try {
+    const config = await getBillingConfig();
+    res.json({ config });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.post('/billing/invoice', async (req, res) => {
+  try {
+    const { type, toolKey, bundleId, trainingId } = req.body || {};
+    const authUser = await getAuthUser(req);
+    const billingConfig = await getBillingConfig();
+
+    if (!type) {
+      res.status(400).json({ error: 'type шаардлагатай' });
+      return;
+    }
+
+    if (type === 'tool') {
+      if (!toolKey) {
+        res.status(400).json({ error: 'toolKey шаардлагатай' });
+        return;
+      }
+
+      const tool = billingConfig.tools?.[toolKey];
+      if (!tool) {
+        res.status(400).json({ error: 'Tool олдсонгүй' });
+        return;
+      }
+
+      let discountPercent = 0;
+      let userId = null;
+      if (authUser?.uid) {
+        userId = authUser.uid;
+        const userSnap = await db.collection('users').doc(userId).get();
+        if (userSnap.exists && isSubscriptionActive(userSnap.data()?.subscription)) {
+          discountPercent = Number(billingConfig.subscription?.discountPercent || 0);
+        }
+      }
+
+      const baseAmount = Number(tool.payPerUsePrice || 0);
+      const amount = applyDiscount(baseAmount, discountPercent);
+      const invoice = await createInvoice({
+        amount,
+        description: `Tool төлбөр: ${toolKey}`,
+        invoiceCode: QPAY_INVOICE_CODE.value(),
+        callbackUrl: getQpayCallbackUrl(),
+        baseUrl: getQpayBaseUrl(),
+        clientId: QPAY_CLIENT_ID.value(),
+        clientSecret: QPAY_CLIENT_SECRET.value(),
+        metadata: {
+          type: 'tool',
+          toolKey,
+          userId,
+          baseAmount,
+          discountPercent,
+        },
+      });
+
+      res.json({ ...invoice, amount, discountPercent });
+      return;
+    }
+
+    if (type === 'credits') {
+      if (!authUser?.uid) {
+        res.status(401).json({ error: 'Нэвтэрсэн хэрэглэгч шаардлагатай' });
+        return;
+      }
+      if (!bundleId) {
+        res.status(400).json({ error: 'bundleId шаардлагатай' });
+        return;
+      }
+
+      const bundle = (billingConfig.credits?.bundles || []).find((b) => b.id === bundleId && b.active !== false);
+      if (!bundle) {
+        res.status(404).json({ error: 'Credits багц олдсонгүй' });
+        return;
+      }
+
+      const amount = Number(bundle.price || 0);
+      const credits = Number(bundle.credits || 0);
+      const invoice = await createInvoice({
+        amount,
+        description: `Credits багц: ${bundle.name || credits + ' credit'}`,
+        invoiceCode: QPAY_INVOICE_CODE.value(),
+        callbackUrl: getQpayCallbackUrl(),
+        baseUrl: getQpayBaseUrl(),
+        clientId: QPAY_CLIENT_ID.value(),
+        clientSecret: QPAY_CLIENT_SECRET.value(),
+        metadata: {
+          type: 'credits',
+          bundleId,
+          credits,
+          userId: authUser.uid,
+        },
+      });
+
+      res.json({ ...invoice, amount, credits });
+      return;
+    }
+
+    if (type === 'training') {
+      if (!trainingId) {
+        res.status(400).json({ error: 'trainingId шаардлагатай' });
+        return;
+      }
+      const trainingSnap = await db.collection('trainings').doc(trainingId).get();
+      if (!trainingSnap.exists) {
+        res.status(404).json({ error: 'Сургалт олдсонгүй' });
+        return;
+      }
+      const training = trainingSnap.data();
+      const amount = Number(training?.price || 0);
+      const invoice = await createInvoice({
+        amount,
+        description: `Сургалтын захиалга: ${training?.title || trainingId}`,
+        invoiceCode: QPAY_INVOICE_CODE.value(),
+        callbackUrl: getQpayCallbackUrl(),
+        baseUrl: getQpayBaseUrl(),
+        clientId: QPAY_CLIENT_ID.value(),
+        clientSecret: QPAY_CLIENT_SECRET.value(),
+        metadata: {
+          type: 'training',
+          trainingId,
+          userId: authUser?.uid || null,
+        },
+      });
+
+      res.json({ ...invoice, amount });
+      return;
+    }
+
+    res.status(400).json({ error: 'type буруу байна' });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.post('/billing/check', async (req, res) => {
+  try {
+    if (!req.body.invoice_id) {
+      res.status(400).json({ error: 'invoice_id шаардлагатай' });
+      return;
+    }
+
+    const invoiceId = req.body.invoice_id;
+    const invoiceRef = db.collection('qpayInvoices').doc(invoiceId);
+    const invoiceSnap = await invoiceRef.get();
+    const invoiceData = invoiceSnap.exists ? invoiceSnap.data() : {};
+
+    const result = await checkInvoicePayment(
+      invoiceId,
+      getQpayBaseUrl(),
+      QPAY_CLIENT_ID.value(),
+      QPAY_CLIENT_SECRET.value(),
+    );
+
+    if (!result.paid) {
+      res.json({ paid: false });
+      return;
+    }
+
+    let grantToken = null;
+    let creditsBalance = null;
+
+    if (invoiceData?.type === 'tool') {
+      grantToken = await issueGrantForInvoice(invoiceId);
+    }
+
+    if (invoiceData?.type === 'credits') {
+      const userId = invoiceData?.userId;
+      const credits = Number(invoiceData?.credits || 0);
+      if (userId && credits > 0 && !invoiceData?.creditsApplied) {
+        const userRef = db.collection('users').doc(userId);
+        await db.runTransaction(async (tx) => {
+          const userSnap = await tx.get(userRef);
+          const current = userSnap.exists ? (userSnap.data()?.credits?.balance || 0) : 0;
+          creditsBalance = current + credits;
+          tx.set(userRef, {
+            credits: {
+              balance: creditsBalance,
+              updatedAt: new Date().toISOString(),
+            },
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        });
+
+        await db.collection('creditTransactions').add({
+          userId,
+          invoiceId,
+          credits,
+          amount: invoiceData?.amount || 0,
+          type: 'purchase',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        await invoiceRef.set({
+          creditsApplied: true,
+        }, { merge: true });
+      }
+    }
+
+    await invoiceRef.set({
+      status: 'PAID',
+      paidAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+
+    res.json({
+      paid: true,
+      grantToken,
+      amount: invoiceData?.amount || null,
+      creditsBalance,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.post('/credits/consume', async (req, res) => {
+  try {
+    const authUser = await getAuthUser(req);
+    if (!authUser?.uid) {
+      res.status(401).json({ error: 'Нэвтэрсэн хэрэглэгч шаардлагатай' });
+      return;
+    }
+
+    const { toolKey } = req.body || {};
+    if (!toolKey) {
+      res.status(400).json({ error: 'toolKey шаардлагатай' });
+      return;
+    }
+
+    const billingConfig = await getBillingConfig();
+    const tool = billingConfig.tools?.[toolKey];
+    if (!tool) {
+      res.status(400).json({ error: 'Tool олдсонгүй' });
+      return;
+    }
+
+    const creditCost = Number(tool.creditCost || 0);
+    if (creditCost <= 0) {
+      res.status(400).json({ error: 'Credits үнэ тохируулаагүй байна' });
+      return;
+    }
+
+    const userRef = db.collection('users').doc(authUser.uid);
+    let nextBalance = 0;
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      const current = snap.exists ? (snap.data()?.credits?.balance || 0) : 0;
+      if (current < creditCost) {
+        throw new Error('Credits хүрэлцэхгүй байна');
+      }
+      nextBalance = current - creditCost;
+      tx.set(userRef, {
+        credits: {
+          balance: nextBalance,
+          updatedAt: new Date().toISOString(),
+        },
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    });
+
+    const grantToken = await createGrantToken({
+      userId: authUser.uid,
+      toolKey,
+      source: 'credits',
+    });
+
+    await db.collection('creditTransactions').add({
+      userId: authUser.uid,
+      credits: -creditCost,
+      amount: 0,
+      type: 'consume',
+      toolKey,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    res.json({ ok: true, grantToken, creditsUsed: creditCost, balance: nextBalance });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Server error';
+    res.status(400).json({ error: message });
+  }
+});
+
+app.post('/usage/log', async (req, res) => {
+  try {
+    const authUser = await getAuthUser(req);
+    const {
+      toolKey,
+      paymentMethod,
+      amount,
+      creditsUsed,
+      invoiceId,
+      grantToken,
+      guestSessionId,
+    } = req.body || {};
+
+    if (!toolKey) {
+      res.status(400).json({ error: 'toolKey шаардлагатай' });
+      return;
+    }
+
+    if (!authUser?.uid && !guestSessionId) {
+      res.status(400).json({ error: 'guestSessionId шаардлагатай' });
+      return;
+    }
+
+    await db.collection('usageLogs').add({
+      userId: authUser?.uid || null,
+      guestSessionId: authUser?.uid ? null : guestSessionId,
+      toolKey,
+      paymentMethod: paymentMethod || 'pay_per_use',
+      amount: Number(amount || 0),
+      creditsUsed: Number(creditsUsed || 0),
+      invoiceId: invoiceId || null,
+      grantToken: grantToken || null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
 app.post('/ndsh/parse', async (req, res) => {
   try {
     const { grantToken, imageDataUrl, mimeType } = req.body;
@@ -568,4 +983,3 @@ exports.api = onRequest({
     GEMINI_API_KEY,
   ],
 }, app);
-

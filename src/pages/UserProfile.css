@@ -1,7 +1,7 @@
 .profile-page {
     min-height: calc(100vh - var(--header-height) - 200px);
     padding: 2rem 1rem;
-    background: #f9fafb;
+    background: var(--surface-1);
 }
 
 .profile-container {
@@ -16,7 +16,7 @@
 .profile-header h1 {
     font-size: 2rem;
     font-weight: 700;
-    color: #111827;
+    color: var(--ink-900);
 }
 
 .profile-card {
@@ -40,7 +40,7 @@
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+    background: linear-gradient(135deg, var(--brand-600), var(--brand-400));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -50,7 +50,7 @@
 .profile-details h2 {
     font-size: 1.5rem;
     font-weight: 600;
-    color: #111827;
+    color: var(--ink-900);
     margin-bottom: 0.5rem;
 }
 
@@ -64,7 +64,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #6b7280;
+    color: var(--ink-500);
     font-size: 0.9rem;
 }
 
@@ -73,7 +73,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: #ef4444;
+    background: var(--danger-500);
     color: white;
     border: none;
     border-radius: 8px;
@@ -83,7 +83,7 @@
 }
 
 .logout-btn:hover {
-    background: #dc2626;
+    background: var(--danger-600);
 }
 
 .profile-section {
@@ -99,14 +99,14 @@
     gap: 0.75rem;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #111827;
+    color: var(--ink-900);
     margin-bottom: 1.5rem;
 }
 
 .empty-state {
     text-align: center;
     padding: 3rem 1rem;
-    color: #9ca3af;
+    color: var(--ink-400);
 }
 
 .empty-state svg {
@@ -128,7 +128,7 @@
 }
 
 .payments-table thead {
-    background: #f9fafb;
+    background: var(--surface-1);
 }
 
 .payments-table th {
@@ -136,30 +136,30 @@
     text-align: left;
     font-weight: 600;
     font-size: 0.85rem;
-    color: #6b7280;
+    color: var(--ink-500);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .payments-table td {
     padding: 1rem;
-    border-bottom: 1px solid #f3f4f6;
-    color: #374151;
+    border-bottom: 1px solid var(--ink-100);
+    color: var(--ink-700);
 }
 
 .payments-table tbody tr:hover {
-    background: #f9fafb;
+    background: var(--surface-1);
 }
 
 .invoice-id {
     font-family: 'Courier New', monospace;
     font-weight: 600;
-    color: var(--primary-color);
+    color: var(--brand-600);
 }
 
 .amount {
     font-weight: 600;
-    color: #111827;
+    color: var(--ink-900);
 }
 
 .status-badge {
@@ -183,16 +183,16 @@
     gap: 0.4rem;
     padding: 1.25rem;
     border-radius: 12px;
-    border: 1px solid #e5e7eb;
-    background: #f9fafb;
+    border: 1px solid var(--ink-200);
+    background: var(--surface-1);
     text-decoration: none;
-    color: #111827;
+    color: var(--ink-900);
     transition: all 0.2s;
 }
 
 .profile-link-card:hover {
     background: #ffffff;
-    border-color: #d1d5db;
+    border-color: var(--ink-300);
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
 
@@ -203,7 +203,7 @@
 
 .profile-link-desc {
     font-size: 0.85rem;
-    color: #6b7280;
+    color: var(--ink-500);
 }
 
 .profile-loading {
@@ -218,8 +218,8 @@
 .spinner {
     width: 40px;
     height: 40px;
-    border: 4px solid #f3f4f6;
-    border-top-color: var(--primary-color);
+    border: 4px solid var(--ink-100);
+    border-top-color: var(--brand-600);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }

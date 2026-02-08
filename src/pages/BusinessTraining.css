@@ -1,0 +1,232 @@
+.training-page {
+    background: var(--surface-1);
+    min-height: 100vh;
+    padding: var(--space-10) 0 var(--space-12);
+}
+
+.training-container {
+    max-width: var(--container-md);
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+}
+
+.training-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ink-500);
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: var(--space-6);
+}
+
+.training-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.9fr);
+    gap: var(--space-8);
+}
+
+.training-hero {
+    position: relative;
+    margin-bottom: var(--space-6);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    background: var(--ink-100);
+    min-height: 320px;
+}
+
+.training-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.training-hero__badge {
+    position: absolute;
+    top: var(--space-5);
+    left: var(--space-5);
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: var(--brand-700);
+}
+
+.training-title {
+    font-size: clamp(2rem, 2.6vw, 2.6rem);
+    font-weight: 700;
+    margin-bottom: var(--space-5);
+}
+
+.training-meta {
+    display: flex;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-6);
+}
+
+.training-meta-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.training-meta-icon {
+    padding: 10px;
+    border-radius: 12px;
+    background: var(--ink-100);
+    color: var(--ink-500);
+}
+
+.training-meta-title {
+    font-size: 0.7rem;
+    color: var(--ink-400);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+}
+
+.training-meta-value {
+    font-weight: 700;
+    color: var(--ink-900);
+}
+
+.training-section {
+    margin-bottom: var(--space-7);
+}
+
+.training-section h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: var(--space-4);
+}
+
+.training-section p {
+    color: var(--ink-600);
+    line-height: 1.7;
+    font-size: 1rem;
+}
+
+.training-instructor {
+    padding: var(--space-6);
+    background: #ffffff;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--ink-200);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    gap: var(--space-5);
+    align-items: center;
+}
+
+.training-instructor__avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--ink-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-400);
+}
+
+.training-sidebar {
+    position: sticky;
+    top: 110px;
+}
+
+.training-sidebar-card {
+    background: #ffffff;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--ink-200);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-6);
+}
+
+.training-sidebar-card h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: var(--space-6);
+}
+
+.training-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.training-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--ink-500);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.training-time-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.training-time-btn {
+    padding: 0.75rem;
+    border-radius: 12px;
+    border: 1px solid var(--ink-200);
+    background: #ffffff;
+    color: var(--ink-500);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.training-time-btn.active {
+    border-color: var(--brand-600);
+    background: var(--brand-50);
+    color: var(--brand-700);
+}
+
+.training-total {
+    margin-top: 0.5rem;
+    padding: 1rem;
+    background: var(--ink-50);
+    border-radius: var(--radius-lg);
+}
+
+.training-total-row {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    color: var(--ink-700);
+}
+
+.training-payment {
+    text-align: center;
+}
+
+.training-payment img {
+    width: 200px;
+    height: 200px;
+    margin-bottom: var(--space-5);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--ink-200);
+}
+
+@media (max-width: 992px) {
+    .training-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .training-sidebar {
+        position: static;
+    }
+}
+
+@media (max-width: 640px) {
+    .training-time-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

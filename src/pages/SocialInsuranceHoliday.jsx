@@ -22,13 +22,19 @@ import {
     ChevronsUpDown,
 } from 'lucide-react';
 import './SocialInsuranceHoliday.css';
+import { useAuth } from '../contexts/AuthContext';
+import { useBilling } from '../contexts/BillingContext';
+import useAccess from '../hooks/useAccess';
+import { apiFetch } from '../lib/apiClient';
+import { getGuestSessionId } from '../lib/guest';
 
 const STORAGE_KEY = 'ndsh-saved-data';
 const PAYMENT_STORAGE_KEY = 'ndsh-payment-grant';
-const PAYMENT_PRICE = 1000;
 
 const SocialInsuranceHoliday = () => {
-    const qpayApiBase = (import.meta.env.VITE_QPAY_API_BASE || '/api').replace(/\/$/, '');
+    const { currentUser, refreshUserProfile } = useAuth();
+    const { config: billingConfig } = useBilling();
+    const { discountPercent } = useAccess();
 
     const [file, setFile] = React.useState(null);
     const [step, setStep] = React.useState('idle');
@@ -44,11 +50,17 @@ const SocialInsuranceHoliday = () => {
     const [baseVacationDays, setBaseVacationDays] = React.useState(15);
     const [toast, setToast] = React.useState(null);
     const [isPrinting, setIsPrinting] = React.useState(false);
-    const [paymentStatus, setPaymentStatus] = React.useState('idle'); // idle, creating, pending, paid, error
+    const [paymentStatus, setPaymentStatus] = React.useState('idle'); // idle, creating, pending, paid, error, used
     const [paymentInvoice, setPaymentInvoice] = React.useState(null);
     const [paymentGrant, setPaymentGrant] = React.useState(null);
     const [paymentError, setPaymentError] = React.useState(null);
     const [isCheckingPayment, setIsCheckingPayment] = React.useState(false);
+    const [paymentMethod, setPaymentMethod] = React.useState('pay'); // pay | credits
+
+    const toolPricing = billingConfig?.tools?.ndsh_holiday || { payPerUsePrice: 1000, creditCost: 1 };
+    const basePrice = Number(toolPricing.payPerUsePrice || 0);
+    const discountedPrice = Math.max(0, Math.round(basePrice * (1 - (discountPercent || 0) / 100)));
+    const creditCost = Number(toolPricing.creditCost || 1);
 
     const fileInputRef = React.useRef(null);
     const previousExpandedRef = React.useRef(new Set());
@@ -152,12 +164,13 @@ const SocialInsuranceHoliday = () => {
             setPaymentStatus('creating');
             setPaymentError(null);
 
-            const response = await fetch(`${qpayApiBase}/qpay/invoice`, {
+            const response = await apiFetch('/billing/invoice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                auth: true,
                 body: JSON.stringify({
-                    amount: PAYMENT_PRICE,
-                    description: 'НДШ AI нэг удаагийн уншилт',
+                    type: 'tool',
+                    toolKey: 'ndsh_holiday'
                 }),
             });
 
@@ -180,13 +193,67 @@ const SocialInsuranceHoliday = () => {
         }
     };
 
+    const consumeCredits = async () => {
+        if (!currentUser) {
+            showToast({
+                variant: 'info',
+                title: 'Нэвтрэх шаардлагатай',
+                description: 'Credits ашиглахын тулд нэвтэрнэ үү.',
+            });
+            return;
+        }
+
+        setPaymentStatus('creating');
+        setPaymentError(null);
+        try {
+            const response = await apiFetch('/credits/consume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({ toolKey: 'ndsh_holiday' }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Credits ашиглахад алдаа гарлаа');
+            }
+
+            const grant = {
+                invoice_id: null,
+                paidAt: new Date().toISOString(),
+                amount: 0,
+                grantToken: data.grantToken,
+                used: false,
+                creditsUsed: data.creditsUsed || creditCost,
+            };
+            localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(grant));
+            setPaymentGrant(grant);
+            setPaymentStatus('paid');
+            await refreshUserProfile();
+            showToast({
+                variant: 'success',
+                title: 'Credits амжилттай ашиглагдлаа',
+                description: `${data.creditsUsed || creditCost} credit хасагдлаа.`,
+            });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Credits ашиглахад алдаа гарлаа';
+            setPaymentStatus('error');
+            setPaymentError(message);
+            showToast({
+                variant: 'error',
+                title: 'Credits алдаа',
+                description: message,
+            });
+        }
+    };
+
     const checkPaymentStatus = async () => {
         if (!paymentInvoice?.invoice_id) return;
         setIsCheckingPayment(true);
         try {
-            const response = await fetch(`${qpayApiBase}/qpay/check`, {
+            const response = await apiFetch('/billing/check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                auth: true,
                 body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id }),
             });
             const data = await response.json();
@@ -201,13 +268,15 @@ const SocialInsuranceHoliday = () => {
                 const grant = {
                     invoice_id: paymentInvoice.invoice_id,
                     paidAt: new Date().toISOString(),
-                    amount: PAYMENT_PRICE,
+                    amount: data.amount || discountedPrice,
                     grantToken: data.grantToken,
                     used: false,
+                    creditsUsed: 0,
                 };
                 localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(grant));
                 setPaymentGrant(grant);
                 setPaymentStatus('paid');
+                await refreshUserProfile();
                 showToast({
                     variant: 'success',
                     title: 'Төлбөр баталгаажлаа',
@@ -278,7 +347,7 @@ const SocialInsuranceHoliday = () => {
             setProgress(40);
             setStep('analyzing');
 
-            const response = await fetch(`${qpayApiBase}/ndsh/parse`, {
+            const response = await apiFetch('/ndsh/parse', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -301,6 +370,25 @@ const SocialInsuranceHoliday = () => {
             setProgress(100);
             setShowUpload(false);
             consumePaymentGrant();
+
+            try {
+                await apiFetch('/usage/log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    auth: !!currentUser,
+                    body: JSON.stringify({
+                        toolKey: 'ndsh_holiday',
+                        paymentMethod: paymentGrant?.creditsUsed ? 'credits' : 'pay_per_use',
+                        amount: paymentGrant?.amount || discountedPrice,
+                        creditsUsed: paymentGrant?.creditsUsed || 0,
+                        invoiceId: paymentGrant?.invoice_id || null,
+                        grantToken: paymentGrant?.grantToken || null,
+                        guestSessionId: currentUser ? null : getGuestSessionId(),
+                    }),
+                });
+            } catch (error) {
+                console.error('Usage log error:', error);
+            }
 
             const paymentCount = result?.data?.payments?.length || 0;
             if (paymentCount === 0) {
@@ -586,6 +674,22 @@ const SocialInsuranceHoliday = () => {
                         Буцах
                     </Link>
                 </div>
+                {parsedData && (
+                    <div className="ndsh2-header-summary">
+                        <div className="ndsh2-summary-item">
+                            <span>Нийт сар</span>
+                            <strong>{totalStats.totalMonths}</strong>
+                        </div>
+                        <div className="ndsh2-summary-item">
+                            <span>Тооцоолсон жил</span>
+                            <strong>{totalStats.yearsCount} жил</strong>
+                        </div>
+                        <div className="ndsh2-summary-item">
+                            <span>Амралтын хоног</span>
+                            <strong>{vacationCalculation.total} хоног</strong>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="ndsh2-content">
@@ -604,14 +708,17 @@ const SocialInsuranceHoliday = () => {
                             <div className="ndsh2-card-header">
                                 <div className="ndsh2-card-title">
                                     <Sparkles className="ndsh2-icon" />
-                                    Нэг удаагийн төлбөр (QPay)
+                                    Төлбөрийн эрх
                                 </div>
                             </div>
                             <div className="ndsh2-card-body ndsh2-pay">
                                 <div className="ndsh2-pay-summary">
                                     <div>
                                         <p>AI шинжилгээ эхлэхийн өмнө нэг удаа төлбөр төлнө.</p>
-                                        <h4>{PAYMENT_PRICE} төгрөг</h4>
+                                        <h4>{discountedPrice.toLocaleString()} төгрөг</h4>
+                                        <p style={{ marginTop: '0.5rem', color: '#64748b' }}>
+                                            эсвэл {creditCost} credit ашиглаж болно.
+                                        </p>
                                     </div>
                                     <div className="ndsh2-pay-status">
                                         {paymentGrant?.grantToken && !paymentGrant.used ? (
@@ -634,47 +741,67 @@ const SocialInsuranceHoliday = () => {
                                     </div>
                                 ) : (
                                     <div className="ndsh2-pay-grid">
+                                        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+                                            <button
+                                                type="button"
+                                                className={`ndsh2-btn ${paymentMethod === 'pay' ? 'ndsh2-btn--primary' : 'ndsh2-btn--outline'}`}
+                                                onClick={() => setPaymentMethod('pay')}
+                                            >
+                                                QPay төлбөр
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`ndsh2-btn ${paymentMethod === 'credits' ? 'ndsh2-btn--primary' : 'ndsh2-btn--outline'}`}
+                                                onClick={() => setPaymentMethod('credits')}
+                                            >
+                                                Credits ашиглах
+                                            </button>
+                                        </div>
                                         <div className="ndsh2-pay-actions">
                                             <button
                                                 type="button"
                                                 className="ndsh2-btn ndsh2-btn--primary"
-                                                onClick={createPaymentInvoice}
+                                                onClick={paymentMethod === 'credits' ? consumeCredits : createPaymentInvoice}
                                                 disabled={paymentStatus === 'creating'}
                                             >
                                                 <Sparkles className="ndsh2-icon" />
-                                                QPay QR үүсгэх
+                                                {paymentMethod === 'credits' ? 'Credits ашиглах' : 'QPay QR үүсгэх'}
                                             </button>
-                                            <button
-                                                type="button"
-                                                className="ndsh2-btn ndsh2-btn--outline"
-                                                onClick={checkPaymentStatus}
-                                                disabled={!paymentInvoice || isCheckingPayment}
-                                            >
-                                                <CheckCircle2 className="ndsh2-icon" />
-                                                {isCheckingPayment ? 'Шалгаж байна...' : 'Төлбөр шалгах'}
-                                            </button>
+                                            {paymentMethod === 'pay' && (
+                                                <button
+                                                    type="button"
+                                                    className="ndsh2-btn ndsh2-btn--outline"
+                                                    onClick={checkPaymentStatus}
+                                                    disabled={!paymentInvoice || isCheckingPayment}
+                                                >
+                                                    <CheckCircle2 className="ndsh2-icon" />
+                                                    {isCheckingPayment ? 'Шалгаж байна...' : 'Төлбөр шалгах'}
+                                                </button>
+                                            )}
                                             {paymentError && <p className="ndsh2-pay-error">{paymentError}</p>}
                                         </div>
 
-                                        <div className="ndsh2-pay-qr">
-                                            {paymentInvoice?.qr_image ? (
-                                                <div className="ndsh2-qr-container">
-                                                    <img
-                                                        src={`data:image/png;base64,${paymentInvoice.qr_image}`}
-                                                        alt="QPay QR"
-                                                    />
-                                                    {paymentInvoice?.qr_text && (
-                                                        <textarea readOnly value={paymentInvoice.qr_text} className="ndsh2-qr-text" />
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="ndsh2-pay-placeholder">
-                                                    QR код энд гарна
-                                                </div>
-                                            )}
-                                        </div>
+                                        {paymentMethod === 'pay' && (
+                                            <div className="ndsh2-pay-qr">
+                                                {paymentInvoice?.qr_image ? (
+                                                    <div className="ndsh2-qr-container">
+                                                        <img
+                                                            src={`data:image/png;base64,${paymentInvoice.qr_image}`}
+                                                            alt="QPay QR"
+                                                        />
+                                                        {paymentInvoice?.qr_text && (
+                                                            <textarea readOnly value={paymentInvoice.qr_text} className="ndsh2-qr-text" />
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="ndsh2-pay-placeholder">
+                                                        QR код энд гарна
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
 
-                                        {paymentInvoice?.urls && paymentInvoice.urls.length > 0 && (
+                                        {paymentMethod === 'pay' && paymentInvoice?.urls && paymentInvoice.urls.length > 0 && (
                                             <div className="ndsh2-pay-banks">
                                                 <p className="ndsh2-banks-label">Банкны апп-аар төлөх:</p>
                                                 <div className="ndsh2-bank-grid">

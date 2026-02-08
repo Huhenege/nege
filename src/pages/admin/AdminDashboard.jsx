@@ -10,11 +10,11 @@ import {
 // --- Components ---
 
 const StatCard = ({ title, value, icon: Icon, color, subtext, trend }) => (
-    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
+    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid var(--ink-100)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-                <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: '500' }}>{title}</p>
-                <h3 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#1e293b', lineHeight: 1 }}>{value}</h3>
+                <p style={{ color: 'var(--ink-500)', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: '500' }}>{title}</p>
+                <h3 style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--ink-900)', lineHeight: 1 }}>{value}</h3>
             </div>
             <div style={{ padding: '12px', backgroundColor: color + '15', borderRadius: '12px', color: color }}>
                 <Icon size={24} />
@@ -23,19 +23,19 @@ const StatCard = ({ title, value, icon: Icon, color, subtext, trend }) => (
         {(subtext || trend) && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: '1rem', fontSize: '0.85rem' }}>
                 {trend && (
-                    <span style={{ color: trend > 0 ? '#10b981' : '#ef4444', fontWeight: '600', display: 'flex', alignItems: 'center', marginRight: '6px' }}>
+                    <span style={{ color: trend > 0 ? '#16a34a' : '#ef4444', fontWeight: '600', display: 'flex', alignItems: 'center', marginRight: '6px' }}>
                         {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
                     </span>
                 )}
-                <span style={{ color: '#94a3b8' }}>{subtext}</span>
+                <span style={{ color: 'var(--ink-400)' }}>{subtext}</span>
             </div>
         )}
     </div>
 );
 
 const ChartCard = ({ title, children }) => (
-    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9', height: '100%', minHeight: '350px', display: 'flex', flexDirection: 'column' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1e293b' }}>{title}</h3>
+    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid var(--ink-100)', height: '100%', minHeight: '350px', display: 'flex', flexDirection: 'column' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--ink-900)' }}>{title}</h3>
         <div style={{ flex: 1 }}>
             {children}
         </div>
@@ -43,7 +43,7 @@ const ChartCard = ({ title, children }) => (
 );
 
 // --- Data Helpers ---
-const COLORS = ['#4f46e5', '#0ea5e9', '#f59e0b', '#10b981'];
+const COLORS = ['#e11d48', '#fb7185', '#f59e0b', '#16a34a'];
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState({
@@ -115,7 +115,7 @@ const AdminDashboard = () => {
 
     if (loading) return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-            <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid #e2e8f0', borderTopColor: '#3b82f6', borderRadius: '50%' }}></div>
+            <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid var(--ink-200)', borderTopColor: '#e11d48', borderRadius: '50%' }}></div>
         </div>
     );
 
@@ -131,16 +131,16 @@ const AdminDashboard = () => {
                 gap: '1rem'
             }}>
                 <div>
-                    <h1 style={{ fontSize: '1.875rem', fontWeight: '800', color: '#1e293b', marginBottom: '0.5rem' }}>
+                    <h1 style={{ fontSize: '1.875rem', fontWeight: '800', color: 'var(--ink-900)', marginBottom: '0.5rem' }}>
                         Хяналтын самбар
                     </h1>
-                    <p style={{ color: '#64748b' }}>Системийн ерөнхий төлөв байдал</p>
+                    <p style={{ color: 'var(--ink-500)' }}>Системийн ерөнхий төлөв байдал</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button style={{ backgroundColor: 'white', border: '1px solid #e2e8f0', padding: '0.5rem 1rem', borderRadius: '8px', color: '#64748b', fontWeight: '500' }}>
+                    <button style={{ backgroundColor: 'white', border: '1px solid var(--ink-200)', padding: '0.5rem 1rem', borderRadius: '8px', color: 'var(--ink-500)', fontWeight: '500' }}>
                         Last 7 Days
                     </button>
-                    <button style={{ backgroundColor: '#4f46e5', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button style={{ backgroundColor: '#e11d48', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <TrendingUp size={16} /> Report
                     </button>
                 </div>
@@ -152,7 +152,7 @@ const AdminDashboard = () => {
                     title="Нийт хэрэглэгч"
                     value={stats.totalUsers}
                     icon={Users}
-                    color="#4f46e5"
+                    color="#e11d48"
                     trend={12}
                     subtext="user growth"
                 />
@@ -160,7 +160,7 @@ const AdminDashboard = () => {
                     title="Идэвхтэй (DAU)"
                     value={stats.activeUsers}
                     icon={Activity}
-                    color="#10b981"
+                    color="#16a34a"
                     subtext="Currently active"
                 />
                 <StatCard
@@ -174,7 +174,7 @@ const AdminDashboard = () => {
                     title="Нийт Орлого"
                     value={`₮${(stats.totalRevenue || 0).toLocaleString()}`}
                     icon={DollarSign}
-                    color="#0ea5e9"
+                    color="#fb7185"
                     subtext="MRR (Monthly)"
                 />
             </div>
@@ -187,19 +187,19 @@ const AdminDashboard = () => {
                         <AreaChart data={userGrowthData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                                    <stop offset="5%" stopColor="#e11d48" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#e11d48" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--ink-200)" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--ink-400)', fontSize: 12 }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--ink-400)', fontSize: 12 }} />
                             <Tooltip
-                                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: 'white' }}
+                                contentStyle={{ backgroundColor: 'var(--ink-900)', border: 'none', borderRadius: '8px', color: 'white' }}
                                 itemStyle={{ color: 'white' }}
-                                cursor={{ stroke: '#4f46e5', strokeWidth: 2 }}
+                                cursor={{ stroke: '#e11d48', strokeWidth: 2 }}
                             />
-                            <Area type="monotone" dataKey="users" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
+                            <Area type="monotone" dataKey="users" stroke="#e11d48" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </ChartCard>

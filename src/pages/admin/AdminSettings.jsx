@@ -12,7 +12,7 @@ const AdminSettings = () => {
         registrationEnabled: true,
         defaultUserRole: 'user',
         siteName: 'Nege.mn',
-        primaryColor: '#4f46e5'
+        primaryColor: '#e11d48'
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -61,15 +61,15 @@ const AdminSettings = () => {
 
     if (loading) return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-            <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid #e2e8f0', borderTopColor: '#3b82f6', borderRadius: '50%' }}></div>
+            <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid var(--ink-200)', borderTopColor: '#e11d48', borderRadius: '50%' }}></div>
         </div>
     );
 
     const SettingRow = ({ label, description, children }) => (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid var(--ink-100)' }}>
             <div>
-                <h4 style={{ fontSize: '1rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.25rem' }}>{label}</h4>
-                <p style={{ fontSize: '0.875rem', color: '#64748b' }}>{description}</p>
+                <h4 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--ink-900)', marginBottom: '0.25rem' }}>{label}</h4>
+                <p style={{ fontSize: '0.875rem', color: 'var(--ink-500)' }}>{description}</p>
             </div>
             <div>{children}</div>
         </div>
@@ -79,10 +79,10 @@ const AdminSettings = () => {
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.875rem', fontWeight: '800', color: '#1e293b', marginBottom: '0.5rem' }}>
+                    <h1 style={{ fontSize: '1.875rem', fontWeight: '800', color: 'var(--ink-900)', marginBottom: '0.5rem' }}>
                         Системийн тохиргоо
                     </h1>
-                    <p style={{ color: '#64748b' }}>Аппликейшны ерөнхий тохиргоог удирдах</p>
+                    <p style={{ color: 'var(--ink-500)' }}>Аппликейшны ерөнхий тохиргоог удирдах</p>
                 </div>
                 <button
                     onClick={handleSave}
@@ -91,14 +91,14 @@ const AdminSettings = () => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
-                        backgroundColor: '#4f46e5',
+                        backgroundColor: '#e11d48',
                         color: 'white',
                         padding: '0.75rem 1.5rem',
                         borderRadius: '10px',
                         border: 'none',
                         fontWeight: '600',
                         cursor: saving ? 'not-allowed' : 'pointer',
-                        boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)'
+                        boxShadow: '0 4px 6px -1px rgba(225, 29, 72, 0.25)'
                     }}
                 >
                     <Save size={18} />
@@ -120,8 +120,8 @@ const AdminSettings = () => {
                 </div>
             )}
 
-            <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '2rem' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '1rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid var(--ink-200)', padding: '2rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '1rem', color: 'var(--ink-900)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Globe size={20} className="text-blue-600" />
                     Ерөнхий
                 </h3>
@@ -131,7 +131,7 @@ const AdminSettings = () => {
                         onClick={() => setSettings(s => ({ ...s, maintenanceMode: !s.maintenanceMode }))}
                         style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
                     >
-                        {settings.maintenanceMode ? <ToggleRight size={40} className="text-blue-600" /> : <ToggleLeft size={40} color="#cbd5e1" />}
+                        {settings.maintenanceMode ? <ToggleRight size={40} className="text-blue-600" /> : <ToggleLeft size={40} color="var(--ink-300)" />}
                     </button>
                 </SettingRow>
 
@@ -140,11 +140,11 @@ const AdminSettings = () => {
                         onClick={() => setSettings(s => ({ ...s, registrationEnabled: !s.registrationEnabled }))}
                         style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
                     >
-                        {settings.registrationEnabled ? <ToggleRight size={40} className="text-blue-600" /> : <ToggleLeft size={40} color="#cbd5e1" />}
+                        {settings.registrationEnabled ? <ToggleRight size={40} className="text-blue-600" /> : <ToggleLeft size={40} color="var(--ink-300)" />}
                     </button>
                 </SettingRow>
 
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginTop: '2.5rem', marginBottom: '1rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginTop: '2.5rem', marginBottom: '1rem', color: 'var(--ink-900)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Layout size={20} className="text-purple-600" />
                     UI & Branding
                 </h3>
@@ -154,7 +154,7 @@ const AdminSettings = () => {
                         type="text"
                         value={settings.siteName}
                         onChange={(e) => setSettings(s => ({ ...s, siteName: e.target.value }))}
-                        style={{ padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', width: '200px' }}
+                        style={{ padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid var(--ink-300)', width: '200px' }}
                     />
                 </SettingRow>
 

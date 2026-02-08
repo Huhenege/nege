@@ -8,7 +8,7 @@ const AdminRoute = ({ children }) => {
     if (loading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <div className="animate-spin" style={{ width: '40px', height: '40px', border: '4px solid #f3f4f6', borderTopColor: '#2563eb', borderRadius: '50%' }}></div>
+                <div className="animate-spin" style={{ width: '40px', height: '40px', border: '4px solid var(--ink-100)', borderTopColor: '#e11d48', borderRadius: '50%' }}></div>
             </div>
         );
     }

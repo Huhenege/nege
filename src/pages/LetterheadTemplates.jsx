@@ -14,6 +14,7 @@ import {
     serverTimestamp
 } from 'firebase/firestore';
 import { ArrowLeft, FileText, Save, CheckCircle2, Plus } from 'lucide-react';
+import useAccess from '../hooks/useAccess';
 import './LetterheadTemplates.css';
 
 const defaultTemplate = {
@@ -31,6 +32,7 @@ const defaultTemplate = {
 
 const LetterheadTemplates = () => {
     const { currentUser } = useAuth();
+    const { canUseTemplates } = useAccess();
     const [templates, setTemplates] = useState([]);
     const [form, setForm] = useState(defaultTemplate);
     const [editingId, setEditingId] = useState(null);
@@ -165,6 +167,31 @@ const LetterheadTemplates = () => {
         setForm(defaultTemplate);
     };
 
+
+    if (!canUseTemplates) {
+        return (
+            <div className="templates-page">
+                <div className="templates-container">
+                    <div className="templates-header">
+                        <div>
+                            <h1>Загварын сан (Subscriber)</h1>
+                            <p>Албан бичгийн загваруудыг хадгалах боломж зөвхөн subscriber хэрэглэгчдэд нээлттэй.</p>
+                        </div>
+                        <Link to="/profile" className="templates-back">
+                            <ArrowLeft size={18} />
+                            Профайл руу буцах
+                        </Link>
+                    </div>
+                    <div className="templates-card" style={{ padding: '2rem', textAlign: 'center' }}>
+                        <p style={{ marginBottom: '1rem' }}>Та subscription идэвхжүүлснээр templates ашиглах боломжтой.</p>
+                        <Link to="/profile" className="templates-back">
+                            Subscription‑ээ шалгах
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (

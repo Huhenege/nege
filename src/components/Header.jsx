@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, LogOut, ChevronDown, ShieldCheck, Sparkles } from 'lucide-react';
+import { User, LogOut, ChevronDown, ShieldCheck } from 'lucide-react';
 import Logo from './Logo';
 import './Header.css';
 
@@ -21,7 +21,6 @@ const Header = () => {
         }
     }
 
-    // Close dropdown on outside click
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -36,106 +35,67 @@ const Header = () => {
     const initial = userEmail ? userEmail.charAt(0).toUpperCase() : '?';
 
     return (
-        <header className="header" style={{
-            height: 'var(--header-height)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 var(--spacing-lg)',
-            position: 'fixed',
-            width: '100%',
-            top: 0,
-            left: 0,
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(10px)',
-            zIndex: 1000,
-            borderBottom: '1px solid var(--border-light)'
-        }}>
-            <div className="logo" style={{ display: 'flex', alignItems: 'center' }}>
-                <Link to="/">
-                    <Logo style={{ height: '36px', width: 'auto' }} />
+        <header className="site-header">
+            <div className="container site-header__inner">
+                <Link to="/" className="site-header__logo">
+                    <Logo style={{ height: '34px', width: 'auto' }} />
                 </Link>
-            </div>
 
-            <nav style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                <nav className="site-header__nav">
+                    {currentUser ? (
+                        <div className="header-user-container" ref={dropdownRef}>
+                            <button
+                                className={`user-dropdown-trigger ${isMenuOpen ? 'active' : ''}`}
+                                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                aria-expanded={isMenuOpen}
+                            >
+                                <div className="user-avatar">{initial}</div>
+                                <span className="user-name">
+                                    {userEmail.split('@')[0]}
+                                </span>
+                                <ChevronDown size={16} className="user-chevron" />
+                            </button>
 
+                            {isMenuOpen && (
+                                <div className="user-dropdown-menu">
+                                    <div className="dropdown-header">
+                                        <span className="dropdown-user-email">{userEmail}</span>
+                                        <span className="dropdown-user-role">
+                                            {currentUser.role === 'admin' ? 'Администратор' : 'Хэрэглэгч'}
+                                        </span>
+                                    </div>
 
-                {currentUser ? (
-                    <div className="header-user-container" ref={dropdownRef}>
-                        <button
-                            className={`user-dropdown-trigger ${isMenuOpen ? 'active' : ''}`}
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        >
-                            <div className="user-avatar">{initial}</div>
-                            <span style={{ fontSize: '0.9rem', fontWeight: '500' }}>
-                                {userEmail.split('@')[0]}
-                            </span>
-                            <ChevronDown size={16} style={{
-                                transform: isMenuOpen ? 'rotate(180deg)' : 'none',
-                                transition: 'transform 0.2s'
-                            }} />
-                        </button>
-
-                        {isMenuOpen && (
-                            <div className="user-dropdown-menu">
-                                <div className="dropdown-header">
-                                    <span className="dropdown-user-email">{userEmail}</span>
-                                    <span className="dropdown-user-role">
-                                        {currentUser.role === 'admin' ? 'Администратор' : 'Хэрэглэгч'}
-                                    </span>
-                                </div>
-
-
-
-                                <Link to="/profile" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
-                                    <User size={18} color="#2563eb" />
-                                    Миний профайл
-                                </Link>
-
-                                {currentUser.role === 'admin' && (
-                                    <Link to="/admin" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
-                                        <ShieldCheck size={18} color="#059669" />
-                                        Админ самбар
+                                    <Link to="/profile" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
+                                        <User size={18} />
+                                        Миний профайл
                                     </Link>
-                                )}
 
-                                <div className="dropdown-divider"></div>
+                                    {currentUser.role === 'admin' && (
+                                        <Link to="/admin" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
+                                            <ShieldCheck size={18} />
+                                            Админ самбар
+                                        </Link>
+                                    )}
 
-                                <button onClick={handleLogout} className="dropdown-item logout">
-                                    <LogOut size={18} />
-                                    Гарах
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <button
-                        onClick={openAuthModal}
-                        className="btn-nav"
-                        style={{
-                            fontSize: '0.9rem',
-                            fontWeight: '600',
-                            color: '#111827',
-                            background: 'white',
-                            cursor: 'pointer',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '6px',
-                            border: '1.5px solid #374151',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#111827';
-                            e.currentTarget.style.color = 'white';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'white';
-                            e.currentTarget.style.color = '#111827';
-                        }}
-                    >
-                        Нэвтрэх
-                    </button>
-                )}
-            </nav>
+                                    <div className="dropdown-divider"></div>
+
+                                    <button onClick={handleLogout} className="dropdown-item logout">
+                                        <LogOut size={18} />
+                                        Гарах
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <button
+                            onClick={openAuthModal}
+                            className="btn btn-primary btn-sm"
+                        >
+                            Нэвтрэх
+                        </button>
+                    )}
+                </nav>
+            </div>
         </header>
     );
 };

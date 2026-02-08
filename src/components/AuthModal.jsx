@@ -36,7 +36,16 @@ const AuthModal = () => {
                     email: user.email,
                     role: 'user',
                     createdAt: serverTimestamp(),
-                    status: 'active'
+                    status: 'active',
+                    subscription: {
+                        status: 'inactive',
+                        startAt: null,
+                        endAt: null
+                    },
+                    credits: {
+                        balance: 0,
+                        updatedAt: serverTimestamp()
+                    }
                 });
             }
             closeAuthModal();

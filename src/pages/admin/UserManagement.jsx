@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, doc, updateDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { Shield, ShieldOff, Ban, CheckCircle, Search, Filter, AlertCircle, RefreshCw, Activity } from 'lucide-react';
+import { Shield, ShieldOff, Ban, CheckCircle, Search, Filter, AlertCircle, RefreshCw, Activity, Calendar, DollarSign } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { logAdminAction } from '../../lib/logger';
 
@@ -107,22 +107,112 @@ const UserManagement = () => {
         }
     }
 
+    const handleSubscriptionUpdate = async (userId) => {
+        const target = users.find(u => u.id === userId);
+        const currentEnd = target?.subscription?.endAt?.toDate ? target.subscription.endAt.toDate() : target?.subscription?.endAt;
+        const defaultValue = currentEnd ? new Date(currentEnd).toISOString().split('T')[0] : '';
+        const endDateInput = window.prompt('Subscription дуусах огноо (YYYY-MM-DD):', defaultValue);
+        if (!endDateInput) return;
+
+        const endDate = new Date(endDateInput);
+        if (Number.isNaN(endDate.getTime())) {
+            alert('Огнооны формат буруу байна.');
+            return;
+        }
+
+        const status = endDate.getTime() > Date.now() ? 'active' : 'inactive';
+        const startAt = target?.subscription?.startAt || new Date().toISOString();
+
+        try {
+            const userRef = doc(db, "users", userId);
+            await updateDoc(userRef, {
+                subscription: {
+                    status,
+                    startAt,
+                    endAt: endDate.toISOString(),
+                    updatedAt: serverTimestamp(),
+                    updatedBy: currentUser?.email || 'admin'
+                },
+                updatedAt: serverTimestamp()
+            });
+
+            await logAdminAction('UPDATE_SUBSCRIPTION', {
+                targetUid: userId,
+                targetEmail: target?.email,
+                status,
+                endAt: endDate.toISOString()
+            }, currentUser);
+
+            setUsers(users.map(u => u.id === userId ? {
+                ...u,
+                subscription: {
+                    status,
+                    startAt,
+                    endAt: endDate.toISOString()
+                }
+            } : u));
+        } catch (error) {
+            console.error("Error updating subscription:", error);
+            alert("Subscription шинэчлэхэд алдаа гарлаа.");
+        }
+    };
+
+    const handleCreditsUpdate = async (userId) => {
+        const target = users.find(u => u.id === userId);
+        const currentBalance = target?.credits?.balance || 0;
+        const input = window.prompt('Credits balance шинэ утга:', String(currentBalance));
+        if (input === null) return;
+
+        const nextBalance = Number(input);
+        if (!Number.isFinite(nextBalance) || nextBalance < 0) {
+            alert('Credits утга буруу байна.');
+            return;
+        }
+
+        try {
+            const userRef = doc(db, "users", userId);
+            await updateDoc(userRef, {
+                credits: {
+                    balance: nextBalance,
+                    updatedAt: serverTimestamp()
+                },
+                updatedAt: serverTimestamp()
+            });
+
+            await logAdminAction('UPDATE_CREDITS', {
+                targetUid: userId,
+                targetEmail: target?.email,
+                balance: nextBalance
+            }, currentUser);
+
+            setUsers(users.map(u => u.id === userId ? {
+                ...u,
+                credits: {
+                    balance: nextBalance
+                }
+            } : u));
+        } catch (error) {
+            console.error("Error updating credits:", error);
+            alert("Credits шинэчлэхэд алдаа гарлаа.");
+        }
+    };
+
     if (loading) return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-            <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid #e2e8f0', borderTopColor: '#3b82f6', borderRadius: '50%' }}></div>
+            <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid var(--ink-200)', borderTopColor: '#e11d48', borderRadius: '50%' }}></div>
         </div>
     );
 
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '1.875rem', fontWeight: '800', color: '#1e293b' }}>
+                <h1 style={{ fontSize: '1.875rem', fontWeight: '800', color: 'var(--ink-900)' }}>
                     Хэрэглэгчийн удирдлага
                 </h1>
                 <button
                     onClick={fetchUsers}
                     title="Refresh"
-                    style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', color: '#64748b', cursor: 'pointer' }}
+                    style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--ink-200)', backgroundColor: 'white', color: 'var(--ink-500)', cursor: 'pointer' }}
                 >
                     <RefreshCw size={20} />
                 </button>
@@ -131,20 +221,20 @@ const UserManagement = () => {
             {/* Filters */}
             <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '12px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
-                    <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-400)' }} />
                     <input
                         type="text"
                         placeholder="Имэйлээр хайх..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: '100%', padding: '0.6rem 0.6rem 0.6rem 2.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}
+                        style={{ width: '100%', padding: '0.6rem 0.6rem 0.6rem 2.5rem', borderRadius: '8px', border: '1px solid var(--ink-200)', outline: 'none' }}
                     />
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <select
                         value={filterRole}
                         onChange={(e) => setFilterRole(e.target.value)}
-                        style={{ padding: '0.5rem 2rem 0.5rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', cursor: 'pointer' }}
+                        style={{ padding: '0.5rem 2rem 0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--ink-200)', backgroundColor: 'white', cursor: 'pointer' }}
                     >
                         <option value="all">Бүх эрх</option>
                         <option value="admin">Admin</option>
@@ -153,7 +243,7 @@ const UserManagement = () => {
                     <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        style={{ padding: '0.5rem 2rem 0.5rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', cursor: 'pointer' }}
+                        style={{ padding: '0.5rem 2rem 0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--ink-200)', backgroundColor: 'white', cursor: 'pointer' }}
                     >
                         <option value="all">Бүх төлөв</option>
                         <option value="active">Active</option>
@@ -163,26 +253,26 @@ const UserManagement = () => {
             </div>
 
             {/* Table */}
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden', border: '1px solid #f1f5f9' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden', border: '1px solid var(--ink-100)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <thead style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--ink-200)' }}>
                         <tr>
-                            <th style={{ padding: '1rem', fontWeight: '600', color: '#64748b', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Имэйл</th>
-                            <th style={{ padding: '1rem', fontWeight: '600', color: '#64748b', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Эрх</th>
-                            <th style={{ padding: '1rem', fontWeight: '600', color: '#64748b', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Төлөв</th>
-                            <th style={{ padding: '1rem', fontWeight: '600', color: '#64748b', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Үйлдэл</th>
+                            <th style={{ padding: '1rem', fontWeight: '600', color: 'var(--ink-500)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Имэйл</th>
+                            <th style={{ padding: '1rem', fontWeight: '600', color: 'var(--ink-500)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Эрх</th>
+                            <th style={{ padding: '1rem', fontWeight: '600', color: 'var(--ink-500)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Төлөв</th>
+                            <th style={{ padding: '1rem', fontWeight: '600', color: 'var(--ink-500)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Үйлдэл</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredUsers.length === 0 ? (
                             <tr>
-                                <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+                                <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: 'var(--ink-400)' }}>
                                     Хэрэглэгч олдсонгүй.
                                 </td>
                             </tr>
                         ) : (
                             filteredUsers.map(user => (
-                                <tr key={user.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.1s' }} className="hover:bg-slate-50">
+                                <tr key={user.id} style={{ borderBottom: '1px solid var(--ink-100)', transition: 'background 0.1s' }} className="hover:bg-slate-50">
                                     <td style={{ padding: '1rem', color: '#334155' }}>{user.email}</td>
                                     <td style={{ padding: '1rem' }}>
                                         <span style={{
@@ -190,8 +280,8 @@ const UserManagement = () => {
                                             borderRadius: '20px',
                                             fontSize: '0.75rem',
                                             fontWeight: '600',
-                                            backgroundColor: user.role === 'admin' ? '#dbeafe' : '#f1f5f9',
-                                            color: user.role === 'admin' ? '#1e40af' : '#64748b'
+                                            backgroundColor: user.role === 'admin' ? '#dbeafe' : 'var(--ink-100)',
+                                            color: user.role === 'admin' ? '#1e40af' : 'var(--ink-500)'
                                         }}>
                                             {user.role || 'user'}
                                         </span>
@@ -199,7 +289,7 @@ const UserManagement = () => {
                                     <td style={{ padding: '1rem' }}>
                                         <span style={{
                                             display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', fontWeight: '500',
-                                            color: user.status === 'banned' ? '#ef4444' : '#10b981'
+                                            color: user.status === 'banned' ? '#ef4444' : '#16a34a'
                                         }}>
                                             {user.status === 'banned' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
                                             {user.status === 'banned' ? 'Banned' : 'Active'}
@@ -211,7 +301,7 @@ const UserManagement = () => {
                                                 <button
                                                     onClick={() => handleRoleChange(user.id, 'admin')}
                                                     title="Make Admin"
-                                                    style={{ padding: '8px', borderRadius: '6px', backgroundColor: '#eff6ff', color: '#2563eb', border: 'none', cursor: 'pointer' }}
+                                                    style={{ padding: '8px', borderRadius: '6px', backgroundColor: 'var(--brand-50)', color: '#e11d48', border: 'none', cursor: 'pointer' }}
                                                 >
                                                     <Shield size={18} />
                                                 </button>
@@ -242,6 +332,22 @@ const UserManagement = () => {
                                                     <CheckCircle size={18} />
                                                 </button>
                                             )}
+
+                                            <button
+                                                onClick={() => handleSubscriptionUpdate(user.id)}
+                                                title="Subscription"
+                                                style={{ padding: '8px', borderRadius: '6px', backgroundColor: '#ecfeff', color: '#0891b2', border: 'none', cursor: 'pointer' }}
+                                            >
+                                                <Calendar size={18} />
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleCreditsUpdate(user.id)}
+                                                title="Credits"
+                                                style={{ padding: '8px', borderRadius: '6px', backgroundColor: '#fef9c3', color: '#ca8a04', border: 'none', cursor: 'pointer' }}
+                                            >
+                                                <DollarSign size={18} />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -250,7 +356,7 @@ const UserManagement = () => {
                     </tbody>
                 </table>
             </div>
-            <p style={{ marginTop: '1rem', color: '#94a3b8', fontSize: '0.875rem', textAlign: 'center' }}>
+            <p style={{ marginTop: '1rem', color: 'var(--ink-400)', fontSize: '0.875rem', textAlign: 'center' }}>
                 Showing {filteredUsers.length} of {users.length} users
             </p>
         </div>
