@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import AIAssistant from './pages/AIAssistant';
 import AccountStatementOrganizer from './pages/AccountStatementOrganizer';
 import SocialInsuranceHoliday from './pages/SocialInsuranceHoliday';
+import UserProfile from './pages/UserProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import AdminLayout from './layout/AdminLayout';
@@ -32,6 +33,11 @@ function App() {
           <AuthModal />
           <Routes>
             <Route path="/" element={<AIAssistant />} />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <UserProfile />
+              </ProtectedRoute>
+            } />
             <Route path="/ai-assistant/account-statement-organizer" element={
               <ProtectedRoute>
                 <AccountStatementOrganizer />

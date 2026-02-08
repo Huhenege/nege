@@ -87,6 +87,11 @@ const Header = () => {
 
 
 
+                                <Link to="/profile" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
+                                    <User size={18} color="#2563eb" />
+                                    Миний профайл
+                                </Link>
+
                                 {currentUser.role === 'admin' && (
                                     <Link to="/admin" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
                                         <ShieldCheck size={18} color="#059669" />

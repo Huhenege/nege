@@ -3,19 +3,11 @@ import { Link } from 'react-router-dom';
 import {
     ArrowLeft,
     Download,
-    Save,
     Image as ImageIcon,
-    Type,
     Building2,
-    MapPin,
-    Phone,
-    Mail,
-    Globe,
     FileText,
     Sparkles,
     Layout,
-    Maximize2,
-    CheckCircle2,
     Loader2
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
@@ -137,6 +129,8 @@ const OfficialLetterheadGenerator = () => {
     };
 
     const [isAiGenerating, setIsAiGenerating] = useState(false);
+    const blank = '\u00A0';
+    const formattedDate = config.docDate ? config.docDate.replace(/-/g, '.') : '';
 
     const handleAiGenerateContent = async () => {
         if (!config.subject) {
@@ -372,39 +366,53 @@ const OfficialLetterheadGenerator = () => {
                         >
                             {/* Header Section */}
                             <div className="ob-doc-header">
-                                <div className="ob-header-top">
-                                    {logoPreview && <img src={logoPreview} alt="Logo" className="ob-doc-logo" />}
-                                    <h1 className="ob-doc-org-name">{config.orgName}</h1>
+                                <div className="ob-header-row">
+                                    <div className="ob-header-left">
+                                        <span className="ob-corner ob-corner--tl" />
+                                        {logoPreview && <img src={logoPreview} alt="Logo" className="ob-doc-logo" />}
+                                        <div className="ob-header-tagline">Байгууллагын үйл ажиллагааны чиглэл</div>
+                                        <div className="ob-doc-org-name">{config.orgName}</div>
+                                        <div className="ob-header-contacts">
+                                            <div>{config.address}</div>
+                                            <div>Утас: {config.phone}</div>
+                                            <div>И-мэйл: {config.email}</div>
+                                            {config.web && <div>Вэб: {config.web}</div>}
+                                        </div>
+                                    </div>
+                                    <div className="ob-header-right">
+                                        <span className="ob-corner ob-corner--tl" />
+                                        <span className="ob-corner ob-corner--tr" />
+                                        <div className="ob-header-recipient">{config.addresseeOrg}</div>
+                                        <div className="ob-header-recipient-name">{config.addresseeName}</div>
+                                    </div>
                                 </div>
-                                <div className="ob-header-contacts">
-                                    <span><MapPin size={10} /> {config.address}</span>
-                                    <span><Phone size={10} /> {config.phone}</span>
-                                    <span><Mail size={10} /> {config.email}</span>
-                                    <span><Globe size={10} /> {config.web}</span>
+                                <div className="ob-meta-block">
+                                    <div className="ob-meta-row">
+                                        <span className="ob-meta-label">№</span>
+                                        <span className="ob-meta-fill">{config.docIndex || blank}</span>
+                                    </div>
+                                    <div className="ob-meta-row">
+                                        <span className="ob-meta-label">танай</span>
+                                        <span className="ob-meta-fill ob-meta-fill--wide">{blank}</span>
+                                        <span className="ob-meta-label">№</span>
+                                        <span className="ob-meta-fill ob-meta-fill--wide">{blank}</span>
+                                        <span className="ob-meta-label">т</span>
+                                    </div>
+                                    {(formattedDate || config.docCity) && (
+                                        <div className="ob-meta-date">
+                                            {formattedDate}
+                                            {formattedDate && config.docCity ? ' • ' : ''}
+                                            {config.docCity}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="ob-header-divider"></div>
-                                <div className="ob-header-divider double"></div>
-                            </div>
-
-                            {/* Meta Section */}
-                            <div className="ob-doc-meta">
-                                <div className="ob-meta-left">
-                                    <span>{config.docDate.replace(/-/g, '.')}</span> № <span>{config.docIndex}</span>
-                                </div>
-                                <div className="ob-meta-right">
-                                    {config.docCity}
-                                </div>
-                            </div>
-
-                            {/* Addressee */}
-                            <div className="ob-doc-addressee">
-                                <p>{config.addresseeOrg}</p>
-                                <p>{config.addresseeName}</p>
                             </div>
 
                             {/* Subject */}
                             <div className="ob-doc-subject">
-                                <strong>Гарчиг: {config.subject}</strong>
+                                <span className="ob-subject-corner ob-subject-corner--left" />
+                                <span className="ob-subject-corner ob-subject-corner--right" />
+                                <span className="ob-doc-subject-text">{config.subject}</span>
                             </div>
 
                             {/* Content */}
@@ -418,13 +426,12 @@ const OfficialLetterheadGenerator = () => {
                             <div className="ob-doc-signature">
                                 <div className="ob-sig-row">
                                     <span>{config.signPosition}</span>
-                                    <div className="ob-sig-space"></div>
+                                    <div className="ob-sig-line-wrap">
+                                        <div className="ob-sig-line"></div>
+                                        <div className="ob-sig-label">гарын үсэг</div>
+                                    </div>
                                     <span>{config.signName}</span>
                                 </div>
-                            </div>
-
-                            <div className="ob-doc-footer-mark">
-                                <div className="ob-footer-line"></div>
                             </div>
                         </div>
                     </div>

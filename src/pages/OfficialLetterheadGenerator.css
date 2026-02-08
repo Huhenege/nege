@@ -302,131 +302,231 @@
     /* Standard 1 inch margins */
     margin: 0 auto;
     position: relative;
-    color: #334155;
+    color: #1f2937;
     font-family: 'Times New Roman', serif;
     display: flex;
     flex-direction: column;
+    --ob-blue: #3a5f97;
 }
 
 .ob-paper * {
-    border: none !important;
     box-shadow: none !important;
 }
 
 /* Document Components Inside Paper */
 .ob-doc-header {
     margin-bottom: 1.5rem;
+    color: var(--ob-blue);
 }
 
-.ob-header-top {
+.ob-header-row {
     display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.75rem;
+    justify-content: space-between;
+    gap: 1.5rem;
+    align-items: flex-start;
+}
+
+.ob-header-left {
+    flex: 1 1 60%;
+    text-align: center;
+    position: relative;
+    padding: 0.35rem 0.75rem 0;
+}
+
+.ob-header-right {
+    flex: 0 0 35%;
+    text-align: right;
+    position: relative;
+    padding: 0.35rem 0.75rem 0;
+}
+
+.ob-corner {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--ob-blue);
+}
+
+.ob-corner--tl {
+    top: 0;
+    left: 0;
+    border-right: 0;
+    border-bottom: 0;
+}
+
+.ob-corner--tr {
+    top: 0;
+    right: 0;
+    border-left: 0;
+    border-bottom: 0;
 }
 
 .ob-doc-logo {
-    max-height: 60px;
+    max-height: 48px;
+    margin: 0 auto 0.3rem;
+    display: block;
+}
+
+.ob-header-tagline {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.2rem;
+    color: var(--ob-blue);
 }
 
 .ob-doc-org-name {
-    font-size: 1.3rem;
-    font-weight: 900;
-    color: #1e293b;
+    font-size: 1.5rem;
+    font-weight: 800;
     text-transform: uppercase;
+    margin-bottom: 0.6rem;
+    color: var(--ob-blue);
 }
 
 .ob-header-contacts {
-    font-size: 0.7rem;
-    color: #64748b;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
+    font-size: 0.8rem;
+    color: var(--ob-blue);
+    line-height: 1.35;
 }
 
-.ob-header-contacts span {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
+.ob-header-contacts div {
+    margin: 0.1rem 0;
 }
 
-.ob-header-divider {
-    height: 1px;
-    background: #1e293b;
-    margin-top: 0.5rem;
-}
-
-.ob-header-divider.double {
-    height: 2.5px;
-    margin-top: 1.5px;
-}
-
-.ob-doc-meta {
-    display: flex;
-    justify-content: space-between;
+.ob-header-recipient {
     font-size: 0.9rem;
-    margin-bottom: 2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--ob-blue);
 }
 
-.ob-meta-left span {
-    border-bottom: 1px dotted #ccc !important;
+.ob-header-recipient-name {
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+    color: var(--ob-blue);
 }
 
-.ob-doc-addressee {
-    margin-left: auto;
-    width: 50%;
-    margin-bottom: 2.5rem;
-    font-size: 0.95rem;
-    line-height: 1.4;
+.ob-meta-block {
+    margin-top: 0.8rem;
+    text-align: center;
+    color: var(--ob-blue);
+}
+
+.ob-meta-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+}
+
+.ob-meta-row + .ob-meta-row {
+    margin-top: 0.2rem;
+}
+
+.ob-meta-label {
+    font-weight: 600;
+}
+
+.ob-meta-fill {
+    min-width: 5.5cm;
+    border-bottom: 1px solid var(--ob-blue);
+    display: inline-block;
+    text-align: center;
+    padding: 0 0.2rem;
+}
+
+.ob-meta-fill--wide {
+    min-width: 4cm;
+}
+
+.ob-meta-date {
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: #1f2937;
 }
 
 .ob-doc-subject {
-    margin-bottom: 1.5rem;
-    font-size: 0.95rem;
-    text-decoration: underline;
+    margin: 1.5rem auto 1.2rem;
+    position: relative;
+    text-align: center;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #1f2937;
+    letter-spacing: 0.03em;
+    max-width: 70%;
+    width: 100%;
+}
+
+.ob-doc-subject-text {
+    display: inline-block;
+    padding: 0.2rem 1rem;
+}
+
+.ob-subject-corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--ob-blue);
+    top: 0;
+}
+
+.ob-subject-corner--left {
+    left: 0;
+    border-right: 0;
+    border-bottom: 0;
+}
+
+.ob-subject-corner--right {
+    right: 0;
+    border-left: 0;
+    border-bottom: 0;
 }
 
 .ob-doc-content {
     flex: 1;
-    font-size: 1rem;
+    font-size: 0.95rem;
     line-height: 1.6;
     text-align: justify;
+    color: #1f2937;
 }
 
 .ob-doc-content p {
-    margin-bottom: 1rem;
+    margin-bottom: 0.9rem;
     text-indent: 1.25cm;
 }
 
 .ob-doc-signature {
     margin-top: 3rem;
-    padding-top: 2rem;
 }
 
 .ob-sig-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-    font-size: 1rem;
+    align-items: flex-end;
+    gap: 1rem;
+    font-weight: 700;
+    font-size: 0.95rem;
 }
 
-.ob-sig-space {
+.ob-sig-line-wrap {
     flex: 1;
     text-align: center;
-    font-style: italic;
-    font-weight: normal;
-    color: #94a3b8;
+    font-weight: 400;
 }
 
-.ob-doc-footer-mark {
-    margin-top: 2rem;
+.ob-sig-line {
+    border-bottom: 1px solid #1f2937;
+    height: 0;
+    margin-bottom: 0.25rem;
 }
 
-.ob-footer-line {
-    width: 4cm;
-    height: 1px;
-    background: #cbd5e1;
+.ob-sig-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.02em;
 }
 
 /* Payment Overlay */
