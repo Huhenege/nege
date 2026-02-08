@@ -1,7 +1,7 @@
 .ndsh2-page {
   min-height: 100vh;
   background: var(--surface-1);
-  padding-top: 1rem;
+  padding-top: 0;
   color: var(--ink-900);
   text-align: left;
 }
@@ -290,7 +290,7 @@
   color: var(--ink-500);
   background: var(--surface-1);
   resize: none;
-  font-family: monospace;
+  font-family: var(--font-sans);
 }
 
 .ndsh2-pay-banks {
@@ -757,7 +757,7 @@
 }
 
 .ndsh2-employee-reg {
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-sans);
   font-size: 0.75rem;
   color: var(--ink-500);
   margin-left: 0.5rem;

@@ -8,7 +8,7 @@ const Footer = () => {
         <footer className="footer">
             <div className="footer-container">
                 <div className="footer-brand">
-                    <Logo style={{ height: '32px', width: 'auto', marginBottom: '1.5rem' }} />
+                    <Logo className="footer-logo" style={{ height: '32px', width: 'auto' }} />
                     <p className="footer-tagline">
                         Нэг логик, нэг шийдэл.
                         Бизнесийн үйл ажиллагааг хялбарчлах AI туслах.

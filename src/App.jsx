@@ -17,6 +17,7 @@ import AuditLogs from './pages/admin/AuditLogs';
 import AdminSettings from './pages/admin/AdminSettings';
 import PaymentManagement from './pages/admin/PaymentManagement';
 import TrainingManagement from './pages/admin/TrainingManagement';
+import TrainingEditor from './pages/admin/TrainingEditor';
 import BookingManagement from './pages/admin/BookingManagement';
 import PricingManagement from './pages/admin/PricingManagement';
 import OfficialLetterheadGenerator from './pages/OfficialLetterheadGenerator';
@@ -49,11 +50,7 @@ const AppShell = () => {
           <Route path="/ai-assistant/account-statement-organizer" element={<AccountStatementOrganizer />} />
           <Route path="/ai-assistant/social-insurance-holiday" element={<SocialInsuranceHoliday />} />
           <Route path="/ai-assistant/official-letterhead" element={<OfficialLetterheadGenerator />} />
-          <Route path="/ai-assistant/business-training" element={
-            <ProtectedRoute>
-              <BusinessTraining />
-            </ProtectedRoute>
-          } />
+          <Route path="/ai-assistant/business-training" element={<BusinessTraining />} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={
@@ -66,8 +63,10 @@ const AppShell = () => {
             <Route path="logs" element={<AuditLogs />} />
             <Route path="payments" element={<PaymentManagement />} />
             <Route path="pricing" element={<PricingManagement />} />
-            <Route path="trainings" element={<TrainingManagement />} />
-            <Route path="bookings" element={<BookingManagement />} />
+              <Route path="trainings" element={<TrainingManagement />} />
+              <Route path="trainings/new" element={<TrainingEditor />} />
+              <Route path="trainings/:id" element={<TrainingEditor />} />
+              <Route path="bookings" element={<BookingManagement />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
         </Routes>

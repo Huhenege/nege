@@ -16,8 +16,14 @@
 
 .footer-brand {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
     gap: 1rem;
+}
+
+.footer-logo {
+    flex-shrink: 0;
+    margin-left: -14px;
 }
 
 .footer-tagline {
@@ -64,5 +70,10 @@
     .footer-container {
         grid-template-columns: 1fr;
         gap: 2rem;
+    }
+
+    .footer-brand {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

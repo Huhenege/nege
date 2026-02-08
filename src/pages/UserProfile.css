@@ -152,7 +152,7 @@
 }
 
 .invoice-id {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-sans);
     font-weight: 600;
     color: var(--brand-600);
 }

@@ -27,6 +27,7 @@ import { useBilling } from '../contexts/BillingContext';
 import useAccess from '../hooks/useAccess';
 import { apiFetch } from '../lib/apiClient';
 import { getGuestSessionId } from '../lib/guest';
+import ToolHeader from '../components/ToolHeader';
 
 const STORAGE_KEY = 'ndsh-saved-data';
 const PAYMENT_STORAGE_KEY = 'ndsh-payment-grant';
@@ -663,34 +664,26 @@ const SocialInsuranceHoliday = () => {
 
     return (
         <div className={`ndsh2-page ${isPrinting ? 'ndsh2-printing' : ''}`}>
-            <div className="ndsh2-header">
-                <div className="ndsh2-header-inner">
-                    <div>
-                        <h1>Ажилсан жил тооцоолох</h1>
-                        <p>НДШ төлөлтийн лавлагаагаар ажилласан жил тооцоолох</p>
-                    </div>
-                    <Link to="/ai-assistant" className="ndsh2-btn ndsh2-btn--ghost">
-                        <ArrowLeft className="ndsh2-icon" />
-                        Буцах
-                    </Link>
-                </div>
-                {parsedData && (
-                    <div className="ndsh2-header-summary">
-                        <div className="ndsh2-summary-item">
+            <ToolHeader
+                title="Ажилсан жил тооцоолох"
+                subtitle="НДШ төлөлтийн лавлагаагаар ажилласан жил тооцоолох"
+                summary={parsedData ? (
+                    <div className="tool-summary">
+                        <div className="tool-summary-item">
                             <span>Нийт сар</span>
                             <strong>{totalStats.totalMonths}</strong>
                         </div>
-                        <div className="ndsh2-summary-item">
+                        <div className="tool-summary-item">
                             <span>Тооцоолсон жил</span>
                             <strong>{totalStats.yearsCount} жил</strong>
                         </div>
-                        <div className="ndsh2-summary-item">
+                        <div className="tool-summary-item">
                             <span>Амралтын хоног</span>
                             <strong>{vacationCalculation.total} хоног</strong>
                         </div>
                     </div>
-                )}
-            </div>
+                ) : null}
+            />
 
             <div className="ndsh2-content">
                 {toast && (

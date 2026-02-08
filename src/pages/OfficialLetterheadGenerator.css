@@ -1,9 +1,9 @@
 .ob-page {
     min-height: 100vh;
     background: var(--surface-1);
-    color: #0f172a;
+    color: var(--ink-900);
     text-align: left;
-    padding-top: 0.5rem;
+    padding-top: 0;
 }
 
 .ob-header {

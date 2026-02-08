@@ -57,7 +57,9 @@ const AdminLayout = () => {
                 <nav style={{ flex: 1 }}>
                     <ul style={{ listStyle: 'none', padding: 0 }}>
                         {menuItems.map((item) => {
-                            const isActive = location.pathname === item.path;
+                            const isActive = item.path === '/admin'
+                                ? location.pathname === '/admin'
+                                : location.pathname.startsWith(item.path);
                             return (
                                 <li key={item.path} style={{ marginBottom: '0.5rem' }}>
                                     <Link

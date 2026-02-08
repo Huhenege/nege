@@ -50,6 +50,11 @@ const DEFAULT_AMOUNT = Number(process.env.QPAY_AMOUNT || 100);
 const ALLOWED_ORIGIN = process.env.QPAY_ALLOWED_ORIGIN || 'http://localhost:5173';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const QPAY_MOCK_MODE = process.env.QPAY_MOCK_MODE === 'true' || !CLIENT_ID || !CLIENT_SECRET || !INVOICE_CODE;
+
+if (QPAY_MOCK_MODE && process.env.QPAY_MOCK_MODE !== 'true') {
+  console.warn('[QPay] Credentials missing. Falling back to mock mode for local development.');
+}
 
 const DATA_DIR = path.join(process.cwd(), 'server', 'data');
 const DATA_FILE = path.join(DATA_DIR, 'qpay-store.json');
@@ -123,7 +128,7 @@ function buildAuthHeader() {
 }
 
 async function requestAccessToken() {
-  if (process.env.QPAY_MOCK_MODE === 'true') {
+  if (QPAY_MOCK_MODE) {
     return 'mock-access-token-' + Date.now();
   }
 
@@ -175,9 +180,29 @@ async function requestAccessToken() {
 async function createInvoice({ amount, description }) {
   const senderInvoiceNo = `NDSH-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-  if (process.env.QPAY_MOCK_MODE === 'true') {
-    // ... mock logic ...
-    return { /* ... */ };
+  if (QPAY_MOCK_MODE) {
+    const invoiceId = `mock-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const store = readStore();
+    store.invoices[invoiceId] = {
+      invoice_id: invoiceId,
+      sender_invoice_no: senderInvoiceNo,
+      amount: Number(amount || DEFAULT_AMOUNT),
+      status: 'CREATED',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    writeStore(store);
+
+    const mockQrImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/6X9nE0AAAAASUVORK5CYII=';
+    return {
+      invoice_id: invoiceId,
+      qr_text: `mock:${invoiceId}`,
+      qr_image: mockQrImage,
+      urls: [],
+      sender_invoice_no: senderInvoiceNo,
+      amount: Number(amount || DEFAULT_AMOUNT),
+      mock: true,
+    };
   }
 
   if (!INVOICE_CODE) {
@@ -246,7 +271,7 @@ async function createInvoice({ amount, description }) {
 }
 
 async function checkInvoicePayment(invoiceId) {
-  if (process.env.QPAY_MOCK_MODE === 'true') {
+  if (QPAY_MOCK_MODE) {
     // In mock mode, simply assume it's paid if it exists in our store, 
     // or maybe we want to simulate a "click to pay" flow?
     // For simplicity, let's say: if the invoice exists, we mark it as PAID on the first check.

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import FileUpload from '../components/FileUpload';
+import ToolHeader from '../components/ToolHeader';
 import { processStatement, exportToAndDownloadExcel } from '../lib/standardizer';
 import { useAuth } from '../contexts/AuthContext';
 import { useBilling } from '../contexts/BillingContext';
@@ -228,15 +229,15 @@ const AccountStatementOrganizer = () => {
 
     return (
         <div className="tool-page">
-            <div className="container tool-container">
-                <div className="page-header">
+            <ToolHeader
+                title="Санхүүгийн тайлангаа нэг товшилтоор цэгцэл"
+                subtitle="Банкны хуулгаа оруулаад AI-аар автоматаар нэгтгэж, Excel болгон татаж ав."
+            />
+            <div className="container tool-container tool-content">
+                <div className="tool-intro card card--glass">
                     <div>
-                        <span className="eyebrow">AI TOOL</span>
-                        <h1 className="page-header__title">
-                            Санхүүгийн тайлангаа <span className="tool-accent">нэг товшилтоор</span> цэгцэл
-                        </h1>
-                        <p className="page-header__subtitle">
-                            Банкны хуулгаа оруулаад AI-аар автоматаар нэгтгэж, Excel болгон татаж ав.
+                        <p className="tool-intro-copy">
+                            Автомат ангилалт, нэгтгэл, тайлан бэлэн болгох AI процесс.
                         </p>
                         <div className="stepper tool-stepper">
                             {steps.map((step, index) => (
@@ -249,7 +250,7 @@ const AccountStatementOrganizer = () => {
                             ))}
                         </div>
                     </div>
-                    <div className="page-header__panel">
+                    <div className="tool-panel">
                         <p className="tool-panel-label">Нэг удаагийн үйлчилгээ</p>
                         <div className="tool-panel-price">{discountedPrice.toLocaleString()}₮</div>
                         <p className="tool-panel-sub">эсвэл {creditCost} credit ашиглана</p>

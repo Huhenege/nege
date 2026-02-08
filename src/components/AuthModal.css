@@ -65,7 +65,7 @@
     font-weight: 700;
     color: var(--ink-900);
     margin-bottom: 8px;
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
 }
 
 .auth-modal-header p {

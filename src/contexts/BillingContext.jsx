@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { apiFetch } from '../lib/apiClient';
 
 const BillingContext = React.createContext();
@@ -30,34 +32,65 @@ export function BillingProvider({ children }) {
     const refresh = useCallback(async () => {
         setLoading(true);
         setError(null);
+        let resolved = false;
         try {
-            const response = await apiFetch('/billing/config');
-            const data = await response.json();
-            if (response.ok && data?.config) {
+            const docRef = doc(db, 'settings', 'billing');
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+                const data = snap.data() || {};
                 setConfig({
                     ...DEFAULT_BILLING_CONFIG,
-                    ...data.config,
+                    ...data,
                     subscription: {
                         ...DEFAULT_BILLING_CONFIG.subscription,
-                        ...(data.config.subscription || {})
+                        ...(data.subscription || {})
                     },
                     tools: {
                         ...DEFAULT_BILLING_CONFIG.tools,
-                        ...(data.config.tools || {})
+                        ...(data.tools || {})
                     },
                     credits: {
                         ...DEFAULT_BILLING_CONFIG.credits,
-                        ...(data.config.credits || {})
+                        ...(data.credits || {})
                     }
                 });
+                resolved = true;
             } else {
-                setError(data?.error || 'Billing config уншихад алдаа гарлаа.');
+                setConfig(DEFAULT_BILLING_CONFIG);
+                resolved = true;
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Billing config уншихад алдаа гарлаа.');
-        } finally {
-            setLoading(false);
+            console.error('Billing config firestore error:', err);
         }
+        if (!resolved) {
+            try {
+                const response = await apiFetch('/billing/config');
+                const data = await response.json();
+                if (response.ok && data?.config) {
+                    setConfig({
+                        ...DEFAULT_BILLING_CONFIG,
+                        ...data.config,
+                        subscription: {
+                            ...DEFAULT_BILLING_CONFIG.subscription,
+                            ...(data.config.subscription || {})
+                        },
+                        tools: {
+                            ...DEFAULT_BILLING_CONFIG.tools,
+                            ...(data.config.tools || {})
+                        },
+                        credits: {
+                            ...DEFAULT_BILLING_CONFIG.credits,
+                            ...(data.config.credits || {})
+                        }
+                    });
+                } else {
+                    setError(data?.error || 'Billing config уншихад алдаа гарлаа.');
+                }
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Billing config уншихад алдаа гарлаа.');
+            }
+        }
+        setLoading(false);
     }, []);
 
     useEffect(() => {

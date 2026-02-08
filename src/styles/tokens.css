@@ -1,8 +1,8 @@
 :root {
   color-scheme: light;
 
-  --font-sans: 'IBM Plex Sans', 'Segoe UI', sans-serif;
-  --font-serif: 'IBM Plex Serif', 'Georgia', serif;
+  --font-sans: 'Inter', 'Segoe UI', sans-serif;
+  --font-serif: 'Inter', 'Segoe UI', sans-serif;
 
   --brand-50: #fff1f2;
   --brand-100: #ffe4e6;

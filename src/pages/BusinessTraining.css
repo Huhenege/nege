@@ -1,23 +1,51 @@
 .training-page {
     background: var(--surface-1);
     min-height: 100vh;
-    padding: var(--space-10) 0 var(--space-12);
+    padding: 0 0 var(--space-12);
 }
 
 .training-container {
     max-width: var(--container-md);
     margin: 0 auto;
-    padding: 0 var(--space-6);
+    padding: var(--space-7) var(--space-6) 0;
 }
 
-.training-back {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--ink-500);
-    text-decoration: none;
-    font-weight: 600;
+.training-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
     margin-bottom: var(--space-6);
+}
+
+.training-picker__label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-500);
+}
+
+.training-picker__list {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.training-pill {
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid var(--ink-200);
+    background: #ffffff;
+    color: var(--ink-600);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.training-pill.active {
+    border-color: var(--brand-400);
+    background: var(--brand-50);
+    color: var(--brand-700);
 }
 
 .training-layout {
@@ -62,39 +90,6 @@
     margin-bottom: var(--space-5);
 }
 
-.training-meta {
-    display: flex;
-    gap: var(--space-6);
-    flex-wrap: wrap;
-    margin-bottom: var(--space-6);
-}
-
-.training-meta-card {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.training-meta-icon {
-    padding: 10px;
-    border-radius: 12px;
-    background: var(--ink-100);
-    color: var(--ink-500);
-}
-
-.training-meta-title {
-    font-size: 0.7rem;
-    color: var(--ink-400);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-weight: 700;
-}
-
-.training-meta-value {
-    font-weight: 700;
-    color: var(--ink-900);
-}
-
 .training-section {
     margin-bottom: var(--space-7);
 }
@@ -109,6 +104,35 @@
     color: var(--ink-600);
     line-height: 1.7;
     font-size: 1rem;
+}
+
+.training-details-bottom {
+    margin-top: var(--space-7);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--ink-200);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+}
+
+.training-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.training-detail-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-400);
+    font-weight: 700;
+}
+
+.training-detail-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--ink-900);
 }
 
 .training-instructor {
@@ -131,6 +155,12 @@
     align-items: center;
     justify-content: center;
     color: var(--ink-400);
+}
+
+.training-instructor__email {
+    font-size: 0.85rem;
+    color: var(--ink-500);
+    margin-bottom: 0.35rem;
 }
 
 .training-sidebar {
@@ -203,8 +233,248 @@
     color: var(--ink-700);
 }
 
+.training-slot-empty {
+    padding: 0.75rem;
+    border: 1px dashed var(--ink-200);
+    border-radius: 12px;
+    color: var(--ink-400);
+    font-size: 0.85rem;
+    background: var(--ink-50);
+}
+
+.training-slot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.training-slot-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.training-slot-date {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-400);
+    font-weight: 700;
+}
+
+.training-slot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.6rem;
+}
+
+.training-slot-btn {
+    padding: 0.6rem;
+    border-radius: 12px;
+    border: 1px solid var(--ink-200);
+    background: #ffffff;
+    color: var(--ink-600);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.training-slot-btn span {
+    font-size: 0.7rem;
+    color: var(--ink-400);
+}
+
+.training-slot-btn.active {
+    border-color: var(--brand-600);
+    background: var(--brand-50);
+    color: var(--brand-700);
+}
+
+.training-slot-btn.active span {
+    color: var(--brand-600);
+}
+
+.training-slot-btn.full {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.training-slot-btn.past {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.training-calendar-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.training-calendar-view .calendar-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--ink-100);
+}
+
+.training-calendar-view .calendar-nav {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.training-calendar-view .calendar-month {
+    font-weight: 700;
+    color: var(--ink-800);
+    font-size: 0.95rem;
+    flex: 1;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.training-calendar-view .calendar-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: 1px solid var(--ink-200);
+    background: #ffffff;
+    color: var(--ink-600);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.training-calendar-view .calendar-nav-btn:hover {
+    border-color: var(--brand-300);
+    color: var(--ink-900);
+}
+
+.training-calendar-view .calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.training-calendar-view .calendar-weekday {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    text-align: center;
+}
+
+.training-calendar-view .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.35rem;
+}
+
+.training-calendar-view .calendar-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    padding: 0.4rem;
+    background: var(--surface-0);
+    border-radius: 10px;
+    border: 1px solid var(--ink-200);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.training-calendar-view .calendar-cell:hover {
+    border-color: var(--brand-200);
+    box-shadow: var(--shadow-xs);
+}
+
+.training-calendar-view .calendar-cell--muted {
+    opacity: 0.4;
+}
+
+.training-calendar-view .calendar-cell--selected {
+    border-color: var(--brand-400);
+    background: var(--brand-50);
+}
+
+.training-calendar-view .calendar-cell--today {
+    box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.18);
+}
+
+.training-calendar-view .calendar-cell--disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: var(--surface-2);
+}
+
+.training-calendar-view .calendar-cell-date {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--ink-800);
+}
+
+.training-calendar-view .calendar-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--brand-500);
+    display: inline-block;
+}
+
+.training-calendar-view .calendar-panel {
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--ink-200);
+    background: var(--surface-0);
+}
+
+.training-calendar-view .calendar-grid {
+    gap: 0.5rem;
+}
+
+.training-calendar-view .calendar-cell {
+    min-height: 70px;
+}
+
+.training-calendar-view .calendar-side {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--ink-200);
+    padding: var(--space-4);
+    background: var(--surface-0);
+}
+
+.training-calendar-view .calendar-side-header {
+    margin-bottom: var(--space-3);
+}
+
+.training-calendar-view .calendar-today {
+    margin-left: auto;
+}
+
+.training-calendar-view .calendar-slot-grid {
+    margin-top: 0.5rem;
+}
+
 .training-payment {
     text-align: center;
+}
+
+.training-total-row--highlight {
+    font-weight: 700;
+    color: var(--ink-900);
+    margin-bottom: 0.4rem;
 }
 
 .training-payment img {
@@ -226,7 +496,21 @@
 }
 
 @media (max-width: 640px) {
-    .training-time-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .training-details-bottom {
+        grid-template-columns: 1fr;
+    }
+
+    .training-calendar-view .calendar-toolbar {
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .training-calendar-view .calendar-month {
+        flex: 1 1 100%;
+        text-align: left;
+    }
+
+    .training-calendar-view .calendar-today {
+        margin-left: 0;
     }
 }

@@ -237,6 +237,10 @@
   box-shadow: var(--shadow-xs);
 }
 
+.tool-content {
+  padding: var(--space-8) 0 var(--space-12);
+}
+
 .stepper {
   display: flex;
   gap: var(--space-4);

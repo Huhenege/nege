@@ -13,7 +13,8 @@ const AIAssistant = () => {
     const guestAllowed = new Set([
         "/ai-assistant/account-statement-organizer",
         "/ai-assistant/social-insurance-holiday",
-        "/ai-assistant/official-letterhead"
+        "/ai-assistant/official-letterhead",
+        "/ai-assistant/business-training"
     ]);
 
     const tools = [

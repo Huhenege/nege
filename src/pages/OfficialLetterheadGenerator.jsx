@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-    ArrowLeft,
     Download,
     Image as ImageIcon,
     Building2,
@@ -19,6 +18,7 @@ import useAccess from '../hooks/useAccess';
 import { apiFetch } from '../lib/apiClient';
 import { getGuestSessionId } from '../lib/guest';
 import './OfficialLetterheadGenerator.css';
+import ToolHeader from '../components/ToolHeader';
 
 const PAYMENT_STORAGE_KEY = 'letterhead-payment-grant';
 
@@ -530,17 +530,10 @@ const OfficialLetterheadGenerator = () => {
 
     return (
         <div className="ob-page">
-            <div className="ob-header">
-                <div className="ob-header-inner">
-                    <div>
-                        <h1>Албан бичиг үүсгэгч</h1>
-                        <p>Стандартын дагуу мэргэжлийн албан бланк бэлтгэх</p>
-                    </div>
-                    <Link to="/ai-assistant" className="ob-btn ob-btn--ghost">
-                        <ArrowLeft size={18} /> Буцах
-                    </Link>
-                </div>
-            </div>
+            <ToolHeader
+                title="Албан бичиг үүсгэгч"
+                subtitle="Стандартын дагуу мэргэжлийн албан бланк бэлтгэх"
+            />
 
             <div className="ob-container">
                 {/* Sidebar: Inputs */}

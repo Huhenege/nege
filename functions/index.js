@@ -569,7 +569,7 @@ app.get('/billing/config', async (req, res) => {
 
 app.post('/billing/invoice', async (req, res) => {
   try {
-    const { type, toolKey, bundleId, trainingId } = req.body || {};
+    const { type, toolKey, bundleId, trainingId, bookingId } = req.body || {};
     const authUser = await getAuthUser(req);
     const billingConfig = await getBillingConfig();
 
@@ -661,6 +661,58 @@ app.post('/billing/invoice', async (req, res) => {
       return;
     }
 
+    if (type === 'training_remaining') {
+      if (!authUser?.uid) {
+        res.status(401).json({ error: 'Нэвтэрсэн хэрэглэгч шаардлагатай' });
+        return;
+      }
+      if (!bookingId) {
+        res.status(400).json({ error: 'bookingId шаардлагатай' });
+        return;
+      }
+
+      const bookingSnap = await db.collection('bookings').doc(bookingId).get();
+      if (!bookingSnap.exists) {
+        res.status(404).json({ error: 'Захиалга олдсонгүй' });
+        return;
+      }
+
+      const booking = bookingSnap.data() || {};
+      if (booking.userId !== authUser.uid) {
+        res.status(403).json({ error: 'Энэ захиалгын төлбөрийг төлөх эрхгүй байна' });
+        return;
+      }
+
+      const remainingAmount = Number(booking.remainingAmount || 0);
+      if (remainingAmount <= 0) {
+        res.status(400).json({ error: 'Үлдэгдэл төлбөр байхгүй байна' });
+        return;
+      }
+
+      const invoice = await createInvoice({
+        amount: remainingAmount,
+        description: `Сургалтын үлдэгдэл төлбөр: ${booking.trainingTitle || booking.trainingId || ''}`,
+        invoiceCode: QPAY_INVOICE_CODE.value(),
+        callbackUrl: getQpayCallbackUrl(),
+        baseUrl: getQpayBaseUrl(),
+        clientId: QPAY_CLIENT_ID.value(),
+        clientSecret: QPAY_CLIENT_SECRET.value(),
+        metadata: {
+          type: 'training_remaining',
+          bookingId,
+          trainingId: booking.trainingId || null,
+          totalAmount: Number(booking.totalAmount || 0),
+          advanceAmount: Number(booking.amount || 0),
+          remainingAmount,
+          paymentStage: 'REMAINING',
+          userId: authUser.uid,
+        },
+      });
+
+      res.json({ ...invoice, amount: remainingAmount });
+      return;
+    }
+
     if (type === 'training') {
       if (!trainingId) {
         res.status(400).json({ error: 'trainingId шаардлагатай' });
@@ -672,10 +724,16 @@ app.post('/billing/invoice', async (req, res) => {
         return;
       }
       const training = trainingSnap.data();
-      const amount = Number(training?.price || 0);
+      const totalPrice = Number(training?.price || 0);
+      const rawAdvance = training?.advanceAmount;
+      const advanceAmount = rawAdvance === null || rawAdvance === undefined || rawAdvance === ''
+        ? totalPrice
+        : Math.min(Math.max(Number(rawAdvance || 0), 0), totalPrice);
+      const remainingAmount = Math.max(totalPrice - advanceAmount, 0);
+      const amount = advanceAmount;
       const invoice = await createInvoice({
         amount,
-        description: `Сургалтын захиалга: ${training?.title || trainingId}`,
+        description: `Сургалтын захиалга: ${training?.title || trainingId}${remainingAmount > 0 ? ' (Урьдчилгаа)' : ''}`,
         invoiceCode: QPAY_INVOICE_CODE.value(),
         callbackUrl: getQpayCallbackUrl(),
         baseUrl: getQpayBaseUrl(),
@@ -684,6 +742,10 @@ app.post('/billing/invoice', async (req, res) => {
         metadata: {
           type: 'training',
           trainingId,
+          totalPrice,
+          advanceAmount,
+          remainingAmount,
+          paymentStage: remainingAmount > 0 ? 'DEPOSIT' : 'FULL',
           userId: authUser?.uid || null,
         },
       });

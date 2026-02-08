@@ -1,6 +1,6 @@
 .tool-page {
     min-height: 100vh;
-    padding: var(--space-9) 0 var(--space-12);
+    padding: 0 0 var(--space-12);
     background: var(--surface-1);
 }
 
@@ -12,6 +12,28 @@
 
 .tool-accent {
     color: var(--brand-600);
+}
+
+.tool-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: var(--space-6);
+    padding: var(--space-6);
+    align-items: center;
+}
+
+.tool-intro-copy {
+    font-size: 1rem;
+    color: var(--ink-600);
+    margin-bottom: var(--space-4);
+}
+
+.tool-panel {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--ink-200);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-xs);
 }
 
 .tool-grid {
@@ -102,6 +124,10 @@
 }
 
 @media (max-width: 900px) {
+    .tool-intro {
+        grid-template-columns: 1fr;
+    }
+
     .tool-grid {
         grid-template-columns: 1fr;
     }

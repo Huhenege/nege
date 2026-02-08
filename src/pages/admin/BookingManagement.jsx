@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
-import { collection, getDocs, doc, updateDoc, serverTimestamp, query, orderBy, where } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, serverTimestamp, query, orderBy, where, onSnapshot } from 'firebase/firestore';
 import { Calendar, User, Mail, DollarSign, Clock, CheckCircle2, XCircle, AlertCircle, Search, Filter } from 'lucide-react';
 
 const BookingManagement = () => {
@@ -9,25 +9,25 @@ const BookingManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('ALL');
 
-    const fetchBookings = async () => {
-        setLoading(true);
-        try {
-            const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"));
-            const querySnapshot = await getDocs(q);
-            const data = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setBookings(data);
-        } catch (error) {
-            console.error("Error fetching bookings:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchBookings();
+        setLoading(true);
+        const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"));
+        const unsubscribe = onSnapshot(
+            q,
+            (querySnapshot) => {
+                const data = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setBookings(data);
+                setLoading(false);
+            },
+            (error) => {
+                console.error("Error fetching bookings:", error);
+                setLoading(false);
+            }
+        );
+        return () => unsubscribe();
     }, []);
 
     const updateStatus = async (id, newStatus) => {
@@ -51,11 +51,15 @@ const BookingManagement = () => {
         return matchesSearch && matchesStatus;
     });
 
-    const getStatusStyle = (status) => {
+    const getStatusStyle = (booking) => {
+        const status = booking.status;
+        const hasRemaining = Number(booking.remainingAmount || 0) > 0;
         switch (status) {
             case 'PAID':
             case 'CONFIRMED':
-                return { bg: '#ecfdf5', color: '#059669', icon: CheckCircle2, text: 'Баталгаажсан' };
+                return hasRemaining
+                    ? { bg: 'var(--brand-50)', color: '#e11d48', icon: CheckCircle2, text: 'Урьдчилгаа төлсөн' }
+                    : { bg: '#ecfdf5', color: '#059669', icon: CheckCircle2, text: 'Баталгаажсан' };
             case 'PENDING':
                 return { bg: '#fff7ed', color: '#d97706', icon: AlertCircle, text: 'Хүлээгдэж буй' };
             case 'CANCELLED':
@@ -148,7 +152,7 @@ const BookingManagement = () => {
                     </thead>
                     <tbody>
                         {filteredBookings.map(b => {
-                            const status = getStatusStyle(b.status);
+                            const status = getStatusStyle(b);
                             return (
                                 <tr key={b.id} style={{ borderBottom: '1px solid var(--ink-100)' }}>
                                     <td style={{ padding: '1rem 1.5rem' }}>
@@ -168,6 +172,11 @@ const BookingManagement = () => {
                                     </td>
                                     <td style={{ padding: '1rem 1.5rem' }}>
                                         <div style={{ fontWeight: '700', color: 'var(--ink-900)' }}>₮{Number(b.amount).toLocaleString()}</div>
+                                        {Number(b.remainingAmount || 0) > 0 && (
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)' }}>
+                                                Үлдэгдэл: ₮{Number(b.remainingAmount).toLocaleString()}
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={{ padding: '1rem 1.5rem' }}>
                                         <span style={{
