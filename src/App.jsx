@@ -23,18 +23,17 @@ import './pages/Home.css';
 
 
 
+import AuthModal from './components/AuthModal';
+
 function App() {
   return (
     <Router>
       <AuthProvider>
         <div className="app-wrapper">
           <Header />
+          <AuthModal />
           <Routes>
-            <Route path="/" element={
-              <ProtectedRoute>
-                <AIAssistant />
-              </ProtectedRoute>
-            } />
+            <Route path="/" element={<AIAssistant />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/ai-assistant/account-statement-organizer" element={

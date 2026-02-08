@@ -79,13 +79,26 @@ export function AuthProvider({ children }) {
         return unsubscribe;
     }, []);
 
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+    function openAuthModal() {
+        setIsAuthModalOpen(true);
+    }
+
+    function closeAuthModal() {
+        setIsAuthModalOpen(false);
+    }
+
     const value = {
         currentUser,
         loading,
         login,
         signup,
         loginWithGoogle,
-        logout
+        logout,
+        isAuthModalOpen,
+        openAuthModal,
+        closeAuthModal
     }
 
     return (

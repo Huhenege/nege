@@ -1,9 +1,20 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { FileText, Cpu, Calculator, Sparkles, ArrowRight, Clock, GraduationCap } from 'lucide-react';
 import './AIAssistant.css';
 
 const AIAssistant = () => {
+    const { currentUser, openAuthModal } = useAuth();
+    const navigate = useNavigate();
+
+    const handleToolClick = (path) => {
+        if (!currentUser) {
+            openAuthModal();
+        } else {
+            navigate(path);
+        }
+    };
+
     return (
         <div className="ai-page">
             <div className="ai-container">
@@ -24,7 +35,7 @@ const AIAssistant = () => {
                 <div className="ai-grid">
 
                     {/* Tool 1: Account Statement */}
-                    <Link to="/ai-assistant/account-statement-organizer" className="ai-card">
+                    <div onClick={() => handleToolClick("/ai-assistant/account-statement-organizer")} className="ai-card">
                         <div className="ai-card-icon icon-blue">
                             <FileText size={32} />
                         </div>
@@ -36,10 +47,10 @@ const AIAssistant = () => {
                         <div className="ai-card-arrow">
                             Эхлүүлэх <ArrowRight size={16} style={{ marginLeft: '4px' }} />
                         </div>
-                    </Link>
+                    </div>
 
                     {/* Tool 2: Social Insurance */}
-                    <Link to="/ai-assistant/social-insurance-holiday" className="ai-card">
+                    <div onClick={() => handleToolClick("/ai-assistant/social-insurance-holiday")} className="ai-card">
                         <div className="ai-card-icon icon-purple">
                             <Calculator size={32} />
                         </div>
@@ -51,10 +62,10 @@ const AIAssistant = () => {
                         <div className="ai-card-arrow">
                             Эхлүүлэх <ArrowRight size={16} style={{ marginLeft: '4px' }} />
                         </div>
-                    </Link>
+                    </div>
 
                     {/* Tool 3: Official Letterhead */}
-                    <Link to="/ai-assistant/official-letterhead" className="ai-card">
+                    <div onClick={() => handleToolClick("/ai-assistant/official-letterhead")} className="ai-card">
                         <div className="ai-card-icon icon-pink">
                             <FileText size={32} />
                         </div>
@@ -66,10 +77,10 @@ const AIAssistant = () => {
                         <div className="ai-card-arrow">
                             Эхлүүлэх <ArrowRight size={16} style={{ marginLeft: '4px' }} />
                         </div>
-                    </Link>
+                    </div>
 
                     {/* Tool 4: Business Training */}
-                    <Link to="/ai-assistant/business-training" className="ai-card">
+                    <div onClick={() => handleToolClick("/ai-assistant/business-training")} className="ai-card">
                         <div className="ai-card-icon icon-orange">
                             <GraduationCap size={32} />
                         </div>
@@ -81,7 +92,7 @@ const AIAssistant = () => {
                         <div className="ai-card-arrow">
                             Бүртгүүлэх <ArrowRight size={16} style={{ marginLeft: '4px' }} />
                         </div>
-                    </Link>
+                    </div>
 
                     {/* Coming Soon */}
                     <div className="ai-card coming-soon">

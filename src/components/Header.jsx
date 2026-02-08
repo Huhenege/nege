@@ -6,7 +6,7 @@ import Logo from './Logo';
 import './Header.css';
 
 const Header = () => {
-    const { currentUser, logout } = useAuth();
+    const { currentUser, logout, openAuthModal } = useAuth();
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -104,17 +104,31 @@ const Header = () => {
                         )}
                     </div>
                 ) : (
-                    <Link to="/login" className="btn-nav" style={{
-                        fontSize: '0.9rem',
-                        fontWeight: '500',
-                        color: 'var(--text-secondary)',
-                        textDecoration: 'none',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '6px',
-                        border: '1px solid #e5e7eb'
-                    }}>
+                    <button
+                        onClick={openAuthModal}
+                        className="btn-nav"
+                        style={{
+                            fontSize: '0.9rem',
+                            fontWeight: '600',
+                            color: '#111827',
+                            background: 'white',
+                            cursor: 'pointer',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '6px',
+                            border: '1.5px solid #374151',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#111827';
+                            e.currentTarget.style.color = 'white';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'white';
+                            e.currentTarget.style.color = '#111827';
+                        }}
+                    >
                         Нэвтрэх
-                    </Link>
+                    </button>
                 )}
             </nav>
         </header>
