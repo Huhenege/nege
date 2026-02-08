@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, Phone, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
 import Logo from './Logo';
 import './Footer.css';
 
@@ -24,28 +24,9 @@ const Footer = () => {
                         </li>
                         <li>
                             <Phone size={18} />
-                            <span>+976 8800-XXXX</span>
-                        </li>
-                        <li>
-                            <MapPin size={18} />
-                            <span>Улаанбаатар хот, Сүхбаатар дүүрэг</span>
+                            <span>+976 88104099</span>
                         </li>
                     </ul>
-                </div>
-
-                <div className="footer-social">
-                    <h4 className="footer-title">Биднийг дагах</h4>
-                    <div className="social-links">
-                        <a href="https://facebook.com/nege.mn" target="_blank" rel="noopener noreferrer" className="social-icon">
-                            <Facebook size={20} />
-                        </a>
-                        <a href="https://instagram.com/nege.mn" target="_blank" rel="noopener noreferrer" className="social-icon">
-                            <Instagram size={20} />
-                        </a>
-                        <a href="#" className="social-icon">
-                            <Twitter size={20} />
-                        </a>
-                    </div>
                 </div>
             </div>
 
