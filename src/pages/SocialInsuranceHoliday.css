@@ -1,7 +1,7 @@
 .ndsh2-page {
   min-height: 100vh;
   background: #f8fafc;
-  padding-top: calc(var(--header-height) + 1rem);
+  padding-top: 1rem;
   color: #0f172a;
   text-align: left;
 }

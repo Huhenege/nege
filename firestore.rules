@@ -44,6 +44,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /letterheadTemplates/{templateId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
     // Default deny for anything else
     match /{document=**} {
       allow read, write: if false;

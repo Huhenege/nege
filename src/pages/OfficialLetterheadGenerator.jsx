@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
     ArrowLeft,
     Download,
@@ -13,13 +13,17 @@ import {
 import html2pdf from 'html2pdf.js';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
 import './OfficialLetterheadGenerator.css';
 
 const OfficialLetterheadGenerator = () => {
+    const { currentUser } = useAuth();
+    const location = useLocation();
     // --- State ---
     const [config, setConfig] = useState({
         orgName: 'БАЙГУУЛЛАГЫН НЭР',
         orgLogo: null,
+        orgTagline: 'БАЙГУУЛЛАГЫН ҮЙЛ АЖИЛЛАГААНЫ ЧИГЛЭЛ',
         address: 'Улаанбаатар хот, Сүхбаатар дүүрэг, 1-р хороо, Чингисийн талбай-1',
         phone: '7700-0000',
         email: 'info@organization.mn',
@@ -28,18 +32,21 @@ const OfficialLetterheadGenerator = () => {
         docIndex: '24/01',
         docDate: new Date().toISOString().split('T')[0],
         docCity: 'Улаанбаатар хот',
+        tanaiRef: '',
+        tanaiNo: '',
 
-        addresseeName: 'ГҮЙЦЭТГЭХ ЗАХИРАЛ Б.БАТ-ЭРДЭНЭ ТАНАА',
-        addresseeOrg: 'МОНГОЛЫН ҮНДЭСНИЙ ХУДАЛДАА АЖ ҮЙЛДВЭРИЙН ТАНХИМ-Д',
+        addresseeName: 'АЛБАН ТУШААЛТАН ТАНАА',
+        addresseeOrg: 'ИЛГЭЭН БАЙГУУЛЛАГА',
 
-        subject: 'Хамтран ажиллах тухай',
-        content: 'Монголын Үндэсний Худалдаа Аж Үйлдвэрийн Танхим нь улс орны эдийн засаг, бизнесийн орчныг сайжруулах, дотоодын үйлдвэрлэгчдийг дэмжих чиглэлээр олон талт үйл ажиллагаа явуулдаг билээ.\n\nМанай байгууллага нь 2024 оны үйл ажиллагааны хүрээнд танай байгууллагатай хамтран ажиллах хүсэлтэй байна.',
+        subject: 'Гарчиг',
+        content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n\nExcepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
 
         signPosition: 'Захирал',
         signName: 'Г.Гэрэлт',
 
         paperSize: 'A4', // A4, A5
         orientation: 'portrait', // portrait, landscape
+        fontFamily: 'Times New Roman', // 'Arial' | 'Times New Roman'
     });
 
     const [logoPreview, setLogoPreview] = useState(null);
@@ -48,6 +55,16 @@ const OfficialLetterheadGenerator = () => {
     const [paymentStatus, setPaymentStatus] = useState('idle'); // idle, creating, pending, success
     const [isPaid, setIsPaid] = useState(false);
     const documentRef = useRef(null);
+    const measureRef = useRef(null);
+    const measureHeaderRef = useRef(null);
+    const measureAddresseeRef = useRef(null);
+    const measureSubjectRef = useRef(null);
+    const measureContentRef = useRef(null);
+    const measureSignatureRef = useRef(null);
+    const [pages, setPages] = useState([config.content.split('\n')]);
+    const [templates, setTemplates] = useState([]);
+    const [templatesLoading, setTemplatesLoading] = useState(false);
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
     const qpayApiBase = (import.meta.env.VITE_QPAY_API_BASE || '/api').replace(/\/$/, '');
 
@@ -55,6 +72,59 @@ const OfficialLetterheadGenerator = () => {
     useEffect(() => {
         // Build document when config changes - just for visual
     }, [config]);
+
+    useEffect(() => {
+        setTemplates([]);
+        setSelectedTemplateId('');
+    }, [currentUser?.uid]);
+
+    useEffect(() => {
+        const loadTemplates = async () => {
+            if (!currentUser) return;
+            setTemplatesLoading(true);
+            try {
+                const templatesRef = collection(db, 'letterheadTemplates');
+                const q = query(templatesRef, where('userId', '==', currentUser.uid));
+                const snapshot = await getDocs(q);
+                const list = snapshot.docs.map((docSnap) => ({
+                    id: docSnap.id,
+                    ...docSnap.data()
+                })).sort((a, b) => {
+                    const aTime = a.updatedAt?.toDate?.().getTime?.() || a.createdAt?.toDate?.().getTime?.() || 0;
+                    const bTime = b.updatedAt?.toDate?.().getTime?.() || b.createdAt?.toDate?.().getTime?.() || 0;
+                    return bTime - aTime;
+                });
+                setTemplates(list);
+            } catch (error) {
+                console.error('Template list error:', error);
+            } finally {
+                setTemplatesLoading(false);
+            }
+        };
+
+        loadTemplates();
+    }, [currentUser]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const templateId = params.get('templateId');
+        if (templateId) {
+            setSelectedTemplateId(templateId);
+        }
+    }, [location.search]);
+
+    const handleApplyTemplate = () => {
+        const selected = templates.find(item => item.id === selectedTemplateId);
+        if (selected?.template) {
+            setConfig(prev => ({ ...prev, ...selected.template }));
+        }
+    };
+
+    useEffect(() => {
+        if (selectedTemplateId) {
+            handleApplyTemplate();
+        }
+    }, [selectedTemplateId, templates]);
 
     // --- Handlers ---
     const handleChange = (e) => {
@@ -115,6 +185,9 @@ const OfficialLetterheadGenerator = () => {
     const generatePDF = () => {
         setIsGenerating(true);
         const element = documentRef.current;
+        if (element) {
+            element.classList.add('ob-printing');
+        }
         const opt = {
             margin: 0,
             filename: `official_letter_${config.docIndex.replace(/\//g, '-')}.pdf`,
@@ -124,6 +197,14 @@ const OfficialLetterheadGenerator = () => {
         };
 
         html2pdf().set(opt).from(element).save().then(() => {
+            if (element) {
+                element.classList.remove('ob-printing');
+            }
+            setIsGenerating(false);
+        }).catch(() => {
+            if (element) {
+                element.classList.remove('ob-printing');
+            }
             setIsGenerating(false);
         });
     };
@@ -131,6 +212,7 @@ const OfficialLetterheadGenerator = () => {
     const [isAiGenerating, setIsAiGenerating] = useState(false);
     const blank = '\u00A0';
     const formattedDate = config.docDate ? config.docDate.replace(/-/g, '.') : '';
+    const isA5 = config.paperSize === 'A5';
 
     const handleAiGenerateContent = async () => {
         if (!config.subject) {
@@ -174,6 +256,22 @@ const OfficialLetterheadGenerator = () => {
     };
 
     // --- UI Helpers ---
+    const getPaperMargins = (paperSize, orientation) => {
+        if (paperSize === 'A4') {
+            if (orientation === 'landscape') {
+                return { top: 30, right: 20, bottom: 15, left: 20 };
+            }
+            return { top: 20, right: 15, bottom: 20, left: 30 };
+        }
+        // A5 (standard same for both orientations per provided table)
+        return { top: 20, right: 15, bottom: 20, left: 30 };
+    };
+
+    const margins = getPaperMargins(config.paperSize, config.orientation);
+    const fontFamily = config.fontFamily === 'Arial' ? 'Arial, sans-serif' : '"Times New Roman", serif';
+    const bodyFontSize = config.fontFamily === 'Arial' ? '11pt' : '12pt';
+    const lineHeight = config.paperSize === 'A5' ? 1.0 : 1.3;
+
     const paperStyle = {
         width: config.paperSize === 'A4'
             ? (config.orientation === 'portrait' ? '210mm' : '297mm')
@@ -181,7 +279,120 @@ const OfficialLetterheadGenerator = () => {
         height: config.paperSize === 'A4'
             ? (config.orientation === 'portrait' ? '297mm' : '210mm')
             : (config.orientation === 'portrait' ? '210mm' : '148mm'),
+        paddingTop: `${margins.top}mm`,
+        paddingRight: `${margins.right}mm`,
+        paddingBottom: `${margins.bottom}mm`,
+        paddingLeft: `${margins.left}mm`,
+        '--ob-font-family': fontFamily,
+        '--ob-body-size': bodyFontSize,
+        '--ob-line-height': lineHeight,
     };
+
+    useLayoutEffect(() => {
+        const measureEl = measureRef.current;
+        const headerEl = measureHeaderRef.current;
+        const subjectEl = measureSubjectRef.current;
+        const contentEl = measureContentRef.current;
+        const signatureEl = measureSignatureRef.current;
+
+        if (!measureEl || !headerEl || !subjectEl || !contentEl || !signatureEl) {
+            setPages([config.content.split('\n')]);
+            return;
+        }
+
+        const paragraphs = config.content.split('\n');
+        const pageHeightMm = config.paperSize === 'A4'
+            ? (config.orientation === 'portrait' ? 297 : 210)
+            : (config.orientation === 'portrait' ? 210 : 148);
+        const computedStyles = window.getComputedStyle(measureEl);
+        const paddingTop = parseFloat(computedStyles.paddingTop) || 0;
+        const paddingBottom = parseFloat(computedStyles.paddingBottom) || 0;
+        const pageInnerHeight = Math.max(0, measureEl.clientHeight - paddingTop - paddingBottom);
+        const pxPerMm = measureEl.clientHeight / pageHeightMm;
+        const pageNumberReserve = 6 * pxPerMm;
+
+        const getOuterHeight = (el) => {
+            if (!el) return 0;
+            const styles = window.getComputedStyle(el);
+            const marginTop = parseFloat(styles.marginTop) || 0;
+            const marginBottom = parseFloat(styles.marginBottom) || 0;
+            return el.offsetHeight + marginTop + marginBottom;
+        };
+
+        const headerHeight = getOuterHeight(headerEl);
+        const addresseeHeight = isA5 ? getOuterHeight(measureAddresseeRef.current) : 0;
+        const subjectHeight = getOuterHeight(subjectEl);
+        const signatureHeight = getOuterHeight(signatureEl);
+
+        const firstAvailable = Math.max(0, pageInnerHeight - headerHeight - addresseeHeight - subjectHeight - pageNumberReserve);
+        const middleAvailable = Math.max(0, pageInnerHeight - pageNumberReserve);
+        const firstAvailableWithSignature = Math.max(0, firstAvailable - signatureHeight);
+        const middleAvailableWithSignature = Math.max(0, middleAvailable - signatureHeight);
+
+        const measureContentHeight = (paras) => {
+            contentEl.innerHTML = '';
+            paras.forEach((para) => {
+                const p = document.createElement('p');
+                p.textContent = para || '\u00A0';
+                contentEl.appendChild(p);
+            });
+            return contentEl.offsetHeight;
+        };
+
+        const fitFromStart = (paras, available) => {
+            if (!paras.length) return 0;
+            let count = 0;
+            const chunk = [];
+            for (let i = 0; i < paras.length; i += 1) {
+                chunk.push(paras[i]);
+                const height = measureContentHeight(chunk);
+                if (height > available) {
+                    return count === 0 ? 1 : count;
+                }
+                count += 1;
+            }
+            return count;
+        };
+
+        const splitTailToFit = (paras, available) => {
+            if (!paras.length) return { head: [], tail: [] };
+            const tail = [];
+            for (let i = paras.length - 1; i >= 0; i -= 1) {
+                tail.unshift(paras[i]);
+                const height = measureContentHeight(tail);
+                if (height > available) {
+                    tail.shift();
+                    return { head: paras.slice(0, i + 1), tail };
+                }
+            }
+            return { head: [], tail };
+        };
+
+        const newPages = [];
+        let startIndex = 0;
+        let available = firstAvailable;
+
+        while (startIndex < paragraphs.length) {
+            const count = fitFromStart(paragraphs.slice(startIndex), available);
+            newPages.push(paragraphs.slice(startIndex, startIndex + count));
+            startIndex += count;
+            available = middleAvailable;
+        }
+
+        if (newPages.length) {
+            const lastIndex = newPages.length - 1;
+            const lastParas = newPages[lastIndex];
+            const lastLimit = newPages.length === 1 ? firstAvailableWithSignature : middleAvailableWithSignature;
+            if (measureContentHeight(lastParas) > lastLimit) {
+                const { head, tail } = splitTailToFit(lastParas, lastLimit);
+                newPages.splice(lastIndex, 1);
+                if (head.length) newPages.push(head);
+                newPages.push(tail.length ? tail : ['']);
+            }
+        }
+
+        setPages(newPages.length ? newPages : [['']]);
+    }, [config, isA5]);
 
     return (
         <div className="ob-page">
@@ -200,6 +411,46 @@ const OfficialLetterheadGenerator = () => {
             <div className="ob-container">
                 {/* Sidebar: Inputs */}
                 <div className="ob-sidebar">
+                    <div className="ob-card">
+                        <div className="ob-card-header">
+                            <FileText size={18} /> Хадгалсан загварууд
+                        </div>
+                        <div className="ob-card-body ob-stack">
+                            {templatesLoading ? (
+                                <div className="ob-muted">Уншиж байна...</div>
+                            ) : templates.length === 0 ? (
+                                <div className="ob-muted">
+                                    Хадгалсан загвар алга байна.{' '}
+                                    <Link to="/profile/letterhead-templates">Загвар үүсгэх</Link>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="ob-input-group">
+                                        <label>Загвар сонгох</label>
+                                        <select
+                                            value={selectedTemplateId}
+                                            onChange={(e) => setSelectedTemplateId(e.target.value)}
+                                        >
+                                            <option value="">Сонгох...</option>
+                                            {templates.map((item) => (
+                                                <option key={item.id} value={item.id}>
+                                                    {item.title || 'Нэргүй загвар'}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <button
+                                        className="ob-btn ob-btn--ghost"
+                                        onClick={handleApplyTemplate}
+                                        disabled={!selectedTemplateId}
+                                    >
+                                        Сонгосон загварыг хэрэглэх
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
                     <div className="ob-card">
                         <div className="ob-card-header">
                             <Layout size={18} /> Формат ба Загвар
@@ -226,10 +477,19 @@ const OfficialLetterheadGenerator = () => {
                                             className={`ob-toggle-btn ${config.orientation === 'portrait' ? 'active' : ''}`}
                                             onClick={() => setConfig(p => ({ ...p, orientation: 'portrait' }))}
                                         >Босоо</button>
+                                    </div>
+                                </div>
+                                <div className="ob-input-group">
+                                    <label>Фонт</label>
+                                    <div className="ob-toggle-row">
                                         <button
-                                            className={`ob-toggle-btn ${config.orientation === 'landscape' ? 'active' : ''}`}
-                                            onClick={() => setConfig(p => ({ ...p, orientation: 'landscape' }))}
-                                        >Хэвтээ</button>
+                                            className={`ob-toggle-btn ${config.fontFamily === 'Arial' ? 'active' : ''}`}
+                                            onClick={() => setConfig(p => ({ ...p, fontFamily: 'Arial' }))}
+                                        >Arial</button>
+                                        <button
+                                            className={`ob-toggle-btn ${config.fontFamily === 'Times New Roman' ? 'active' : ''}`}
+                                            onClick={() => setConfig(p => ({ ...p, fontFamily: 'Times New Roman' }))}
+                                        >Times New Roman</button>
                                     </div>
                                 </div>
                             </div>
@@ -255,6 +515,10 @@ const OfficialLetterheadGenerator = () => {
                             <div className="ob-input-group">
                                 <label>Нэр</label>
                                 <input name="orgName" value={config.orgName} onChange={handleChange} />
+                            </div>
+                            <div className="ob-input-group">
+                                <label>Үйл ажиллагааны чиглэл</label>
+                                <input name="orgTagline" value={config.orgTagline} onChange={handleChange} />
                             </div>
                             <div className="ob-input-group">
                                 <label>Хаяг</label>
@@ -286,6 +550,16 @@ const OfficialLetterheadGenerator = () => {
                                 <div className="ob-input-group">
                                     <label>Огноо</label>
                                     <input type="date" name="docDate" value={config.docDate} onChange={handleChange} />
+                                </div>
+                            </div>
+                            <div className="ob-input-grid">
+                                <div className="ob-input-group">
+                                    <label>Танай</label>
+                                    <input name="tanaiRef" value={config.tanaiRef} onChange={handleChange} placeholder="Огноо/код" />
+                                </div>
+                                <div className="ob-input-group">
+                                    <label>Танай №</label>
+                                    <input name="tanaiNo" value={config.tanaiNo} onChange={handleChange} placeholder="Дугаар" />
                                 </div>
                             </div>
                             <div className="ob-input-group">
@@ -359,79 +633,161 @@ const OfficialLetterheadGenerator = () => {
                     )}
 
                     <div className="ob-paper-wrapper">
-                        <div
-                            className={`ob-paper ${config.orientation}`}
-                            style={paperStyle}
-                            ref={documentRef}
-                        >
-                            {/* Header Section */}
-                            <div className="ob-doc-header">
-                                <div className="ob-header-row">
-                                    <div className="ob-header-left">
-                                        <span className="ob-corner ob-corner--tl" />
-                                        {logoPreview && <img src={logoPreview} alt="Logo" className="ob-doc-logo" />}
-                                        <div className="ob-header-tagline">Байгууллагын үйл ажиллагааны чиглэл</div>
-                                        <div className="ob-doc-org-name">{config.orgName}</div>
-                                        <div className="ob-header-contacts">
-                                            <div>{config.address}</div>
-                                            <div>Утас: {config.phone}</div>
-                                            <div>И-мэйл: {config.email}</div>
-                                            {config.web && <div>Вэб: {config.web}</div>}
+                        <div className="ob-paper-stack" ref={documentRef}>
+                            {pages.map((pageParagraphs, pageIndex) => {
+                                const isFirst = pageIndex === 0;
+                                const isLast = pageIndex === pages.length - 1;
+                                return (
+                                    <div
+                                        key={`page-${pageIndex}`}
+                                        className={`ob-paper ${config.orientation} ${isA5 ? 'ob-paper--a5' : ''}`}
+                                        style={paperStyle}
+                                    >
+                                        {isFirst && (
+                                            <div className="ob-doc-header">
+                                                <div className="ob-header-row">
+                                                    <div className="ob-header-left">
+                                                        <span className="ob-corner ob-corner--tl" />
+                                                        {logoPreview && <img src={logoPreview} alt="Logo" className="ob-doc-logo" />}
+                                                        <div className="ob-doc-org-name">{config.orgName}</div>
+                                                        <div className="ob-header-tagline">{config.orgTagline}</div>
+                                                        <div className="ob-header-contacts">
+                                                            <div>{config.address}</div>
+                                                            <div>Утас: {config.phone}</div>
+                                                            <div>И-мэйл: {config.email}</div>
+                                                            {config.web && <div>Вэб: {config.web}</div>}
+                                                        </div>
+                                                    </div>
+                                                    {!isA5 && (
+                                                        <div className="ob-header-right">
+                                                            <span className="ob-corner ob-corner--tl" />
+                                                            <span className="ob-corner ob-corner--tr" />
+                                                            <div className="ob-header-recipient">{config.addresseeOrg}</div>
+                                                            <div className="ob-header-recipient-name">{config.addresseeName}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="ob-meta-block">
+                                                    <div className="ob-meta-row">
+                                                        <span className="ob-meta-label">огноо:</span>
+                                                        <span className="ob-meta-fill ob-meta-fill--date">{formattedDate || blank}</span>
+                                                        <span className="ob-meta-label">№</span>
+                                                        <span className="ob-meta-fill">{config.docIndex || blank}</span>
+                                                    </div>
+                                                    <div className="ob-meta-row">
+                                                        <span className="ob-meta-label">танай</span>
+                                                        <span className="ob-meta-fill ob-meta-fill--wide">{config.tanaiRef || blank}</span>
+                                                        <span className="ob-meta-label">№</span>
+                                                        <span className="ob-meta-fill ob-meta-fill--wide">{config.tanaiNo || blank}</span>
+                                                        <span className="ob-meta-label">т</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {isFirst && isA5 && (
+                                            <div className="ob-doc-addressee">
+                                                <p>{config.addresseeOrg}</p>
+                                                <p>{config.addresseeName}</p>
+                                            </div>
+                                        )}
+
+                                        {isFirst && (
+                                            <div className="ob-doc-subject">
+                                                <span className="ob-subject-corner ob-subject-corner--left" />
+                                                <span className="ob-subject-corner ob-subject-corner--right" />
+                                                <span className="ob-doc-subject-text">{config.subject}</span>
+                                            </div>
+                                        )}
+
+                                        <div className="ob-doc-content">
+                                            {pageParagraphs.map((para, i) => (
+                                                <p key={`${pageIndex}-${i}`}>{para || blank}</p>
+                                            ))}
+                                        </div>
+
+                                        {isLast && (
+                                            <div className="ob-doc-signature">
+                                                <div className="ob-sig-row">
+                                                    <span>{config.signPosition}</span>
+                                                    <div className="ob-sig-line-wrap">
+                                                        <div className="ob-sig-line"></div>
+                                                        <div className="ob-sig-label">гарын үсэг</div>
+                                                    </div>
+                                                    <span>{config.signName}</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="ob-page-number">
+                                            {pageIndex + 1}/{pages.length}
                                         </div>
                                     </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="ob-paper ob-paper--measure" style={paperStyle} aria-hidden="true" ref={measureRef}>
+                        <div className="ob-doc-header" ref={measureHeaderRef}>
+                            <div className="ob-header-row">
+                                <div className="ob-header-left">
+                                    <span className="ob-corner ob-corner--tl" />
+                                    {logoPreview && <img src={logoPreview} alt="Logo" className="ob-doc-logo" />}
+                                    <div className="ob-doc-org-name">{config.orgName}</div>
+                                    <div className="ob-header-tagline">{config.orgTagline}</div>
+                                    <div className="ob-header-contacts">
+                                        <div>{config.address}</div>
+                                        <div>Утас: {config.phone}</div>
+                                        <div>И-мэйл: {config.email}</div>
+                                        {config.web && <div>Вэб: {config.web}</div>}
+                                    </div>
+                                </div>
+                                {!isA5 && (
                                     <div className="ob-header-right">
                                         <span className="ob-corner ob-corner--tl" />
                                         <span className="ob-corner ob-corner--tr" />
                                         <div className="ob-header-recipient">{config.addresseeOrg}</div>
                                         <div className="ob-header-recipient-name">{config.addresseeName}</div>
                                     </div>
+                                )}
+                            </div>
+                            <div className="ob-meta-block">
+                                <div className="ob-meta-row">
+                                    <span className="ob-meta-label">огноо:</span>
+                                    <span className="ob-meta-fill ob-meta-fill--date">{formattedDate || blank}</span>
+                                    <span className="ob-meta-label">№</span>
+                                    <span className="ob-meta-fill">{config.docIndex || blank}</span>
                                 </div>
-                                <div className="ob-meta-block">
-                                    <div className="ob-meta-row">
-                                        <span className="ob-meta-label">№</span>
-                                        <span className="ob-meta-fill">{config.docIndex || blank}</span>
-                                    </div>
-                                    <div className="ob-meta-row">
-                                        <span className="ob-meta-label">танай</span>
-                                        <span className="ob-meta-fill ob-meta-fill--wide">{blank}</span>
-                                        <span className="ob-meta-label">№</span>
-                                        <span className="ob-meta-fill ob-meta-fill--wide">{blank}</span>
-                                        <span className="ob-meta-label">т</span>
-                                    </div>
-                                    {(formattedDate || config.docCity) && (
-                                        <div className="ob-meta-date">
-                                            {formattedDate}
-                                            {formattedDate && config.docCity ? ' • ' : ''}
-                                            {config.docCity}
-                                        </div>
-                                    )}
+                                <div className="ob-meta-row">
+                                    <span className="ob-meta-label">танай</span>
+                                    <span className="ob-meta-fill ob-meta-fill--wide">{config.tanaiRef || blank}</span>
+                                    <span className="ob-meta-label">№</span>
+                                    <span className="ob-meta-fill ob-meta-fill--wide">{config.tanaiNo || blank}</span>
+                                    <span className="ob-meta-label">т</span>
                                 </div>
                             </div>
-
-                            {/* Subject */}
-                            <div className="ob-doc-subject">
-                                <span className="ob-subject-corner ob-subject-corner--left" />
-                                <span className="ob-subject-corner ob-subject-corner--right" />
-                                <span className="ob-doc-subject-text">{config.subject}</span>
+                        </div>
+                        {isA5 && (
+                            <div className="ob-doc-addressee" ref={measureAddresseeRef}>
+                                <p>{config.addresseeOrg}</p>
+                                <p>{config.addresseeName}</p>
                             </div>
-
-                            {/* Content */}
-                            <div className="ob-doc-content">
-                                {config.content.split('\n').map((para, i) => (
-                                    <p key={i}>{para}</p>
-                                ))}
-                            </div>
-
-                            {/* Signature */}
-                            <div className="ob-doc-signature">
-                                <div className="ob-sig-row">
-                                    <span>{config.signPosition}</span>
-                                    <div className="ob-sig-line-wrap">
-                                        <div className="ob-sig-line"></div>
-                                        <div className="ob-sig-label">гарын үсэг</div>
-                                    </div>
-                                    <span>{config.signName}</span>
+                        )}
+                        <div className="ob-doc-subject" ref={measureSubjectRef}>
+                            <span className="ob-subject-corner ob-subject-corner--left" />
+                            <span className="ob-subject-corner ob-subject-corner--right" />
+                            <span className="ob-doc-subject-text">{config.subject}</span>
+                        </div>
+                        <div className="ob-doc-content" ref={measureContentRef}></div>
+                        <div className="ob-doc-signature" ref={measureSignatureRef}>
+                            <div className="ob-sig-row">
+                                <span>{config.signPosition}</span>
+                                <div className="ob-sig-line-wrap">
+                                    <div className="ob-sig-line"></div>
+                                    <div className="ob-sig-label">гарын үсэг</div>
                                 </div>
+                                <span>{config.signName}</span>
                             </div>
                         </div>
                     </div>

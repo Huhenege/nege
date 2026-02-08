@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
-import { LogOut, User, Calendar, CreditCard, Clock } from 'lucide-react';
+import { LogOut, User, Calendar, CreditCard, Clock, FileText } from 'lucide-react';
 import './UserProfile.css';
 
 const UserProfile = () => {
@@ -24,7 +24,8 @@ const UserProfile = () => {
             // Fetch user info
             const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
             if (userDoc.exists()) {
-                setUserInfo(userDoc.data());
+                const data = userDoc.data();
+                setUserInfo(data);
             }
 
             // Fetch payment history
@@ -121,6 +122,20 @@ const UserProfile = () => {
                         <LogOut size={18} />
                         Гарах
                     </button>
+                </div>
+
+                {/* Quick Links */}
+                <div className="profile-section">
+                    <h3 className="section-title">
+                        <FileText size={20} />
+                        Миний өгөгдөл
+                    </h3>
+                    <div className="profile-links">
+                        <Link to="/profile/letterhead-templates" className="profile-link-card">
+                            <div className="profile-link-title">Миний хадгалсан албан бичгийн загварууд</div>
+                            <div className="profile-link-desc">Өөрийн загваруудыг хадгалах, сонгох, засах</div>
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Payment History */}

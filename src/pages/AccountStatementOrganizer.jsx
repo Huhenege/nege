@@ -40,7 +40,7 @@ const AccountStatementOrganizer = () => {
     };
 
     return (
-        <div style={{ paddingTop: 'calc(var(--header-height) + 2rem)', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <div style={{ paddingTop: '2rem', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
             <div className="container" style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1rem' }}>
                 <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
                     <h1 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '1rem', color: '#1e293b' }}>

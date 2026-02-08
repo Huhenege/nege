@@ -171,6 +171,41 @@
     color: white;
 }
 
+.profile-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+}
+
+.profile-link-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 1.25rem;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    text-decoration: none;
+    color: #111827;
+    transition: all 0.2s;
+}
+
+.profile-link-card:hover {
+    background: #ffffff;
+    border-color: #d1d5db;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.profile-link-title {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.profile-link-desc {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
 .profile-loading {
     display: flex;
     flex-direction: column;
