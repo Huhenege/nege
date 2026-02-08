@@ -14,7 +14,7 @@ const Header = () => {
     async function handleLogout() {
         try {
             await logout();
-            navigate('/login');
+            navigate('/');
             setIsMenuOpen(false);
         } catch (error) {
             console.error('Logout error:', error);
