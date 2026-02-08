@@ -1,9 +1,16 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const AdminRoute = ({ children }) => {
-    const { currentUser, loading } = useAuth();
+    const { currentUser, loading, openAuthModal } = useAuth();
+    const location = useLocation();
+
+    useEffect(() => {
+        if (!loading && !currentUser) {
+            openAuthModal();
+        }
+    }, [loading, currentUser, openAuthModal]);
 
     if (loading) {
         return (
@@ -14,7 +21,7 @@ const AdminRoute = ({ children }) => {
     }
 
     if (!currentUser) {
-        return <Navigate to="/login" />;
+        return <Navigate to="/" replace state={{ from: location }} />;
     }
 
     if (currentUser.role !== 'admin') {
