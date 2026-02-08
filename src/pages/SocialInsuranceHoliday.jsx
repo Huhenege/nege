@@ -1381,7 +1381,7 @@ const SocialInsuranceHoliday = () => {
                                 <RefreshCw className="ndsh2-icon" />
                                 Шинэчлэх
                             </button>
-                            <Link to="/ai-assistant" className="ndsh2-btn ndsh2-btn--primary">
+                            <Link to="/" className="ndsh2-btn ndsh2-btn--primary">
                                 <ArrowLeft className="ndsh2-icon" />
                                 Буцах
                             </Link>

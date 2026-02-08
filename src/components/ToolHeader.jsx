@@ -6,7 +6,7 @@ import './ToolHeader.css';
 const ToolHeader = ({
   title,
   subtitle,
-  backTo = '/ai-assistant',
+  backTo = '/',
   backLabel = 'Буцах',
   eyebrow = 'AI TOOL',
   actions,

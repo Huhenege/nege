@@ -559,7 +559,7 @@ const BusinessTraining = () => {
                                 )}
                             </div>
                         )}
-                        <Link to="/ai-assistant" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
+                        <Link to="/" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
                             Үндсэн хуудас руу буцах
                         </Link>
                     </div>
