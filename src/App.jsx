@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { BillingProvider } from './contexts/BillingContext';
 import Header from './components/Header';
@@ -37,6 +37,7 @@ const AppShell = () => {
       <main>
         <Routes>
           <Route path="/" element={<AIAssistant />} />
+          <Route path="/ai-assistant" element={<Navigate to="/" replace />} />
           <Route path="/profile" element={
             <ProtectedRoute>
               <UserProfile />

@@ -165,7 +165,7 @@ const SocialInsuranceHoliday = () => {
             setPaymentStatus('creating');
             setPaymentError(null);
 
-            const response = await apiFetch('/billing/invoice', {
+            let response = await apiFetch('/billing/invoice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
@@ -175,15 +175,32 @@ const SocialInsuranceHoliday = () => {
                 }),
             });
 
-            const data = await response.json();
+            let data = await response.json();
             if (!response.ok) {
-                throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                if (response.status !== 404) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: discountedPrice,
+                        description: 'НДШ лавлагаа (QPay)'
+                    })
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
             }
 
             setPaymentInvoice(data);
             setPaymentStatus('pending');
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Төлбөрийн системд алдаа гарлаа';
+            let message = err instanceof Error ? err.message : 'Төлбөрийн системд алдаа гарлаа';
+            if (err instanceof TypeError || String(err?.message || '').includes('Failed to fetch')) {
+                message = 'QPay сервер асаагүй байна. `npm run qpay:server` ажиллуулна уу.';
+            }
             setPaymentStatus('error');
             setPaymentError(message);
             showToast({
@@ -251,15 +268,26 @@ const SocialInsuranceHoliday = () => {
         if (!paymentInvoice?.invoice_id) return;
         setIsCheckingPayment(true);
         try {
-            const response = await apiFetch('/billing/check', {
+            let response = await apiFetch('/billing/check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
                 body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id }),
             });
-            const data = await response.json();
+            let data = await response.json();
             if (!response.ok) {
-                throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                if (response.status !== 404) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id }),
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
             }
 
             if (data.paid) {
@@ -291,7 +319,10 @@ const SocialInsuranceHoliday = () => {
                 });
             }
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Төлбөр шалгахад алдаа гарлаа';
+            let message = err instanceof Error ? err.message : 'Төлбөр шалгахад алдаа гарлаа';
+            if (err instanceof TypeError || String(err?.message || '').includes('Failed to fetch')) {
+                message = 'QPay сервер асаагүй байна. `npm run qpay:server` ажиллуулна уу.';
+            }
             setPaymentStatus('error');
             setPaymentError(message);
             showToast({

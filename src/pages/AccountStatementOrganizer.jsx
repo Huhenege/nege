@@ -69,20 +69,37 @@ const AccountStatementOrganizer = () => {
         try {
             setPaymentStatus('creating');
             setPaymentError(null);
-            const response = await apiFetch('/billing/invoice', {
+            let response = await apiFetch('/billing/invoice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
                 body: JSON.stringify({ type: 'tool', toolKey: 'account_statement' })
             });
-            const data = await response.json();
+            let data = await response.json();
             if (!response.ok) {
-                throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                if (response.status !== 404) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: discountedPrice,
+                        description: 'Дансны хуулга (QPay)'
+                    })
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
             }
             setPaymentInvoice(data);
             setPaymentStatus('pending');
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Төлбөрийн системд алдаа гарлаа';
+            let message = error instanceof Error ? error.message : 'Төлбөрийн системд алдаа гарлаа';
+            if (error instanceof TypeError || String(error?.message || '').includes('Failed to fetch')) {
+                message = 'QPay сервер асаагүй байна. `npm run qpay:server` ажиллуулна уу.';
+            }
             setPaymentStatus('error');
             setPaymentError(message);
         }
@@ -92,15 +109,26 @@ const AccountStatementOrganizer = () => {
         if (!paymentInvoice?.invoice_id) return;
         setIsCheckingPayment(true);
         try {
-            const response = await apiFetch('/billing/check', {
+            let response = await apiFetch('/billing/check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
                 body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id })
             });
-            const data = await response.json();
+            let data = await response.json();
             if (!response.ok) {
-                throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                if (response.status !== 404) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id })
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
             }
             if (data.paid) {
                 storeGrant({
@@ -114,7 +142,10 @@ const AccountStatementOrganizer = () => {
                 await refreshUserProfile();
             }
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Төлбөр шалгахад алдаа гарлаа';
+            let message = error instanceof Error ? error.message : 'Төлбөр шалгахад алдаа гарлаа';
+            if (error instanceof TypeError || String(error?.message || '').includes('Failed to fetch')) {
+                message = 'QPay сервер асаагүй байна. `npm run qpay:server` ажиллуулна уу.';
+            }
             setPaymentError(message);
         } finally {
             setIsCheckingPayment(false);

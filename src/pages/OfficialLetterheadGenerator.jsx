@@ -202,7 +202,7 @@ const OfficialLetterheadGenerator = () => {
         setPaymentStatus('creating');
         setPaymentError(null);
         try {
-            const response = await apiFetch('/billing/invoice', {
+            let response = await apiFetch('/billing/invoice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
@@ -211,9 +211,23 @@ const OfficialLetterheadGenerator = () => {
                     toolKey: 'official_letterhead'
                 }),
             });
-            const data = await response.json();
+            let data = await response.json();
             if (!response.ok) {
-                throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                if (response.status !== 404) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: discountedPrice,
+                        description: 'Албан бичиг (QPay)'
+                    })
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
             }
             if (data.invoice_id) {
                 setPaymentInvoice(data);
@@ -222,7 +236,11 @@ const OfficialLetterheadGenerator = () => {
         } catch (error) {
             console.error('Invoice creation error:', error);
             setPaymentStatus('error');
-            setPaymentError(error instanceof Error ? error.message : 'Төлбөрийн алдаа');
+            let message = error instanceof Error ? error.message : 'Төлбөрийн алдаа';
+            if (error instanceof TypeError || String(error?.message || '').includes('Failed to fetch')) {
+                message = 'QPay сервер асаагүй байна. `npm run qpay:server` ажиллуулна уу.';
+            }
+            setPaymentError(message);
         }
     };
 
@@ -230,15 +248,26 @@ const OfficialLetterheadGenerator = () => {
         if (!paymentInvoice) return;
         setIsCheckingPayment(true);
         try {
-            const response = await apiFetch('/billing/check', {
+            let response = await apiFetch('/billing/check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
                 body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id }),
             });
-            const data = await response.json();
+            let data = await response.json();
             if (!response.ok) {
-                throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                if (response.status !== 404) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id }),
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
             }
             if (data.paid) {
                 storeGrant({
@@ -253,7 +282,11 @@ const OfficialLetterheadGenerator = () => {
             }
         } catch (error) {
             console.error('Payment check error:', error);
-            setPaymentError(error instanceof Error ? error.message : 'Төлбөр шалгахад алдаа гарлаа');
+            let message = error instanceof Error ? error.message : 'Төлбөр шалгахад алдаа гарлаа';
+            if (error instanceof TypeError || String(error?.message || '').includes('Failed to fetch')) {
+                message = 'QPay сервер асаагүй байна. `npm run qpay:server` ажиллуулна уу.';
+            }
+            setPaymentError(message);
         } finally {
             setIsCheckingPayment(false);
         }

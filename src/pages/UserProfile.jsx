@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, getDoc, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { LogOut, User, Calendar, CreditCard, Clock, FileText } from 'lucide-react';
 import { useBilling } from '../contexts/BillingContext';
 import { apiFetch } from '../lib/apiClient';
@@ -19,6 +19,7 @@ const UserProfile = () => {
     const [creditStatus, setCreditStatus] = useState('idle'); // idle, creating, pending, success, error
     const [creditError, setCreditError] = useState(null);
     const [isCheckingCredit, setIsCheckingCredit] = useState(false);
+    const [creditPurchase, setCreditPurchase] = useState(null);
 
     useEffect(() => {
         fetchUserData();
@@ -86,7 +87,7 @@ const UserProfile = () => {
         setCreditStatus('creating');
         setCreditError(null);
         try {
-            const response = await apiFetch('/billing/invoice', {
+            let response = await apiFetch('/billing/invoice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
@@ -95,11 +96,35 @@ const UserProfile = () => {
                     bundleId: bundle.id
                 }),
             });
-            const data = await response.json();
+            let data = await response.json();
+            let source = 'billing';
             if (!response.ok) {
-                throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                const shouldFallback = response.status === 404 || response.status >= 500;
+                if (!shouldFallback || !import.meta.env.DEV) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: Number(bundle.price || 0),
+                        description: `Credits багц: ${bundle.name || bundle.credits + ' credit'}`,
+                    }),
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
+                source = 'qpay';
             }
             setCreditInvoice(data);
+            setCreditPurchase({
+                bundleId: bundle.id,
+                credits: Number(bundle.credits || 0),
+                price: Number(bundle.price || 0),
+                name: bundle.name || '',
+                source,
+            });
             setCreditStatus('pending');
         } catch (error) {
             setCreditStatus('error');
@@ -111,19 +136,46 @@ const UserProfile = () => {
         if (!creditInvoice?.invoice_id) return;
         setIsCheckingCredit(true);
         try {
-            const response = await apiFetch('/billing/check', {
+            let response = await apiFetch('/billing/check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
                 body: JSON.stringify({ invoice_id: creditInvoice.invoice_id }),
             });
-            const data = await response.json();
+            let data = await response.json();
             if (!response.ok) {
-                throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                const shouldFallback = response.status === 404 || response.status >= 500;
+                if (!shouldFallback || !import.meta.env.DEV) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoice_id: creditInvoice.invoice_id }),
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
             }
             if (data.paid) {
+                if (creditPurchase?.source === 'qpay') {
+                    if (!import.meta.env.DEV) {
+                        throw new Error('Credits цэнэглэх сервер олдсонгүй. Дахин оролдоно уу.');
+                    }
+                    if (creditPurchase?.credits > 0 && currentUser?.uid) {
+                        await updateDoc(doc(db, 'users', currentUser.uid), {
+                            credits: {
+                                balance: increment(creditPurchase.credits),
+                                updatedAt: serverTimestamp(),
+                            },
+                            updatedAt: serverTimestamp(),
+                        });
+                    }
+                }
                 setCreditStatus('success');
                 setCreditInvoice(null);
+                setCreditPurchase(null);
                 await refreshUserProfile();
                 await fetchUserData();
             }
@@ -230,17 +282,17 @@ const UserProfile = () => {
                                             <div style={{ fontWeight: '600' }}>{bundle.name || `${bundle.credits} credit`}</div>
                                             <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{bundle.credits} credit · {formatAmount(bundle.price)}</div>
                                         </div>
-                                        <button
-                                            className="logout-btn"
-                                            style={{ backgroundColor: 'var(--brand-600)', color: 'white', border: 'none' }}
-                                            onClick={() => createCreditInvoice(bundle)}
-                                            disabled={creditStatus === 'creating'}
-                                        >
-                                            Худалдаж авах
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
+                                    <button
+                                        className="logout-btn"
+                                        style={{ backgroundColor: 'var(--brand-600)', color: 'white', border: 'none' }}
+                                        onClick={() => createCreditInvoice(bundle)}
+                                        disabled={creditStatus === 'creating'}
+                                    >
+                                            QPay-аар цэнэглэх
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                         )}
 
                         {creditStatus === 'pending' && creditInvoice && (
@@ -249,6 +301,30 @@ const UserProfile = () => {
                                 {creditInvoice.qr_image ? (
                                     <img src={`data:image/png;base64,${creditInvoice.qr_image}`} alt="QPay QR" style={{ width: '180px', marginBottom: '0.75rem' }} />
                                 ) : null}
+                                {creditInvoice?.urls && creditInvoice.urls.length > 0 && (
+                                    <div className="profile-bank-links">
+                                        <div className="profile-bank-label">Банкны апп-аар төлөх:</div>
+                                        <div className="profile-bank-grid">
+                                            {creditInvoice.urls.map((bank, idx) => (
+                                                <a
+                                                    key={idx}
+                                                    href={bank.link}
+                                                    className="profile-bank-item"
+                                                    title={bank.description || bank.name}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    {bank.logo ? (
+                                                        <img src={bank.logo} alt={bank.name || bank.description} />
+                                                    ) : (
+                                                        <span className="profile-bank-placeholder">{(bank.description || bank.name || '').slice(0, 2)}</span>
+                                                    )}
+                                                    <span>{bank.description || bank.name}</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                                     <button className="logout-btn" style={{ backgroundColor: 'var(--brand-600)', color: 'white', border: 'none' }} onClick={checkCreditPayment} disabled={isCheckingCredit}>
                                         {isCheckingCredit ? 'Шалгаж байна...' : 'Төлбөр шалгах'}
