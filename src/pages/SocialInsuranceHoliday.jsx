@@ -700,6 +700,97 @@ const SocialInsuranceHoliday = () => {
 
     return (
         <div className={`ndsh2-page ${isPrinting ? 'ndsh2-printing' : ''}`}>
+            {parsedData && (
+                <div className="ndsh2-print-report">
+                    <div className="ndsh2-print-header">
+                        <div>
+                            <p className="ndsh2-print-eyebrow">НДШ ТАЙЛАН</p>
+                            <h1>Ажилласан жил тооцоолол</h1>
+                            <p className="ndsh2-print-subtitle">
+                                Нийт хугацаа, амралтын хоног болон он тус бүрийн төлөлтийн тойм
+                            </p>
+                        </div>
+                        <div className="ndsh2-print-meta">
+                            <div>Тайлан гаргасан огноо</div>
+                            <strong>{new Date().toLocaleDateString('mn-MN', { year: 'numeric', month: '2-digit', day: '2-digit' })}</strong>
+                            <span>{includeVoluntary ? 'Сайн дурын даатгал орсон' : 'Сайн дурын даатгал ороогүй'}</span>
+                        </div>
+                    </div>
+
+                    <div className="ndsh2-print-summary">
+                        <div className="ndsh2-print-card">
+                            <span>Нийт сар</span>
+                            <strong>{totalStats.totalMonths}</strong>
+                        </div>
+                        <div className="ndsh2-print-card">
+                            <span>Тооцоолсон жил</span>
+                            <strong>
+                                {totalStats.yearsCount} жил {totalStats.remainingMonths} сар
+                            </strong>
+                        </div>
+                        <div className="ndsh2-print-card">
+                            <span>Амралтын хоног</span>
+                            <strong>{vacationCalculation.total} өдөр</strong>
+                        </div>
+                        <div className="ndsh2-print-card">
+                            <span>Хэвийн бус сар</span>
+                            <strong>{totalAbnormalMonths} сар</strong>
+                        </div>
+                        <div className="ndsh2-print-card">
+                            <span>Байгууллага</span>
+                            <strong>
+                                {Object.keys(
+                                    Object.values(groupedByYear).reduce((acc, orgs) => ({
+                                        ...acc,
+                                        ...orgs,
+                                    }), {})
+                                ).length}
+                            </strong>
+                        </div>
+                        <div className="ndsh2-print-card">
+                            <span>Бүрэн төлсөн жил</span>
+                            <strong>{totalStats.fullYears}</strong>
+                        </div>
+                    </div>
+
+                    <div className="ndsh2-print-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Он</th>
+                                    <th>Нийт сар</th>
+                                    <th>Хэвийн сар</th>
+                                    <th>Сайн дурын сар</th>
+                                    <th>Хэвийн бус сар</th>
+                                    <th>Байгууллага</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedYears.map((year) => {
+                                    const yearStat = yearlyStats[year];
+                                    const yearTotal = includeVoluntary
+                                        ? yearStat?.uniqueMonths?.size || 0
+                                        : yearStat?.regularMonths?.size || 0;
+                                    const yearRegular = yearStat?.regularMonths?.size || 0;
+                                    const yearVoluntary = yearStat?.voluntaryMonths?.size || 0;
+                                    const yearAbnormal = abnormalMonths[year] || 0;
+                                    const orgCount = Object.keys(groupedByYear[year] || {}).length;
+                                    return (
+                                        <tr key={`print-${year}`}>
+                                            <td>{year}</td>
+                                            <td>{yearTotal}</td>
+                                            <td>{yearRegular}</td>
+                                            <td>{yearVoluntary}</td>
+                                            <td>{yearAbnormal}</td>
+                                            <td>{orgCount}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
             <ToolHeader
                 title="Ажилсан жил тооцоолох"
                 subtitle="НДШ төлөлтийн лавлагаагаар ажилласан жил тооцоолох"
