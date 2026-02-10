@@ -8,7 +8,8 @@ const BillingContext = React.createContext();
 const DEFAULT_BILLING_CONFIG = {
     subscription: {
         monthlyPrice: 0,
-        discountPercent: 20
+        discountPercent: 20,
+        monthlyCredits: 0
     },
     tools: {
         official_letterhead: { payPerUsePrice: 1000, creditCost: 1 },
@@ -60,7 +61,10 @@ export function BillingProvider({ children }) {
                 resolved = true;
             }
         } catch (err) {
-            console.error('Billing config firestore error:', err);
+            const code = err?.code || '';
+            if (code !== 'permission-denied') {
+                console.error('Billing config firestore error:', err);
+            }
         }
         if (!resolved) {
             try {

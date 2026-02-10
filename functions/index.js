@@ -28,6 +28,7 @@ const DEFAULT_BILLING_CONFIG = {
   subscription: {
     monthlyPrice: 0,
     discountPercent: 20,
+    monthlyCredits: 0,
   },
   tools: {
     official_letterhead: { payPerUsePrice: 1000, creditCost: 1 },
@@ -469,19 +470,26 @@ async function extractNDSHFromImage(imageDataUrl, mimeType, apiKey, modelName) {
 
 const app = require('express')();
 
-// Robust Manual CORS for production
-app.use((req, res, next) => {
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+const allowedOrigins = (process.env.QPAY_ALLOWED_ORIGIN ||
+  'https://www.nege.mn,https://nege.mn,http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-  // Handle Preflight
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return;
-  }
-  next();
-});
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(require('express').json({ limit: '30mb' }));
 app.use(require('express').urlencoded({ extended: false }));
@@ -572,6 +580,8 @@ app.post('/billing/invoice', async (req, res) => {
     const { type, toolKey, bundleId, trainingId, bookingId } = req.body || {};
     const authUser = await getAuthUser(req);
     const billingConfig = await getBillingConfig();
+    const authUserId = authUser?.uid || null;
+    const authUserEmail = authUser?.email || null;
 
     if (!type) {
       res.status(400).json({ error: 'type шаардлагатай' });
@@ -592,8 +602,8 @@ app.post('/billing/invoice', async (req, res) => {
 
       let discountPercent = 0;
       let userId = null;
-      if (authUser?.uid) {
-        userId = authUser.uid;
+      if (authUserId) {
+        userId = authUserId;
         const userSnap = await db.collection('users').doc(userId).get();
         if (userSnap.exists && isSubscriptionActive(userSnap.data()?.subscription)) {
           discountPercent = Number(billingConfig.subscription?.discountPercent || 0);
@@ -614,6 +624,7 @@ app.post('/billing/invoice', async (req, res) => {
           type: 'tool',
           toolKey,
           userId,
+          userEmail: authUserEmail,
           baseAmount,
           discountPercent,
         },
@@ -653,11 +664,48 @@ app.post('/billing/invoice', async (req, res) => {
           type: 'credits',
           bundleId,
           credits,
-          userId: authUser.uid,
+          userId: authUserId,
+          userEmail: authUserEmail,
         },
       });
 
       res.json({ ...invoice, amount, credits });
+      return;
+    }
+
+    if (type === 'subscription') {
+      if (!authUser?.uid) {
+        res.status(401).json({ error: 'Нэвтэрсэн хэрэглэгч шаардлагатай' });
+        return;
+      }
+
+      const monthlyPrice = Number(billingConfig.subscription?.monthlyPrice || 0);
+      const monthlyCredits = Number(billingConfig.subscription?.monthlyCredits || 0);
+
+      if (!Number.isFinite(monthlyPrice) || monthlyPrice <= 0) {
+        res.status(400).json({ error: 'Subscription үнэ тохируулагдаагүй байна.' });
+        return;
+      }
+
+      const invoice = await createInvoice({
+        amount: monthlyPrice,
+        description: `Subscription сарын төлбөр`,
+        invoiceCode: QPAY_INVOICE_CODE.value(),
+        callbackUrl: getQpayCallbackUrl(),
+        baseUrl: getQpayBaseUrl(),
+        clientId: QPAY_CLIENT_ID.value(),
+        clientSecret: QPAY_CLIENT_SECRET.value(),
+        metadata: {
+          type: 'subscription',
+          userId: authUserId,
+          userEmail: authUserEmail,
+          monthlyPrice,
+          monthlyCredits,
+          subscriptionMonths: 1,
+        },
+      });
+
+      res.json({ ...invoice, amount: monthlyPrice, monthlyCredits });
       return;
     }
 
@@ -705,7 +753,8 @@ app.post('/billing/invoice', async (req, res) => {
           advanceAmount: Number(booking.amount || 0),
           remainingAmount,
           paymentStage: 'REMAINING',
-          userId: authUser.uid,
+          userId: authUserId,
+          userEmail: authUserEmail,
         },
       });
 
@@ -746,7 +795,8 @@ app.post('/billing/invoice', async (req, res) => {
           advanceAmount,
           remainingAmount,
           paymentStage: remainingAmount > 0 ? 'DEPOSIT' : 'FULL',
-          userId: authUser?.uid || null,
+          userId: authUserId,
+          userEmail: authUserEmail,
         },
       });
 
@@ -767,6 +817,10 @@ app.post('/billing/check', async (req, res) => {
       return;
     }
 
+    const authUser = await getAuthUser(req);
+    const authUserId = authUser?.uid || null;
+    const authUserEmail = authUser?.email || null;
+
     const invoiceId = req.body.invoice_id;
     const invoiceRef = db.collection('qpayInvoices').doc(invoiceId);
     const invoiceSnap = await invoiceRef.get();
@@ -782,6 +836,14 @@ app.post('/billing/check', async (req, res) => {
     if (!result.paid) {
       res.json({ paid: false });
       return;
+    }
+
+    if (authUserId && !invoiceData?.userId) {
+      await invoiceRef.set({
+        userId: authUserId,
+        userEmail: authUserEmail || null,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
     }
 
     let grantToken = null;
@@ -820,6 +882,54 @@ app.post('/billing/check', async (req, res) => {
 
         await invoiceRef.set({
           creditsApplied: true,
+        }, { merge: true });
+      }
+    }
+
+    if (invoiceData?.type === 'subscription') {
+      const userId = invoiceData?.userId || authUserId;
+      const monthlyCredits = Number(invoiceData?.monthlyCredits || 0);
+      const months = Number(invoiceData?.subscriptionMonths || 1);
+      if (userId && !invoiceData?.subscriptionApplied) {
+        const userRef = db.collection('users').doc(userId);
+        await db.runTransaction(async (tx) => {
+          const userSnap = await tx.get(userRef);
+          const userData = userSnap.exists ? userSnap.data() : {};
+          const currentCredits = Number(userData?.credits?.balance || 0);
+          const currentEnd = parseDateValue(userData?.subscription?.endAt);
+          const baseDate = currentEnd && currentEnd.getTime() > Date.now() ? currentEnd : new Date();
+          const nextEnd = new Date(baseDate);
+          nextEnd.setMonth(nextEnd.getMonth() + Math.max(months, 1));
+
+          const nextCredits = currentCredits + (monthlyCredits * Math.max(months, 1));
+
+          tx.set(userRef, {
+            subscription: {
+              status: 'active',
+              startAt: userData?.subscription?.startAt || new Date().toISOString(),
+              endAt: nextEnd.toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            credits: {
+              balance: nextCredits,
+              updatedAt: new Date().toISOString(),
+            },
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        });
+
+        await db.collection('creditTransactions').add({
+          userId,
+          invoiceId,
+          credits: monthlyCredits * Math.max(months, 1),
+          amount: invoiceData?.amount || 0,
+          type: 'subscription',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        await invoiceRef.set({
+          subscriptionApplied: true,
+          subscriptionEndAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
       }
     }
