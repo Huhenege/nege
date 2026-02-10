@@ -286,6 +286,8 @@ async function issueGrantForInvoice(invoiceId) {
 
 async function reserveGrant(grantToken) {
   const grantRef = db.collection('qpayGrants').doc(grantToken);
+  const now = Date.now();
+  const staleWindowMs = 5 * 60 * 1000;
 
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(grantRef);
@@ -293,17 +295,23 @@ async function reserveGrant(grantToken) {
       return { ok: false, reason: 'INVALID' };
     }
     const data = snap.data();
-    if ((data?.remainingUses || 0) < 1) {
+    const remainingUses = Number(data?.remainingUses || 0);
+    const updatedAtMs = data?.updatedAt ? new Date(data.updatedAt).getTime() : 0;
+    const isStaleProcessing = data?.status === 'processing' && updatedAtMs && (now - updatedAtMs) > staleWindowMs;
+
+    if (remainingUses < 1 && !isStaleProcessing) {
       return { ok: false, reason: 'USED' };
     }
 
+    const restoredUses = isStaleProcessing ? Math.max(remainingUses, 1) : remainingUses;
+
     tx.update(grantRef, {
-      remainingUses: (data.remainingUses || 0) - 1,
+      remainingUses: Math.max(restoredUses - 1, 0),
       status: 'processing',
       updatedAt: new Date().toISOString(),
     });
 
-    return { ok: true };
+    return { ok: true, recovered: isStaleProcessing };
   });
 }
 
@@ -1156,6 +1164,8 @@ app.use((req, res) => {
 });
 
 exports.api = onRequest({
+  timeoutSeconds: 120,
+  memory: '1GiB',
   secrets: [
     QPAY_CLIENT_ID,
     QPAY_CLIENT_SECRET,
