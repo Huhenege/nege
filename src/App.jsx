@@ -8,6 +8,7 @@ import AccountStatementOrganizer from './pages/AccountStatementOrganizer';
 import SocialInsuranceHoliday from './pages/SocialInsuranceHoliday';
 import UserProfile from './pages/UserProfile';
 import LetterheadTemplates from './pages/LetterheadTemplates';
+import TransactionHistory from './pages/TransactionHistory';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import AdminLayout from './layout/AdminLayout';
@@ -46,6 +47,11 @@ const AppShell = () => {
           <Route path="/profile/letterhead-templates" element={
             <ProtectedRoute>
               <LetterheadTemplates />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile/transactions" element={
+            <ProtectedRoute>
+              <TransactionHistory />
             </ProtectedRoute>
           } />
           <Route path="/ai-assistant/account-statement-organizer" element={<AccountStatementOrganizer />} />
