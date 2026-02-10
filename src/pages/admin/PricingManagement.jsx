@@ -26,9 +26,9 @@ const DEFAULT_CONFIG = {
         monthlyCredits: 0
     },
     tools: {
-        official_letterhead: { payPerUsePrice: 1000, creditCost: 1 },
-        ndsh_holiday: { payPerUsePrice: 1000, creditCost: 1 },
-        account_statement: { payPerUsePrice: 1000, creditCost: 1 }
+        official_letterhead: { payPerUsePrice: 1000, creditCost: 1, active: true },
+        ndsh_holiday: { payPerUsePrice: 1000, creditCost: 1, active: true },
+        account_statement: { payPerUsePrice: 1000, creditCost: 1, active: true }
     },
     credits: {
         bundles: []
@@ -56,6 +56,17 @@ const PricingManagement = () => {
                 const docRef = doc(db, 'settings', 'billing');
                 const snap = await getDoc(docRef);
                 if (snap.exists()) {
+                    const mergedTools = {
+                        ...DEFAULT_CONFIG.tools,
+                        ...(snap.data().tools || {})
+                    };
+                    Object.keys(DEFAULT_CONFIG.tools).forEach((toolKey) => {
+                        mergedTools[toolKey] = {
+                            ...DEFAULT_CONFIG.tools[toolKey],
+                            ...(snap.data().tools?.[toolKey] || {})
+                        };
+                    });
+
                     const normalized = {
                         ...DEFAULT_CONFIG,
                         ...snap.data(),
@@ -64,8 +75,7 @@ const PricingManagement = () => {
                             ...(snap.data().subscription || {})
                         },
                         tools: {
-                            ...DEFAULT_CONFIG.tools,
-                            ...(snap.data().tools || {})
+                            ...mergedTools
                         },
                         credits: {
                             ...DEFAULT_CONFIG.credits,
@@ -158,13 +168,14 @@ const PricingManagement = () => {
     };
 
     const handleToolChange = (toolKey, field, value) => {
+        const parsedValue = field === 'active' ? !!value : Number(value);
         setConfig((prev) => ({
             ...prev,
             tools: {
                 ...prev.tools,
                 [toolKey]: {
                     ...prev.tools[toolKey],
-                    [field]: Number(value)
+                    [field]: parsedValue
                 }
             }
         }));
@@ -400,13 +411,14 @@ const PricingManagement = () => {
             <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid var(--ink-200)', padding: '2rem', marginBottom: '2rem' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--ink-900)' }}>Tool pricing</h3>
                 <div style={{ display: 'grid', gap: '1rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', fontSize: '0.85rem', color: 'var(--ink-500)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 0.6fr', gap: '1rem', fontSize: '0.85rem', color: 'var(--ink-500)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         <div>Tool</div>
                         <div>Pay-per-use ₮</div>
                         <div>Credit cost</div>
+                        <div>Идэвхтэй</div>
                     </div>
                     {Object.keys(config.tools || {}).map((toolKey) => (
-                        <div key={toolKey} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', alignItems: 'center' }}>
+                        <div key={toolKey} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 0.6fr', gap: '1rem', alignItems: 'center' }}>
                             <div style={{ fontWeight: '600' }}>{TOOL_LABELS[toolKey] || toolKey}</div>
                             <input
                                 type="number"
@@ -420,6 +432,14 @@ const PricingManagement = () => {
                                 onChange={(e) => handleToolChange(toolKey, 'creditCost', e.target.value)}
                                 style={{ padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid var(--ink-300)' }}
                             />
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ink-500)' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={config.tools?.[toolKey]?.active !== false}
+                                    onChange={(e) => handleToolChange(toolKey, 'active', e.target.checked)}
+                                />
+                                {config.tools?.[toolKey]?.active === false ? 'Off' : 'On'}
+                            </label>
                         </div>
                     ))}
                 </div>

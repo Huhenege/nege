@@ -44,6 +44,18 @@
     align-items: start;
 }
 
+.ob-alert-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem 0;
+}
+
+.ob-intro-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem 0;
+}
+
 @media (max-width: 1024px) {
     .ob-container {
         grid-template-columns: 1fr;

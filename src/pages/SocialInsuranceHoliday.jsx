@@ -59,7 +59,8 @@ const SocialInsuranceHoliday = () => {
     const [paymentMethod, setPaymentMethod] = React.useState('pay'); // pay | credits
     const [showPaymentOptions, setShowPaymentOptions] = React.useState(false);
 
-    const toolPricing = billingConfig?.tools?.ndsh_holiday || { payPerUsePrice: 1000, creditCost: 1 };
+    const toolPricing = billingConfig?.tools?.ndsh_holiday || { payPerUsePrice: 1000, creditCost: 1, active: true };
+    const isToolActive = toolPricing?.active !== false;
     const basePrice = Number(toolPricing.payPerUsePrice || 0);
     const discountedPrice = Math.max(0, Math.round(basePrice * (1 - (discountPercent || 0) / 100)));
     const creditCost = Number(toolPricing.creditCost || 1);
@@ -119,6 +120,12 @@ const SocialInsuranceHoliday = () => {
         }
     }, [isPaymentActive]);
 
+    React.useEffect(() => {
+        if (!isToolActive) {
+            setShowPaymentOptions(false);
+        }
+    }, [isToolActive]);
+
     const showToast = React.useCallback((payload) => {
         setToast(payload);
         window.setTimeout(() => setToast(null), 3200);
@@ -173,6 +180,14 @@ const SocialInsuranceHoliday = () => {
     };
 
     const createPaymentInvoice = async () => {
+        if (!isToolActive) {
+            showToast({
+                variant: 'info',
+                title: 'Түр хаалттай',
+                description: 'Энэ үйлчилгээ одоогоор идэвхгүй байна.',
+            });
+            return;
+        }
         try {
             setPaymentStatus('creating');
             setPaymentError(null);
@@ -225,6 +240,14 @@ const SocialInsuranceHoliday = () => {
     };
 
     const consumeCredits = async () => {
+        if (!isToolActive) {
+            showToast({
+                variant: 'info',
+                title: 'Түр хаалттай',
+                description: 'Энэ үйлчилгээ одоогоор идэвхгүй байна.',
+            });
+            return;
+        }
         if (!currentUser) {
             showToast({
                 variant: 'info',
@@ -365,6 +388,14 @@ const SocialInsuranceHoliday = () => {
     };
 
     const processFile = async () => {
+        if (!isToolActive) {
+            showToast({
+                variant: 'info',
+                title: 'Түр хаалттай',
+                description: 'Энэ үйлчилгээ одоогоор идэвхгүй байна.',
+            });
+            return;
+        }
         if (!file) return;
         if (!paymentGrant || !paymentGrant.grantToken || paymentGrant.used) {
             showToast({
@@ -870,6 +901,15 @@ const SocialInsuranceHoliday = () => {
                         <div className="ndsh2-upload">
                             {step === 'idle' && (
                                 <>
+                                {!isToolActive && (
+                                    <div className="ndsh2-disabled-banner">
+                                        <AlertTriangle className="ndsh2-icon" />
+                                        <div>
+                                            <p>Түр хаалттай</p>
+                                            <span>Энэ үйлчилгээ одоогоор идэвхгүй байна. Дараа дахин оролдоно уу.</span>
+                                        </div>
+                                    </div>
+                                )}
                                 <div
                                     className={`ndsh2-dropzone ${file ? 'ndsh2-dropzone--active' : ''}`}
                                     onClick={() => fileInputRef.current?.click()}
@@ -917,7 +957,9 @@ const SocialInsuranceHoliday = () => {
                                     </div>
                                     <div className="ndsh2-payment-actions">
                                         <div className="ndsh2-payment-status">
-                                            {isPaymentActive ? (
+                                            {!isToolActive ? (
+                                                <span className="ndsh2-badge ndsh2-badge--muted">Түр хаалттай</span>
+                                            ) : isPaymentActive ? (
                                                 <span className="ndsh2-badge ndsh2-badge--success">Төлсөн</span>
                                             ) : paymentStatus === 'creating' ? (
                                                 <span className="ndsh2-badge ndsh2-badge--blue">Төлбөр үүсгэж байна</span>
@@ -936,6 +978,7 @@ const SocialInsuranceHoliday = () => {
                                             className={`ndsh2-btn ${showPaymentOptions ? 'ndsh2-btn--primary' : 'ndsh2-btn--outline'}`}
                                             onClick={() => {
                                                 if (isPaymentActive) return;
+                                                if (!isToolActive) return;
                                                 setShowPaymentOptions((prev) => {
                                                     const next = !prev;
                                                     if (!prev) {
@@ -944,7 +987,7 @@ const SocialInsuranceHoliday = () => {
                                                     return next;
                                                 });
                                             }}
-                                            disabled={isPaymentActive}
+                                            disabled={isPaymentActive || !isToolActive}
                                         >
                                             <Sparkles className="ndsh2-icon" />
                                             {isPaymentActive ? 'Төлбөр төлсөн' : 'Төлбөр төлөх'}
@@ -952,13 +995,14 @@ const SocialInsuranceHoliday = () => {
                                     </div>
                                 </div>
 
-                                {showPaymentOptions && (
+                                {showPaymentOptions && isToolActive && (
                                     <div className="ndsh2-payment-panel">
                                         <div className="ndsh2-payment-tabs">
                                             <button
                                                 type="button"
                                                 className={`ndsh2-btn ${paymentMethod === 'pay' ? 'ndsh2-btn--primary' : 'ndsh2-btn--outline'}`}
                                                 onClick={() => setPaymentMethod('pay')}
+                                                disabled={!isToolActive}
                                             >
                                                 QPay төлбөр
                                             </button>
@@ -966,6 +1010,7 @@ const SocialInsuranceHoliday = () => {
                                                 type="button"
                                                 className={`ndsh2-btn ${paymentMethod === 'credits' ? 'ndsh2-btn--primary' : 'ndsh2-btn--outline'}`}
                                                 onClick={() => setPaymentMethod('credits')}
+                                                disabled={!isToolActive}
                                             >
                                                 Credits ашиглах
                                             </button>
@@ -979,6 +1024,7 @@ const SocialInsuranceHoliday = () => {
                                                     onClick={paymentMethod === 'credits' ? consumeCredits : createPaymentInvoice}
                                                     disabled={
                                                         paymentStatus === 'creating' ||
+                                                        !isToolActive ||
                                                         (paymentMethod === 'credits' && (!currentUser || !hasEnoughCredits))
                                                     }
                                                 >
@@ -1088,7 +1134,7 @@ const SocialInsuranceHoliday = () => {
                                             type="button"
                                             className="ndsh2-btn ndsh2-btn--primary"
                                             onClick={processFile}
-                                            disabled={!file || isProcessing}
+                                            disabled={!file || isProcessing || !isToolActive}
                                         >
                                             <Brain className="ndsh2-icon" />
                                             AI-аар шинжлэх

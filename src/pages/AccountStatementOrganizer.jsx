@@ -25,7 +25,8 @@ const AccountStatementOrganizer = () => {
     const [isCheckingPayment, setIsCheckingPayment] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('pay');
 
-    const toolPricing = billingConfig?.tools?.account_statement || { payPerUsePrice: 1000, creditCost: 1 };
+    const toolPricing = billingConfig?.tools?.account_statement || { payPerUsePrice: 1000, creditCost: 1, active: true };
+    const isToolActive = toolPricing?.active !== false;
     const basePrice = Number(toolPricing.payPerUsePrice || 0);
     const discountedPrice = Math.max(0, Math.round(basePrice * (1 - (discountPercent || 0) / 100)));
     const creditCost = Number(toolPricing.creditCost || 1);
@@ -66,6 +67,10 @@ const AccountStatementOrganizer = () => {
     };
 
     const createPaymentInvoice = async () => {
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return;
+        }
         try {
             setPaymentStatus('creating');
             setPaymentError(null);
@@ -153,6 +158,10 @@ const AccountStatementOrganizer = () => {
     };
 
     const consumeCredits = async () => {
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return;
+        }
         if (!currentUser) {
             alert('Credits ашиглахын тулд нэвтэрнэ үү.');
             return;
@@ -192,6 +201,10 @@ const AccountStatementOrganizer = () => {
     };
 
     const handleGenerate = async () => {
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return;
+        }
         if (!paymentGrant || paymentGrant.used) {
             alert('Файлыг боловсруулахын өмнө төлбөр төлнө үү.');
             return;
@@ -244,11 +257,13 @@ const AccountStatementOrganizer = () => {
 
     const paymentReady = paymentGrant?.grantToken && !paymentGrant.used;
     const paymentUsed = paymentGrant?.used;
-    const paymentBadge = paymentReady
-        ? { label: 'Идэвхтэй', tone: 'badge-success' }
-        : paymentUsed
-            ? { label: 'Ашигласан', tone: 'badge-muted' }
-            : { label: 'Төлбөр хүлээгдэж байна', tone: 'badge-warning' };
+    const paymentBadge = !isToolActive
+        ? { label: 'Түр хаалттай', tone: 'badge-warning' }
+        : paymentReady
+            ? { label: 'Идэвхтэй', tone: 'badge-success' }
+            : paymentUsed
+                ? { label: 'Ашигласан', tone: 'badge-muted' }
+                : { label: 'Төлбөр хүлээгдэж байна', tone: 'badge-warning' };
 
     let activeStep = 0;
     if (paymentReady) {
@@ -270,6 +285,11 @@ const AccountStatementOrganizer = () => {
                 subtitle="Банкны хуулгаа оруулаад AI-аар автоматаар нэгтгэж, Excel болгон татаж ав."
             />
             <div className="container tool-container tool-content">
+                {!isToolActive && (
+                    <div className="alert alert-warning" style={{ marginBottom: '1rem' }}>
+                        Энэ үйлчилгээ одоогоор түр хаалттай байна. Дараа дахин оролдоно уу.
+                    </div>
+                )}
                 <div className="tool-intro card card--glass">
                     <div>
                         <p className="tool-intro-copy">
@@ -328,7 +348,7 @@ const AccountStatementOrganizer = () => {
                                     <div className="tool-pay-actions">
                                         <button
                                             onClick={paymentMethod === 'credits' ? consumeCredits : createPaymentInvoice}
-                                            disabled={paymentStatus === 'creating'}
+                                            disabled={paymentStatus === 'creating' || !isToolActive}
                                             className="btn btn-primary"
                                         >
                                             {paymentMethod === 'credits' ? 'Credits ашиглах' : 'QPay QR үүсгэх'}
@@ -336,7 +356,7 @@ const AccountStatementOrganizer = () => {
                                         {paymentMethod === 'pay' && (
                                             <button
                                                 onClick={checkPaymentStatus}
-                                                disabled={!paymentInvoice || isCheckingPayment}
+                                                disabled={!paymentInvoice || isCheckingPayment || !isToolActive}
                                                 className="btn btn-outline"
                                             >
                                                 {isCheckingPayment ? 'Шалгаж байна...' : 'Төлбөр шалгах'}
@@ -377,7 +397,7 @@ const AccountStatementOrganizer = () => {
                                     <div className="tool-action">
                                         <button
                                             onClick={handleGenerate}
-                                            disabled={files.length === 0 || isProcessing}
+                                            disabled={files.length === 0 || isProcessing || !isToolActive}
                                             className="btn btn-primary btn-lg"
                                         >
                                             {isProcessing ? 'Боловсруулж байна...' : `Цэгцлэх (${files.length} файл)`}

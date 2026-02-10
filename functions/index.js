@@ -31,9 +31,9 @@ const DEFAULT_BILLING_CONFIG = {
     monthlyCredits: 0,
   },
   tools: {
-    official_letterhead: { payPerUsePrice: 1000, creditCost: 1 },
-    ndsh_holiday: { payPerUsePrice: 1000, creditCost: 1 },
-    account_statement: { payPerUsePrice: 1000, creditCost: 1 },
+    official_letterhead: { payPerUsePrice: 1000, creditCost: 1, active: true },
+    ndsh_holiday: { payPerUsePrice: 1000, creditCost: 1, active: true },
+    account_statement: { payPerUsePrice: 1000, creditCost: 1, active: true },
   },
   credits: {
     bundles: [],
@@ -46,6 +46,16 @@ async function getBillingConfig() {
     return DEFAULT_BILLING_CONFIG;
   }
   const data = snap.data() || {};
+  const mergedTools = {
+    ...DEFAULT_BILLING_CONFIG.tools,
+    ...(data.tools || {}),
+  };
+  Object.keys(DEFAULT_BILLING_CONFIG.tools).forEach((toolKey) => {
+    mergedTools[toolKey] = {
+      ...DEFAULT_BILLING_CONFIG.tools[toolKey],
+      ...(data.tools?.[toolKey] || {}),
+    };
+  });
   return {
     ...DEFAULT_BILLING_CONFIG,
     ...data,
@@ -54,8 +64,7 @@ async function getBillingConfig() {
       ...(data.subscription || {}),
     },
     tools: {
-      ...DEFAULT_BILLING_CONFIG.tools,
-      ...(data.tools || {}),
+      ...mergedTools,
     },
     credits: {
       ...DEFAULT_BILLING_CONFIG.credits,
@@ -615,6 +624,10 @@ app.post('/billing/invoice', async (req, res) => {
         res.status(400).json({ error: 'Tool олдсонгүй' });
         return;
       }
+      if (tool.active === false) {
+        res.status(403).json({ error: 'Тус хэрэгсэл түр хаалттай байна.' });
+        return;
+      }
 
       let discountPercent = 0;
       let userId = null;
@@ -985,6 +998,10 @@ app.post('/credits/consume', async (req, res) => {
     const tool = billingConfig.tools?.[toolKey];
     if (!tool) {
       res.status(400).json({ error: 'Tool олдсонгүй' });
+      return;
+    }
+    if (tool.active === false) {
+      res.status(403).json({ error: 'Тус хэрэгсэл түр хаалттай байна.' });
       return;
     }
 

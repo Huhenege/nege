@@ -7,7 +7,8 @@ import {
     FileText,
     Sparkles,
     Layout,
-    Loader2
+    Loader2,
+    CheckCircle2
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { db } from '../lib/firebase';
@@ -78,7 +79,8 @@ const OfficialLetterheadGenerator = () => {
     const [templatesLoading, setTemplatesLoading] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
-    const toolPricing = billingConfig?.tools?.official_letterhead || { payPerUsePrice: 1000, creditCost: 1 };
+    const toolPricing = billingConfig?.tools?.official_letterhead || { payPerUsePrice: 1000, creditCost: 1, active: true };
+    const isToolActive = toolPricing?.active !== false;
     const basePrice = Number(toolPricing.payPerUsePrice || 0);
     const discountedPrice = Math.max(0, Math.round(basePrice * (1 - (discountPercent || 0) / 100)));
     const creditCost = Number(toolPricing.creditCost || 1);
@@ -199,6 +201,10 @@ const OfficialLetterheadGenerator = () => {
     };
 
     const createPaymentInvoice = async () => {
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return;
+        }
         setPaymentStatus('creating');
         setPaymentError(null);
         try {
@@ -293,6 +299,10 @@ const OfficialLetterheadGenerator = () => {
     };
 
     const consumeCredits = async () => {
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return;
+        }
         if (!currentUser) {
             alert('Credits ашиглахын тулд нэвтэрнэ үү.');
             return;
@@ -416,6 +426,10 @@ const OfficialLetterheadGenerator = () => {
     };
 
     const handleDownloadClick = () => {
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return;
+        }
         if (isPaid) {
             generatePDF();
             return;
@@ -572,6 +586,54 @@ const OfficialLetterheadGenerator = () => {
                 title="Албан бичиг үүсгэгч"
                 subtitle="Стандартын дагуу мэргэжлийн албан бланк бэлтгэх"
             />
+
+            {!isToolActive && (
+                <div className="ob-alert-wrap">
+                    <div className="alert alert-warning">
+                        Энэ үйлчилгээ одоогоор түр хаалттай байна. Дараа дахин оролдоно уу.
+                    </div>
+                </div>
+            )}
+
+            <div className="ob-intro-wrap">
+                <div className="ndsh2-intro">
+                    <div className="ndsh2-intro-header">
+                        <div className="ndsh2-intro-icon">
+                            <Sparkles className="ndsh2-icon" />
+                        </div>
+                        <div>
+                            <h3>Энэ үйлчилгээ танд юу гаргаж өгөх вэ?</h3>
+                            <p>
+                                Албан бичгийн мэдээллээ оруулснаар стандартын шаардлага хангасан, хэвлэхэд бэлэн PDF бланк
+                                автоматаар гаргана.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="ndsh2-intro-grid">
+                        <div className="ndsh2-intro-item">
+                            <CheckCircle2 className="ndsh2-icon" />
+                            <div>
+                                <strong>Стандарт бланк</strong>
+                                <span>албан бичгийн шаардлагад нийцсэн загвар</span>
+                            </div>
+                        </div>
+                        <div className="ndsh2-intro-item">
+                            <CheckCircle2 className="ndsh2-icon" />
+                            <div>
+                                <strong>PDF шууд татах</strong>
+                                <span>хэвлэхэд бэлэн нэг товшилтоор</span>
+                            </div>
+                        </div>
+                        <div className="ndsh2-intro-item">
+                            <CheckCircle2 className="ndsh2-icon" />
+                            <div>
+                                <strong>AI‑гаар текст</strong>
+                                <span>гарчиг, агуулгыг хурдан үүсгэх боломж</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div className="ob-container">
                 {/* Sidebar: Inputs */}
@@ -776,6 +838,7 @@ const OfficialLetterheadGenerator = () => {
                                 <button
                                     type="button"
                                     onClick={() => setPaymentMethod('pay')}
+                                    disabled={!isToolActive}
                                     style={{
                                         flex: 1,
                                         padding: '0.5rem',
@@ -792,6 +855,7 @@ const OfficialLetterheadGenerator = () => {
                                 <button
                                     type="button"
                                     onClick={() => setPaymentMethod('credits')}
+                                    disabled={!isToolActive}
                                     style={{
                                         flex: 1,
                                         padding: '0.5rem',
@@ -815,7 +879,7 @@ const OfficialLetterheadGenerator = () => {
                         <button
                             className={`ob-btn ob-btn--primary ob-btn--full ${isPaid ? 'paid' : ''}`}
                             onClick={handleDownloadClick}
-                            disabled={isGenerating || paymentStatus === 'creating'}
+                            disabled={isGenerating || paymentStatus === 'creating' || !isToolActive}
                         >
                             {isGenerating ? <Loader2 className="ob-spin" /> : <Download size={20} />}
                             {isPaid ? 'PDF Татах' : (paymentMethod === 'credits' ? 'Credits ашиглаж татах' : `PDF Татах (${discountedPrice.toLocaleString()}₮)`)}

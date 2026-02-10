@@ -12,9 +12,9 @@ const DEFAULT_BILLING_CONFIG = {
         monthlyCredits: 0
     },
     tools: {
-        official_letterhead: { payPerUsePrice: 1000, creditCost: 1 },
-        ndsh_holiday: { payPerUsePrice: 1000, creditCost: 1 },
-        account_statement: { payPerUsePrice: 1000, creditCost: 1 }
+        official_letterhead: { payPerUsePrice: 1000, creditCost: 1, active: true },
+        ndsh_holiday: { payPerUsePrice: 1000, creditCost: 1, active: true },
+        account_statement: { payPerUsePrice: 1000, creditCost: 1, active: true }
     },
     credits: {
         bundles: []
@@ -39,6 +39,16 @@ export function BillingProvider({ children }) {
             const snap = await getDoc(docRef);
             if (snap.exists()) {
                 const data = snap.data() || {};
+                const mergedTools = {
+                    ...DEFAULT_BILLING_CONFIG.tools,
+                    ...(data.tools || {})
+                };
+                Object.keys(DEFAULT_BILLING_CONFIG.tools).forEach((toolKey) => {
+                    mergedTools[toolKey] = {
+                        ...DEFAULT_BILLING_CONFIG.tools[toolKey],
+                        ...(data.tools?.[toolKey] || {})
+                    };
+                });
                 setConfig({
                     ...DEFAULT_BILLING_CONFIG,
                     ...data,
@@ -47,8 +57,7 @@ export function BillingProvider({ children }) {
                         ...(data.subscription || {})
                     },
                     tools: {
-                        ...DEFAULT_BILLING_CONFIG.tools,
-                        ...(data.tools || {})
+                        ...mergedTools
                     },
                     credits: {
                         ...DEFAULT_BILLING_CONFIG.credits,
@@ -71,6 +80,16 @@ export function BillingProvider({ children }) {
                 const response = await apiFetch('/billing/config');
                 const data = await response.json();
                 if (response.ok && data?.config) {
+                    const mergedTools = {
+                        ...DEFAULT_BILLING_CONFIG.tools,
+                        ...(data.config.tools || {})
+                    };
+                    Object.keys(DEFAULT_BILLING_CONFIG.tools).forEach((toolKey) => {
+                        mergedTools[toolKey] = {
+                            ...DEFAULT_BILLING_CONFIG.tools[toolKey],
+                            ...(data.config.tools?.[toolKey] || {})
+                        };
+                    });
                     setConfig({
                         ...DEFAULT_BILLING_CONFIG,
                         ...data.config,
@@ -79,8 +98,7 @@ export function BillingProvider({ children }) {
                             ...(data.config.subscription || {})
                         },
                         tools: {
-                            ...DEFAULT_BILLING_CONFIG.tools,
-                            ...(data.config.tools || {})
+                            ...mergedTools
                         },
                         credits: {
                             ...DEFAULT_BILLING_CONFIG.credits,

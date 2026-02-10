@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, Calculator, Sparkles, ArrowRight, Clock, GraduationCap, Search, Layers } from 'lucide-react';
+import { useBilling } from '../contexts/BillingContext';
+import { FileText, Calculator, Sparkles, ArrowRight, Clock, GraduationCap, Layers } from 'lucide-react';
 import './AIAssistant.css';
 
 const AIAssistant = () => {
     const { currentUser, openAuthModal } = useAuth();
+    const { config: billingConfig } = useBilling();
     const navigate = useNavigate();
     const [activeCategory, setActiveCategory] = useState('Бүгд');
-    const [query, setQuery] = useState('');
 
     const guestAllowed = new Set([
         "/ai-assistant/account-statement-organizer",
@@ -20,6 +21,7 @@ const AIAssistant = () => {
     const tools = [
         {
             id: 'account',
+            toolKey: 'account_statement',
             title: 'Дансны хуулга цэгцлэгч',
             description: 'Банкны хуулгаа (Excel/CSV) оруулж, автоматаар ангилан цэгцлэх хэрэгсэл.',
             path: '/ai-assistant/account-statement-organizer',
@@ -31,6 +33,7 @@ const AIAssistant = () => {
         },
         {
             id: 'ndsh',
+            toolKey: 'ndsh_holiday',
             title: 'НДШ Тооцоологч',
             description: 'Нийгмийн даатгалын шимтгэлийн лавлагааг уншуулж, амралтын хоног тооцоолох.',
             path: '/ai-assistant/social-insurance-holiday',
@@ -42,6 +45,7 @@ const AIAssistant = () => {
         },
         {
             id: 'letterhead',
+            toolKey: 'official_letterhead',
             title: 'Албан бланк үүсгэгч',
             description: 'Албан бичгийг стандартаар үүсгэж, PDF форматаар татаж авах хэрэгсэл.',
             path: '/ai-assistant/official-letterhead',
@@ -78,14 +82,41 @@ const AIAssistant = () => {
 
     const categories = ['Бүгд', 'Санхүү', 'Даатгал', 'Албан бичиг', 'Сургалт', 'Бусад'];
 
+    const resolvedTools = tools.map((tool) => {
+        if (!tool.toolKey) return tool;
+        const toolConfig = billingConfig?.tools?.[tool.toolKey] || { payPerUsePrice: 0, creditCost: 0, active: true };
+        const isActive = toolConfig?.active !== false;
+        const priceAmount = Number(toolConfig?.payPerUsePrice || 0);
+        const creditCost = Number(toolConfig?.creditCost || 0);
+        const priceLabel = priceAmount > 0 ? `${priceAmount.toLocaleString()}₮` : 'Үнэгүй';
+        const creditLabel = creditCost > 0 ? `${creditCost} credit` : null;
+        if (isActive) {
+            const isFree = priceAmount <= 0;
+            return {
+                ...tool,
+                priceLabel,
+                creditLabel,
+                badge: isFree ? 'Free' : 'Төлбөртэй',
+                badgeTone: isFree ? 'badge-success' : 'badge-brand',
+            };
+        }
+        return {
+            ...tool,
+            disabled: true,
+            badge: 'Түр хаалттай',
+            badgeTone: 'badge-warning',
+            cta: 'Түр хаалттай',
+            priceLabel,
+            creditLabel,
+        };
+    });
+
     const filteredTools = useMemo(() => {
-        const lowered = query.trim().toLowerCase();
-        return tools.filter((tool) => {
+        return resolvedTools.filter((tool) => {
             const matchesCategory = activeCategory === 'Бүгд' || tool.category === activeCategory;
-            const matchesQuery = !lowered || `${tool.title} ${tool.description}`.toLowerCase().includes(lowered);
-            return matchesCategory && matchesQuery;
+            return matchesCategory;
         });
-    }, [tools, activeCategory, query]);
+    }, [resolvedTools, activeCategory]);
 
     const handleToolClick = (tool) => {
         if (tool.disabled || !tool.path) return;
@@ -99,41 +130,7 @@ const AIAssistant = () => {
     return (
         <div className="ai-page">
             <div className="container ai-container">
-                <div className="ai-hero">
-                    <div className="ai-hero__eyebrow">
-                        <Sparkles size={16} />
-                        NEGE AI TOOLS
-                    </div>
-                    <h1 className="ai-title">Ухаалаг Туслахуудын төв</h1>
-                    <p className="ai-subtitle">
-                        Таны бизнесийн өдөр тутмын ажлыг хөнгөвчлөх, нэг стандарттай AI хэрэгслүүдийн багц.
-                    </p>
-                    <div className="ai-hero__stats">
-                        <div className="ai-stat">
-                            <span>4</span>
-                            <p>Идэвхтэй хэрэгсэл</p>
-                        </div>
-                        <div className="ai-stat">
-                            <span>1</span>
-                            <p>Шинэ боломж удахгүй</p>
-                        </div>
-                        <div className="ai-stat">
-                            <span>AI</span>
-                            <p>Автомат дүн шинжилгээ</p>
-                        </div>
-                    </div>
-                </div>
-
                 <div className="ai-toolbar">
-                    <div className="ai-search">
-                        <Search size={18} />
-                        <input
-                            className="ai-search__input"
-                            placeholder="Хайлт хийх"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                        />
-                    </div>
                     <div className="ai-filters">
                         {categories.map((category) => (
                             <button
@@ -161,13 +158,17 @@ const AIAssistant = () => {
                                 className={`ai-card ${tool.disabled ? 'ai-card--disabled' : ''}`}
                             >
                                 <div className="ai-card__top">
-                                    <div className="ai-card-icon">
-                                        <Icon size={28} />
-                                    </div>
                                     <span className={`badge ${tool.badgeTone}`}>{tool.badge}</span>
                                 </div>
                                 <h3 className="ai-card-title">{tool.title}</h3>
                                 <p className="ai-card-desc">{tool.description}</p>
+                                {tool.priceLabel && (
+                                    <div className="ai-card-price">
+                                        <span>{tool.priceLabel}</span>
+                                        {tool.creditLabel && <span className="ai-card-price__divider">·</span>}
+                                        {tool.creditLabel && <span>{tool.creditLabel}</span>}
+                                    </div>
+                                )}
                                 <div className="ai-card-arrow">
                                     {tool.cta}
                                     <ArrowRight size={16} />
