@@ -470,16 +470,24 @@ async function extractNDSHFromImage(imageDataUrl, mimeType, apiKey, modelName) {
 
 const app = require('express')();
 
-const allowedOrigins = (process.env.QPAY_ALLOWED_ORIGIN ||
-  'https://www.nege.mn,https://nege.mn,http://localhost:5173')
+const defaultOrigins = [
+  'https://www.nege.mn',
+  'https://nege.mn',
+  'http://localhost:5173',
+];
+
+const envOrigins = (process.env.QPAY_ALLOWED_ORIGIN || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const allowedOrigins = new Set([...defaultOrigins, ...envOrigins]);
+const allowAllOrigins = allowedOrigins.has('*');
+
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+    if (allowAllOrigins || allowedOrigins.has(origin)) {
       return callback(null, true);
     }
     return callback(null, false);
