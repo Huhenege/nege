@@ -8,7 +8,8 @@ import { useAuth } from '../../contexts/AuthContext';
 const DEFAULT_CONFIG = {
     subscription: {
         monthlyPrice: 0,
-        discountPercent: 20
+        discountPercent: 20,
+        monthlyCredits: 0
     },
     tools: {
         official_letterhead: { payPerUsePrice: 1000, creditCost: 1 },
@@ -234,13 +235,22 @@ const PricingManagement = () => {
 
             <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid var(--ink-200)', padding: '2rem', marginBottom: '2rem' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--ink-900)' }}>Subscription</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                     <label>
                         Сарын үнэ (₮)
                         <input
                             type="number"
                             value={config.subscription?.monthlyPrice || 0}
                             onChange={(e) => handleSubscriptionChange('monthlyPrice', e.target.value)}
+                            style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid var(--ink-300)' }}
+                        />
+                    </label>
+                    <label>
+                        Сарын credits
+                        <input
+                            type="number"
+                            value={config.subscription?.monthlyCredits || 0}
+                            onChange={(e) => handleSubscriptionChange('monthlyCredits', e.target.value)}
                             style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid var(--ink-300)' }}
                         />
                     </label>

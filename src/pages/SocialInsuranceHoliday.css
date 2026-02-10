@@ -212,6 +212,214 @@
   gap: 1.5rem;
 }
 
+.ndsh2-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ndsh2-upload-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ndsh2-intro {
+  border: 1px solid var(--ink-200);
+  border-radius: 20px;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ndsh2-intro-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.ndsh2-intro-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 16px;
+  background: #ffe4e6;
+  color: #fb7185;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ndsh2-intro h3 {
+  font-size: 1.1rem;
+  color: #1e293b;
+  margin-bottom: 0.35rem;
+}
+
+.ndsh2-intro p {
+  font-size: 0.85rem;
+  color: var(--ink-500);
+}
+
+.ndsh2-intro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.ndsh2-intro-item {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid var(--ink-200);
+  color: var(--ink-700);
+}
+
+.ndsh2-intro-item .ndsh2-icon {
+  color: var(--success-600);
+}
+
+.ndsh2-intro-item strong {
+  display: block;
+  font-size: 0.85rem;
+  color: #1e293b;
+}
+
+.ndsh2-intro-item span {
+  font-size: 0.75rem;
+  color: var(--ink-400);
+}
+
+.ndsh2-payment-bar {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: 16px;
+  border: 1px solid var(--ink-200);
+  background: linear-gradient(135deg, #f8fafc, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ndsh2-payment-info p {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--ink-400);
+}
+
+.ndsh2-payment-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
+}
+
+.ndsh2-payment-price strong {
+  font-size: 1.4rem;
+  color: var(--ink-900);
+}
+
+.ndsh2-payment-price span {
+  font-size: 0.75rem;
+  color: var(--ink-500);
+}
+
+.ndsh2-payment-balance {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--ink-500);
+}
+
+.ndsh2-payment-balance strong {
+  color: var(--ink-700);
+}
+
+.ndsh2-payment-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ndsh2-payment-status {
+  display: flex;
+  align-items: center;
+}
+
+.ndsh2-payment-panel {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border-radius: 18px;
+  background: var(--surface-1);
+  border: 1px solid var(--ink-200);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ndsh2-payment-tabs {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ndsh2-payment-hint {
+  font-size: 0.75rem;
+  color: var(--ink-500);
+}
+
+.ndsh2-payment-hint--warn {
+  color: var(--danger-600);
+}
+
+.ndsh2-credits-box {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--ink-200);
+  padding: 1rem;
+  background: #ffffff;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ndsh2-credits-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--ink-600);
+}
+
+.ndsh2-credits-row strong {
+  color: var(--ink-900);
+}
+
+.ndsh2-credits-hint {
+  margin-top: 0.35rem;
+  font-size: 0.7rem;
+  color: var(--ink-400);
+}
+
+.ndsh2-action-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.ndsh2-action-note {
+  font-size: 0.75rem;
+  color: var(--ink-400);
+  margin: 0;
+}
+
 .ndsh2-pay {
   display: flex;
   flex-direction: column;
@@ -446,12 +654,6 @@
   color: var(--ink-400);
 }
 
-.ndsh2-badge-row {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-  margin-top: 0.75rem;
-}
 
 .ndsh2-badge {
   display: inline-flex;
@@ -500,6 +702,11 @@
 .ndsh2-badge--amber {
   background: #fef3c7;
   color: #b45309;
+}
+
+.ndsh2-badge--danger {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .ndsh2-badge--pink {
@@ -1465,6 +1672,32 @@
   .ndsh2-action-row--end {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .ndsh2-payment-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ndsh2-payment-actions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .ndsh2-action-main {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .ndsh2-action-main .ndsh2-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ndsh2-intro-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .ndsh2-table-actions {

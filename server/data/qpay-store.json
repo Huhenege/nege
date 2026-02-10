@@ -73,6 +73,30 @@
       "status": "CREATED",
       "createdAt": "2026-02-08T01:06:12.973Z",
       "updatedAt": "2026-02-08T01:06:12.973Z"
+    },
+    "f0f672cf-1635-4ef8-81ff-e31ef1b606bf": {
+      "invoice_id": "f0f672cf-1635-4ef8-81ff-e31ef1b606bf",
+      "sender_invoice_no": "NDSH-1770600987181-326",
+      "amount": 5000,
+      "status": "CREATED",
+      "createdAt": "2026-02-09T01:36:27.863Z",
+      "updatedAt": "2026-02-09T01:36:27.863Z"
+    },
+    "bd47790f-85ab-4b66-8cb5-f1fbe1b8f598": {
+      "invoice_id": "bd47790f-85ab-4b66-8cb5-f1fbe1b8f598",
+      "sender_invoice_no": "NDSH-1770601022331-50",
+      "amount": 10000,
+      "status": "CREATED",
+      "createdAt": "2026-02-09T01:37:02.642Z",
+      "updatedAt": "2026-02-09T01:37:02.642Z"
+    },
+    "efe020bc-3174-4bc3-a7e7-8af4b800f2bd": {
+      "invoice_id": "efe020bc-3174-4bc3-a7e7-8af4b800f2bd",
+      "sender_invoice_no": "NDSH-1770715195437-407",
+      "amount": 1000,
+      "status": "CREATED",
+      "createdAt": "2026-02-10T09:19:56.058Z",
+      "updatedAt": "2026-02-10T09:19:56.058Z"
     }
   },
   "grants": {
@@ -85,6 +109,30 @@
       "invoice_id": "mock-invoice-1770339202853",
       "remainingUses": 1,
       "createdAt": "2026-02-06T00:53:25.524Z"
+    },
+    "05e33ba6-3ed7-4868-a6ab-4d63d19b4410": {
+      "userId": "IVZejzdajfTSddiSOEZ4DrosPXK2",
+      "toolKey": "ndsh_holiday",
+      "remainingUses": 0,
+      "source": "credits",
+      "creditsUsed": 1,
+      "createdAt": "2026-02-10T09:21:44.682Z",
+      "usedAt": "2026-02-10T09:23:58.713Z"
+    },
+    "398a27f2-15a0-4337-a123-c843b037da1b": {
+      "userId": "IVZejzdajfTSddiSOEZ4DrosPXK2",
+      "toolKey": "ndsh_holiday",
+      "remainingUses": 0,
+      "source": "credits",
+      "creditsUsed": 1,
+      "createdAt": "2026-02-10T11:10:26.387Z",
+      "usedAt": "2026-02-10T11:10:32.544Z"
+    }
+  },
+  "credits": {
+    "IVZejzdajfTSddiSOEZ4DrosPXK2": {
+      "balance": 8,
+      "updatedAt": "2026-02-10T11:10:26.387Z"
     }
   }
 }
