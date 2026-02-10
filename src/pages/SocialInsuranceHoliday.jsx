@@ -33,7 +33,7 @@ const STORAGE_KEY = 'ndsh-saved-data';
 const PAYMENT_STORAGE_KEY = 'ndsh-payment-grant';
 
 const SocialInsuranceHoliday = () => {
-    const { currentUser, refreshUserProfile } = useAuth();
+    const { currentUser, refreshUserProfile, userProfile } = useAuth();
     const { config: billingConfig } = useBilling();
     const { discountPercent } = useAccess();
 
@@ -228,7 +228,12 @@ const SocialInsuranceHoliday = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
-                body: JSON.stringify({ toolKey: 'ndsh_holiday' }),
+                body: JSON.stringify({
+                    toolKey: 'ndsh_holiday',
+                    userId: currentUser?.uid || null,
+                    currentBalance: userProfile?.credits?.balance ?? null,
+                    creditCost,
+                }),
             });
             const data = await response.json();
             if (!response.ok) {

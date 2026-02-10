@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
-import { collection, getDocs, doc, updateDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { Shield, ShieldOff, Ban, CheckCircle, Search, Filter, AlertCircle, RefreshCw, Activity, Calendar, DollarSign } from 'lucide-react';
+import { collection, getDocs, doc, updateDoc, serverTimestamp, query, orderBy, increment, addDoc } from 'firebase/firestore';
+import { Shield, ShieldOff, Ban, CheckCircle, Search, AlertCircle, RefreshCw, Calendar, DollarSign, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { logAdminAction } from '../../lib/logger';
 
@@ -13,6 +13,34 @@ const UserManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterRole, setFilterRole] = useState('all'); // all, admin, user
     const [filterStatus, setFilterStatus] = useState('all'); // all, active, banned
+    const [creditTopupUser, setCreditTopupUser] = useState(null);
+    const [topupAmount, setTopupAmount] = useState('');
+    const [topupNote, setTopupNote] = useState('');
+    const [topupLoading, setTopupLoading] = useState(false);
+    const [topupError, setTopupError] = useState('');
+
+    const parseDateValue = (value) => {
+        if (!value) return null;
+        if (value?.toDate) return value.toDate();
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const formatDate = (value) => {
+        if (!value) return '-';
+        return value.toLocaleDateString('mn-MN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    };
+
+    const getSubscriptionMeta = (user) => {
+        const endAt = parseDateValue(user?.subscription?.endAt);
+        const isActive = user?.subscription?.status === 'active' && endAt && endAt.getTime() > Date.now();
+        let daysLeft = null;
+        if (endAt) {
+            const diff = endAt.getTime() - Date.now();
+            daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        }
+        return { endAt, isActive, daysLeft };
+    };
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -157,45 +185,86 @@ const UserManagement = () => {
         }
     };
 
-    const handleCreditsUpdate = async (userId) => {
+    const openCreditsTopup = async (userId) => {
         const target = users.find(u => u.id === userId);
-        const currentBalance = target?.credits?.balance || 0;
-        const input = window.prompt('Credits balance шинэ утга:', String(currentBalance));
-        if (input === null) return;
+        if (!target) return;
+        setCreditTopupUser(target);
+        setTopupAmount('');
+        setTopupNote('');
+        setTopupError('');
+    };
 
-        const nextBalance = Number(input);
-        if (!Number.isFinite(nextBalance) || nextBalance < 0) {
-            alert('Credits утга буруу байна.');
+    const closeTopupModal = (force = false) => {
+        if (topupLoading && !force) return;
+        setCreditTopupUser(null);
+        setTopupAmount('');
+        setTopupNote('');
+        setTopupError('');
+    };
+
+    const handleCreditsTopup = async () => {
+        if (!creditTopupUser) return;
+        const amount = Number(topupAmount);
+        if (!Number.isFinite(amount) || amount <= 0) {
+            setTopupError('Цэнэглэх хэмжээ буруу байна.');
             return;
         }
 
+        setTopupLoading(true);
+        setTopupError('');
         try {
-            const userRef = doc(db, "users", userId);
+            const userRef = doc(db, "users", creditTopupUser.id);
             await updateDoc(userRef, {
-                credits: {
-                    balance: nextBalance,
-                    updatedAt: serverTimestamp()
-                },
+                'credits.balance': increment(amount),
+                'credits.updatedAt': serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
 
-            await logAdminAction('UPDATE_CREDITS', {
-                targetUid: userId,
-                targetEmail: target?.email,
-                balance: nextBalance
+            try {
+                await addDoc(collection(db, "creditTransactions"), {
+                    userId: creditTopupUser.id,
+                    credits: amount,
+                    amount: 0,
+                    type: 'admin_topup',
+                    note: topupNote?.trim() || null,
+                    adminId: currentUser?.uid || null,
+                    adminEmail: currentUser?.email || null,
+                    createdAt: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Error logging credit transaction:", error);
+            }
+
+            await logAdminAction('TOPUP_CREDITS', {
+                targetUid: creditTopupUser.id,
+                targetEmail: creditTopupUser?.email,
+                credits: amount,
+                note: topupNote?.trim() || null
             }, currentUser);
 
-            setUsers(users.map(u => u.id === userId ? {
+            setUsers(prev => prev.map(u => u.id === creditTopupUser.id ? {
                 ...u,
                 credits: {
-                    balance: nextBalance
+                    ...u.credits,
+                    balance: (u.credits?.balance || 0) + amount,
+                    updatedAt: new Date().toISOString()
                 }
             } : u));
+
+            closeTopupModal(true);
         } catch (error) {
-            console.error("Error updating credits:", error);
-            alert("Credits шинэчлэхэд алдаа гарлаа.");
+            console.error("Error topping up credits:", error);
+            setTopupError('Credits цэнэглэхэд алдаа гарлаа.');
+        } finally {
+            setTopupLoading(false);
         }
     };
+
+    const currentTopupBalance = creditTopupUser?.credits?.balance || 0;
+    const parsedTopupAmount = Number(topupAmount);
+    const topupPreviewBalance = creditTopupUser && Number.isFinite(parsedTopupAmount) && parsedTopupAmount > 0
+        ? currentTopupBalance + parsedTopupAmount
+        : currentTopupBalance;
 
     if (loading) return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
@@ -253,20 +322,22 @@ const UserManagement = () => {
             </div>
 
             {/* Table */}
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden', border: '1px solid var(--ink-100)' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflowX: 'auto', border: '1px solid var(--ink-100)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--ink-200)' }}>
                         <tr>
                             <th style={{ padding: '1rem', fontWeight: '600', color: 'var(--ink-500)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Имэйл</th>
                             <th style={{ padding: '1rem', fontWeight: '600', color: 'var(--ink-500)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Эрх</th>
                             <th style={{ padding: '1rem', fontWeight: '600', color: 'var(--ink-500)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Төлөв</th>
+                            <th style={{ padding: '1rem', fontWeight: '600', color: 'var(--ink-500)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Сарын subscription</th>
+                            <th style={{ padding: '1rem', fontWeight: '600', color: 'var(--ink-500)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Credits үлдэгдэл</th>
                             <th style={{ padding: '1rem', fontWeight: '600', color: 'var(--ink-500)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Үйлдэл</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredUsers.length === 0 ? (
                             <tr>
-                                <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: 'var(--ink-400)' }}>
+                                <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'var(--ink-400)' }}>
                                     Хэрэглэгч олдсонгүй.
                                 </td>
                             </tr>
@@ -294,6 +365,30 @@ const UserManagement = () => {
                                             {user.status === 'banned' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
                                             {user.status === 'banned' ? 'Banned' : 'Active'}
                                         </span>
+                                    </td>
+                                    <td style={{ padding: '1rem' }}>
+                                        {(() => {
+                                            const { endAt, isActive, daysLeft } = getSubscriptionMeta(user);
+                                            const remainingLabel = endAt
+                                                ? (daysLeft >= 0 ? `${daysLeft} өдөр үлдсэн` : 'Хугацаа дууссан')
+                                                : '-';
+                                            return (
+                                                <div>
+                                                    <div style={{ fontSize: '0.875rem', fontWeight: '600', color: isActive ? '#16a34a' : 'var(--ink-500)' }}>
+                                                        {isActive ? 'Идэвхтэй' : 'Идэвхгүй'}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--ink-400)' }}>
+                                                        Дуусах: {endAt ? formatDate(endAt) : '-'}{endAt ? ` · ${remainingLabel}` : ''}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </td>
+                                    <td style={{ padding: '1rem' }}>
+                                        <div style={{ fontWeight: '700', color: 'var(--ink-900)' }}>
+                                            {(user?.credits?.balance || 0).toLocaleString('mn-MN')}
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--ink-400)' }}>credit</div>
                                     </td>
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -342,8 +437,8 @@ const UserManagement = () => {
                                             </button>
 
                                             <button
-                                                onClick={() => handleCreditsUpdate(user.id)}
-                                                title="Credits"
+                                                onClick={() => openCreditsTopup(user.id)}
+                                                title="Credits цэнэглэх"
                                                 style={{ padding: '8px', borderRadius: '6px', backgroundColor: '#fef9c3', color: '#ca8a04', border: 'none', cursor: 'pointer' }}
                                             >
                                                 <DollarSign size={18} />
@@ -359,6 +454,115 @@ const UserManagement = () => {
             <p style={{ marginTop: '1rem', color: 'var(--ink-400)', fontSize: '0.875rem', textAlign: 'center' }}>
                 Showing {filteredUsers.length} of {users.length} users
             </p>
+
+            {creditTopupUser && (
+                <div
+                    onClick={closeTopupModal}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 50,
+                        padding: '1.5rem'
+                    }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            backgroundColor: 'white',
+                            width: '100%',
+                            maxWidth: '520px',
+                            borderRadius: '16px',
+                            boxShadow: '0 20px 40px rgba(15, 23, 42, 0.25)',
+                            border: '1px solid var(--ink-100)',
+                            padding: '1.5rem'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                            <div>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--ink-900)', marginBottom: '0.25rem' }}>
+                                    Credits цэнэглэх
+                                </h3>
+                                <p style={{ fontSize: '0.875rem', color: 'var(--ink-500)' }}>{creditTopupUser.email}</p>
+                            </div>
+                            <button
+                                onClick={closeTopupModal}
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ink-400)' }}
+                                aria-label="Close"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '1rem' }}>
+                            <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--ink-50)', borderRadius: '10px', border: '1px solid var(--ink-100)' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)' }}>Одоогийн үлдэгдэл</div>
+                                <div style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--ink-900)' }}>
+                                    {currentTopupBalance.toLocaleString('mn-MN')} credit
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--ink-600)', marginBottom: '0.5rem' }}>
+                                    Цэнэглэх хэмжээ (credit)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    value={topupAmount}
+                                    onChange={(e) => setTopupAmount(e.target.value)}
+                                    placeholder="Жишээ: 10"
+                                    style={{ width: '100%', padding: '0.7rem 0.9rem', borderRadius: '10px', border: '1px solid var(--ink-200)', outline: 'none' }}
+                                />
+                            </div>
+
+                            <div style={{ fontSize: '0.85rem', color: 'var(--ink-500)' }}>
+                                Шинэ үлдэгдэл: <strong style={{ color: 'var(--ink-900)' }}>{topupPreviewBalance.toLocaleString('mn-MN')}</strong> credit
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--ink-600)', marginBottom: '0.5rem' }}>
+                                    Тэмдэглэл (заавал биш)
+                                </label>
+                                <textarea
+                                    rows="3"
+                                    value={topupNote}
+                                    onChange={(e) => setTopupNote(e.target.value)}
+                                    placeholder="Тайлбар бичих боломжтой"
+                                    style={{ width: '100%', padding: '0.7rem 0.9rem', borderRadius: '10px', border: '1px solid var(--ink-200)', outline: 'none', resize: 'vertical' }}
+                                />
+                            </div>
+
+                            {topupError && (
+                                <div style={{ color: '#dc2626', fontSize: '0.85rem' }}>
+                                    {topupError}
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                <button
+                                    onClick={closeTopupModal}
+                                    disabled={topupLoading}
+                                    style={{ padding: '0.6rem 1.2rem', borderRadius: '10px', border: '1px solid var(--ink-200)', backgroundColor: 'white', color: 'var(--ink-600)', cursor: 'pointer' }}
+                                >
+                                    Болих
+                                </button>
+                                <button
+                                    onClick={handleCreditsTopup}
+                                    disabled={topupLoading}
+                                    style={{ padding: '0.6rem 1.4rem', borderRadius: '10px', border: 'none', backgroundColor: '#e11d48', color: 'white', cursor: 'pointer' }}
+                                >
+                                    {topupLoading ? 'Цэнэглэж байна...' : 'Цэнэглэх'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

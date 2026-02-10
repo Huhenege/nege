@@ -6,7 +6,7 @@ import {
     signOut,
     onAuthStateChanged
 } from "firebase/auth"
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore"
 import { auth, db, googleProvider } from "../lib/firebase"
 
 const AuthContext = React.createContext()
@@ -67,32 +67,50 @@ export function AuthProvider({ children }) {
     }
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        let unsubscribeUserDoc = null;
+
+        const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+            if (unsubscribeUserDoc) {
+                unsubscribeUserDoc();
+                unsubscribeUserDoc = null;
+            }
+
             if (user) {
-                // Fetch user role from Firestore
                 try {
-                    const userDoc = await getDoc(doc(db, "users", user.uid));
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        // Merge Firestore data into the user object
-                        user.role = userData.role;
-                        user.firestoreData = userData;
-                        setUserProfile(userData);
-                    } else {
-                        setUserProfile(null);
-                    }
+                    const userRef = doc(db, "users", user.uid);
+                    unsubscribeUserDoc = onSnapshot(
+                        userRef,
+                        (snap) => {
+                            if (snap.exists()) {
+                                const userData = snap.data();
+                                user.role = userData.role;
+                                user.firestoreData = userData;
+                                setUserProfile(userData);
+                            } else {
+                                setUserProfile(null);
+                            }
+                        },
+                        (error) => {
+                            console.error("Error listening to user data:", error);
+                            setUserProfile(null);
+                        }
+                    );
                 } catch (error) {
-                    console.error("Error fetching user data:", error);
+                    console.error("Error setting up user listener:", error);
                     setUserProfile(null);
                 }
             } else {
                 setUserProfile(null);
             }
+
             setCurrentUser(user);
             setLoading(false);
         });
 
-        return unsubscribe;
+        return () => {
+            if (unsubscribeUserDoc) unsubscribeUserDoc();
+            unsubscribeAuth();
+        };
     }, []);
 
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);

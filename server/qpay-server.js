@@ -64,7 +64,7 @@ function ensureDataFile() {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
   if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify({ invoices: {}, grants: {} }, null, 2));
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ invoices: {}, grants: {}, credits: {} }, null, 2));
   }
 }
 
@@ -76,9 +76,10 @@ function readStore() {
     return {
       invoices: parsed.invoices || {},
       grants: parsed.grants || {},
+      credits: parsed.credits || {},
     };
   } catch (err) {
-    return { invoices: {}, grants: {} };
+    return { invoices: {}, grants: {}, credits: {} };
   }
 }
 
@@ -99,6 +100,26 @@ function jsonResponse(res, status, data) {
 
 function notFound(res) {
   jsonResponse(res, 404, { error: 'Not found' });
+}
+
+function decodeJwtPayload(token) {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+  } catch (err) {
+    return null;
+  }
+}
+
+function resolveUserId(req, body) {
+  if (body?.userId) return body.userId;
+  const authHeader = req.headers.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) return null;
+  const payload = decodeJwtPayload(authHeader.slice(7));
+  return payload?.user_id || payload?.sub || payload?.uid || null;
 }
 
 async function readJson(req) {
@@ -620,6 +641,60 @@ const server = http.createServer(async (req, res) => {
         issueGrantForInvoice(invoiceId);
       }
       jsonResponse(res, 200, { ok: true, paid: result.paid });
+    } catch (err) {
+      jsonResponse(res, 500, { error: err instanceof Error ? err.message : 'Server error' });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/credits/consume') {
+    try {
+      const body = await readJson(req);
+      const userId = resolveUserId(req, body);
+      if (!userId) {
+        jsonResponse(res, 401, { error: 'Нэвтэрсэн хэрэглэгч шаардлагатай' });
+        return;
+      }
+      if (!body.toolKey) {
+        jsonResponse(res, 400, { error: 'toolKey шаардлагатай' });
+        return;
+      }
+
+      const creditCost = Number(body.creditCost || 1);
+      if (!Number.isFinite(creditCost) || creditCost <= 0) {
+        jsonResponse(res, 400, { error: 'Credits үнэ тохируулаагүй байна' });
+        return;
+      }
+
+      const store = readStore();
+      const storedBalance = Number(store.credits?.[userId]?.balance || 0);
+      const incomingBalance = Number(body.currentBalance);
+      const currentBalance = Number.isFinite(incomingBalance) && !store.credits?.[userId]
+        ? incomingBalance
+        : storedBalance;
+
+      if (currentBalance < creditCost) {
+        jsonResponse(res, 400, { error: 'Credits хүрэлцэхгүй байна' });
+        return;
+      }
+
+      const nextBalance = currentBalance - creditCost;
+      const grantToken = crypto.randomUUID();
+      store.credits[userId] = {
+        balance: nextBalance,
+        updatedAt: new Date().toISOString(),
+      };
+      store.grants[grantToken] = {
+        userId,
+        toolKey: body.toolKey,
+        remainingUses: 1,
+        source: 'credits',
+        creditsUsed: creditCost,
+        createdAt: new Date().toISOString(),
+      };
+      writeStore(store);
+
+      jsonResponse(res, 200, { ok: true, grantToken, creditsUsed: creditCost, balance: nextBalance });
     } catch (err) {
       jsonResponse(res, 500, { error: err instanceof Error ? err.message : 'Server error' });
     }

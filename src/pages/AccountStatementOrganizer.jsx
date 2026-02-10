@@ -12,7 +12,7 @@ import './AccountStatementOrganizer.css';
 const PAYMENT_STORAGE_KEY = 'account-statement-grant';
 
 const AccountStatementOrganizer = () => {
-    const { currentUser, refreshUserProfile } = useAuth();
+    const { currentUser, refreshUserProfile, userProfile } = useAuth();
     const { config: billingConfig } = useBilling();
     const { discountPercent } = useAccess();
     const [files, setFiles] = useState([]);
@@ -164,7 +164,12 @@ const AccountStatementOrganizer = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
-                body: JSON.stringify({ toolKey: 'account_statement' })
+                body: JSON.stringify({
+                    toolKey: 'account_statement',
+                    userId: currentUser?.uid || null,
+                    currentBalance: userProfile?.credits?.balance ?? null,
+                    creditCost,
+                })
             });
             const data = await response.json();
             if (!response.ok) {

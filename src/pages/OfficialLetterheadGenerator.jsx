@@ -23,7 +23,7 @@ import ToolHeader from '../components/ToolHeader';
 const PAYMENT_STORAGE_KEY = 'letterhead-payment-grant';
 
 const OfficialLetterheadGenerator = () => {
-    const { currentUser, refreshUserProfile } = useAuth();
+    const { currentUser, refreshUserProfile, userProfile } = useAuth();
     const { config: billingConfig } = useBilling();
     const { discountPercent, canUseTemplates } = useAccess();
     const location = useLocation();
@@ -304,7 +304,12 @@ const OfficialLetterheadGenerator = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 auth: true,
-                body: JSON.stringify({ toolKey: 'official_letterhead' }),
+                body: JSON.stringify({
+                    toolKey: 'official_letterhead',
+                    userId: currentUser?.uid || null,
+                    currentBalance: userProfile?.credits?.balance ?? null,
+                    creditCost,
+                }),
             });
             const data = await response.json();
             if (!response.ok) {
