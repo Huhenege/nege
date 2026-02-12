@@ -28,7 +28,8 @@ const DEFAULT_CONFIG = {
     tools: {
         official_letterhead: { payPerUsePrice: 1000, creditCost: 1, active: true },
         ndsh_holiday: { payPerUsePrice: 1000, creditCost: 1, active: true },
-        account_statement: { payPerUsePrice: 1000, creditCost: 1, active: true }
+        account_statement: { payPerUsePrice: 1000, creditCost: 1, active: true },
+        business_card: { payPerUsePrice: 1000, creditCost: 1, active: true }
     },
     credits: {
         bundles: []
@@ -38,7 +39,8 @@ const DEFAULT_CONFIG = {
 const TOOL_LABELS = {
     official_letterhead: 'Албан бланк үүсгэх',
     ndsh_holiday: 'Ажилсан жил тооцоолох',
-    account_statement: 'Дансны хуулга цэгцлэх'
+    account_statement: 'Дансны хуулга цэгцлэх',
+    business_card: 'Нэрийн хуудас үүсгэх'
 };
 
 const PricingManagement = () => {

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useBilling } from '../contexts/BillingContext';
-import { FileText, Calculator, Sparkles, ArrowRight, Clock, GraduationCap, Layers } from 'lucide-react';
+import { FileText, Calculator, Sparkles, ArrowRight, Clock, GraduationCap, Layers, IdCard } from 'lucide-react';
 import './AIAssistant.css';
 
 const AIAssistant = () => {
@@ -15,6 +15,7 @@ const AIAssistant = () => {
         "/ai-assistant/account-statement-organizer",
         "/ai-assistant/social-insurance-holiday",
         "/ai-assistant/official-letterhead",
+        "/ai-assistant/business-card",
         "/ai-assistant/business-training"
     ]);
 
@@ -50,6 +51,18 @@ const AIAssistant = () => {
             description: 'Албан бичгийг стандартаар үүсгэж, PDF форматаар татаж авах хэрэгсэл.',
             path: '/ai-assistant/official-letterhead',
             icon: FileText,
+            category: 'Албан бичиг',
+            badge: 'Free',
+            badgeTone: 'badge-success',
+            cta: 'Эхлүүлэх',
+        },
+        {
+            id: 'business-card',
+            toolKey: 'business_card',
+            title: 'Нэрийн хуудас бүтээгч',
+            description: '90x50 мм хэмжээтэй минимал нэрийн хуудсыг PDF болон PNG-ээр бэлтгэнэ.',
+            path: '/ai-assistant/business-card',
+            icon: IdCard,
             category: 'Албан бичиг',
             badge: 'Free',
             badgeTone: 'badge-success',
@@ -130,6 +143,14 @@ const AIAssistant = () => {
     return (
         <div className="ai-page">
             <div className="container ai-container">
+                <div className="ai-hero">
+                    <span className="ai-hero__eyebrow">NEGE AI</span>
+                    <h1 className="ai-hero__title">Нэг дор бүх AI хэрэгсэл</h1>
+                    <p className="ai-hero__subtitle">
+                        Санхүү, даатгал, албан бичиг, сургалтын ажилд зориулсан хэрэгслүүдийг нэг дороос ашигла.
+                    </p>
+                </div>
+
                 <div className="ai-toolbar">
                     <div className="ai-filters">
                         {categories.map((category) => (

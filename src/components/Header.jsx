@@ -42,6 +42,9 @@ const Header = () => {
                 </Link>
 
                 <nav className="site-header__nav">
+                    <Link to="/nege-ai" className="header-nav-link">
+                        Nege AI
+                    </Link>
                     {currentUser ? (
                         <div className="header-user-container" ref={dropdownRef}>
                             <button

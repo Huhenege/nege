@@ -1,0 +1,1588 @@
+.business-card-page {
+    min-height: 100vh;
+    padding: 0 0 var(--space-12);
+    background: var(--surface-1);
+    position: relative;
+    /* overflow: hidden; Removed to allow sticky header */
+}
+
+/* Removed legacy pink blob ::after */
+
+/* .business-card-page > * {
+    position: relative;
+    z-index: 1;
+} Removed to allow sticky header */
+
+@keyframes businessCardRise {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tool-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: var(--space-6);
+    padding: var(--space-6);
+    align-items: center;
+    border: 1px solid rgba(225, 29, 72, 0.16);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.7));
+    box-shadow: var(--shadow-md);
+}
+
+.tool-intro-copy {
+    font-size: 1rem;
+    color: var(--ink-600);
+    margin-bottom: var(--space-4);
+}
+
+.tool-panel {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--ink-200);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-xs);
+}
+
+.tool-panel-label {
+    font-size: 0.85rem;
+    color: var(--ink-500);
+}
+
+.tool-panel-price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--ink-900);
+    margin: 0.5rem 0 0.25rem;
+}
+
+.tool-panel-sub {
+    font-size: 0.9rem;
+    color: var(--ink-500);
+}
+
+.tool-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+}
+
+.business-card-hero,
+.business-card-grid,
+.tool-intro,
+.tool-grid {
+    animation: businessCardRise 0.6s ease both;
+}
+
+.business-card-grid {
+    animation-delay: 0.06s;
+}
+
+.tool-intro {
+    animation-delay: 0.12s;
+}
+
+.tool-grid {
+    animation-delay: 0.18s;
+}
+
+.tool-stepper {
+    margin-top: var(--space-6);
+}
+
+.tool-pay {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.tool-pay-actions {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.tool-pay-qr img {
+    width: 180px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--ink-200);
+    padding: 0.5rem;
+    background: #ffffff;
+}
+
+.tool-pay-placeholder {
+    padding: 1rem;
+    border: 1px dashed var(--ink-200);
+    border-radius: var(--radius-md);
+    color: var(--ink-400);
+    font-size: 0.85rem;
+}
+
+.tool-pay-error {
+    color: var(--danger-600);
+    font-size: 0.85rem;
+}
+
+.tool-action {
+    margin-top: var(--space-6);
+    text-align: center;
+}
+
+.tool-success {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-6);
+}
+
+.tool-success__icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: var(--success-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.business-card-hero {
+    padding: var(--space-6);
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "header"
+        "layout"
+        "preview";
+    position: relative;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid var(--ink-100);
+    box-shadow: var(--shadow-md);
+    font-family: var(--ui-font, var(--font-sans));
+}
+
+.business-card-hero::before {
+    content: '';
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    right: -70px;
+    bottom: -80px;
+    background: radial-gradient(circle, rgba(244, 63, 94, 0.12), transparent 70%);
+    pointer-events: none;
+}
+
+.business-card-hero>* {
+    position: relative;
+    z-index: 1;
+}
+
+.business-card-hero-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--space-4);
+    grid-area: header;
+}
+
+.business-card-hero-header>div:first-child {
+    min-width: 0;
+}
+
+.business-card-layout-section {
+    display: grid;
+    gap: var(--space-3);
+    grid-area: layout;
+}
+
+.business-card-layout-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--ink-800);
+}
+
+.business-card-layout-sub {
+    font-size: 0.85rem;
+    color: var(--ink-500);
+    margin-top: -0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.business-card-hero-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink-900);
+}
+
+.business-card-hero-sub {
+    font-size: 0.9rem;
+    color: var(--ink-500);
+    margin-top: 0.35rem;
+}
+
+.business-card-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr);
+    gap: var(--space-6);
+    align-items: start;
+}
+
+.business-card-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+}
+
+.business-card-social-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+}
+
+.business-card-form-divider {
+    height: 1px;
+    background: var(--ink-100);
+    margin: var(--space-4) 0;
+    grid-column: 1 / -1;
+}
+
+.business-card-control {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    grid-column: 1 / -1;
+}
+
+.business-card-control-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-700);
+}
+
+.business-card-layout-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+}
+
+.business-card-font-select {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--ink-100);
+    background: #ffffff;
+}
+
+.business-card-layout-option {
+    border: 1px solid var(--ink-200);
+    border-radius: var(--radius-md);
+    padding: 0.85rem;
+    font-size: 0.85rem;
+    text-align: left;
+    color: var(--ink-600);
+    background: #ffffff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-3);
+    align-items: center;
+    position: relative;
+}
+
+.business-card-layout-option:hover {
+    border-color: var(--ink-300);
+    box-shadow: var(--shadow-xs);
+    background: #ffffff;
+}
+
+.business-card-layout-option.is-active {
+    border-color: var(--brand-600);
+    box-shadow: 0 0 0 1px rgba(225, 29, 72, 0.08);
+    color: var(--ink-900);
+}
+
+.business-card-layout-option:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.business-card-layout-text {
+    display: grid;
+    gap: 0.25rem;
+    line-height: 1.3;
+}
+
+.business-card-layout-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--brand-600);
+}
+
+.business-card-layout-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ink-900);
+}
+
+.business-card-layout-hint {
+    font-size: 0.75rem;
+    color: var(--ink-500);
+}
+
+.business-card-layout-sample {
+    width: 56px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--ink-200);
+    background: linear-gradient(135deg, #ffffff, #f1f5f9);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+    display: block;
+}
+
+.layout-sample-strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: var(--brand-600);
+    display: none;
+}
+
+.layout-sample-logo {
+    position: absolute;
+    width: 16px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--brand-500);
+    top: 7px;
+    left: 6px;
+}
+
+.layout-sample-lines {
+    position: absolute;
+    width: 26px;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--ink-300);
+    top: 8px;
+    left: 26px;
+    box-shadow: 0 6px 0 var(--ink-200), 0 12px 0 var(--ink-100);
+}
+
+.layout-sample-qr {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid var(--ink-300);
+    right: 6px;
+    bottom: 6px;
+    background: linear-gradient(135deg, var(--ink-100), #ffffff);
+    display: none;
+}
+
+.sample-logo-top .layout-sample-logo {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.sample-logo-top .layout-sample-lines {
+    left: 50%;
+    transform: translateX(-50%);
+    top: 21px;
+    width: 28px;
+}
+
+.sample-centered .layout-sample-logo {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.sample-centered .layout-sample-lines {
+    left: 50%;
+    transform: translateX(-50%);
+    top: 20px;
+    width: 30px;
+}
+
+.sample-name-dominant .layout-sample-logo {
+    width: 10px;
+    height: 6px;
+    top: 6px;
+    left: auto;
+    right: 6px;
+}
+
+.sample-name-dominant .layout-sample-lines {
+    left: 6px;
+    width: 34px;
+    top: 16px;
+    box-shadow: 0 8px 0 var(--ink-200), 0 14px 0 var(--ink-100);
+}
+
+.sample-split::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 50%;
+    width: 1px;
+    background: var(--ink-200);
+}
+
+.sample-split .layout-sample-lines {
+    left: 30px;
+    width: 20px;
+}
+
+.sample-qr .layout-sample-qr {
+    display: block;
+}
+
+.sample-qr .layout-sample-lines {
+    width: 22px;
+    left: 6px;
+}
+
+.sample-icon .layout-sample-lines {
+    width: 22px;
+    left: 24px;
+    box-shadow: 0 6px 0 var(--ink-200), 0 12px 0 var(--ink-200);
+}
+
+.sample-brand-strip .layout-sample-strip {
+    display: block;
+}
+
+.business-card-logo-upload {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.business-card-logo-preview {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--ink-100);
+    background: var(--surface-2);
+}
+
+.business-card-logo-preview img {
+    width: 72px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    background: #ffffff;
+    border: 1px solid var(--ink-200);
+    padding: 6px;
+}
+
+.business-card-logo-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-700);
+    margin-bottom: 0.35rem;
+}
+
+.business-card-muted {
+    font-size: 0.85rem;
+    color: var(--ink-500);
+}
+
+.business-card-tips {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.business-card-tip-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-4);
+    display: grid;
+    gap: var(--space-3);
+    color: var(--ink-600);
+    font-size: 0.9rem;
+}
+
+.business-card-tip-list li {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-start;
+}
+
+.business-card-tip-list li::before {
+    content: '✓';
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fce7f3;
+    color: var(--brand-600);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.business-card-tip-callout {
+    background: #ffffff;
+    border: 1px dashed var(--ink-200);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: var(--ink-600);
+    text-align: center;
+    font-weight: 600;
+}
+
+.business-card-qr-info {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.business-card-qr-mini {
+    width: 120px;
+    height: 120px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--ink-200);
+    background: #ffffff;
+    padding: 0.5rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--ink-500);
+}
+
+.form-field.full {
+    grid-column: 1 / -1;
+}
+
+.business-card-preview {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    grid-area: preview;
+}
+
+.business-card-preview-controls {
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: space-between;
+}
+
+.business-card-preview-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+.business-card-preview-hint {
+    font-size: 0.8rem;
+    color: var(--ink-500);
+    margin: 0;
+}
+
+.business-card-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--ink-600);
+}
+
+.business-card-toggle input {
+    accent-color: var(--brand-600);
+}
+
+.business-card-preview-stage {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background: #ffffff;
+    border: 1px solid var(--ink-100);
+    position: relative;
+    overflow: hidden;
+}
+
+.business-card-preview-stage::before {
+    content: '';
+    position: absolute;
+    width: 70%;
+    height: 50%;
+    left: 50%;
+    top: 55%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(225, 29, 72, 0.18), transparent 70%);
+    filter: blur(12px);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+}
+
+.business-card-flip {
+    width: 90mm;
+    height: 50mm;
+    position: relative;
+    transform: scale(var(--preview-scale, 1));
+    transform-origin: center;
+    perspective: 1400px;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.business-card-flip:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: 3mm;
+}
+
+.business-card-flip.is-fit {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 9 / 5;
+    transform: none;
+}
+
+.business-card-flip-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.7s ease;
+}
+
+.business-card-flip.is-flipped .business-card-flip-inner {
+    transform: rotateY(180deg);
+}
+
+.business-card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.business-card-face--back {
+    transform: rotateY(180deg);
+}
+
+.business-card-guides {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: none;
+    z-index: 4;
+}
+
+.business-card-flip.show-guides .business-card-guides {
+    display: block;
+}
+
+.business-card-note {
+    font-size: 0.85rem;
+    color: var(--ink-500);
+    background: #ffffff;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--ink-100);
+    border-left: 3px solid var(--brand-500);
+    padding: 0.75rem 1rem;
+}
+
+.business-card-guide {
+    position: absolute;
+    border: 1px dashed rgba(245, 158, 11, 0.7);
+}
+
+.business-card-guide--bleed {
+    inset: -2mm;
+    border-color: rgba(14, 165, 233, 0.6);
+}
+
+.business-card-guide--safe {
+    inset: 3mm;
+    border-color: rgba(16, 185, 129, 0.7);
+}
+
+.business-card-scale {
+    display: grid;
+    gap: var(--space-2);
+    color: var(--ink-600);
+    font-size: 0.8rem;
+    align-items: center;
+}
+
+.business-card-scale-line {
+    width: calc(90mm * var(--preview-scale, 1));
+    height: 2px;
+    background: var(--ink-400);
+    border-radius: 999px;
+}
+
+.business-card-scale-label {
+    font-weight: 600;
+    color: var(--ink-600);
+}
+
+.business-card-scale-control {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.business-card-scale-control input[type="range"] {
+    flex: 1;
+}
+
+.business-card-viewport {
+    width: 90mm;
+    height: 50mm;
+    position: relative;
+}
+
+.business-card-surface {
+    width: 100%;
+    height: 100%;
+    border-radius: 3mm;
+    border: 1px solid var(--ink-200);
+    background: #ffffff;
+    box-shadow: 0 20px 50px -32px rgba(15, 23, 42, 0.45);
+    overflow: hidden;
+    display: flex;
+    position: relative;
+    z-index: 1;
+    color: var(--ink-900);
+    font-family: var(--card-font, var(--font-sans));
+}
+
+.business-card-front {
+    background: #ffffff;
+}
+
+.business-card-brand-strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    background: transparent;
+    z-index: 0;
+}
+
+.business-card-front-inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.6mm;
+    padding: 6mm;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.business-card-logo-block {
+    width: 18mm;
+    height: 12mm;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
+}
+
+.business-card-logo-block img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.business-card-front-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2mm;
+    min-width: 0;
+}
+
+.layout-brand-strip .business-card-brand-strip {
+    height: 6mm;
+    background: var(--brand-gradient);
+}
+
+.layout-brand-strip .business-card-front-inner {
+    padding-top: 10mm;
+}
+
+.layout-classic .business-card-front-inner {
+    flex-direction: row;
+    align-items: center;
+    gap: 4mm;
+}
+
+.layout-classic .business-card-front-body {
+    align-items: flex-start;
+}
+
+.layout-classic .business-card-logo-block {
+    width: 20mm;
+    height: 14mm;
+}
+
+.layout-name-dominant .business-card-name {
+    font-size: 5.2mm;
+}
+
+.layout-name-dominant .business-card-logo-block {
+    width: 12mm;
+    height: 8mm;
+    align-self: flex-end;
+}
+
+.layout-logo-top .business-card-front-inner {
+    align-items: center;
+    text-align: center;
+}
+
+.layout-logo-top .business-card-front-body {
+    align-items: center;
+}
+
+.layout-logo-top .business-card-tagline,
+.layout-centered .business-card-tagline {
+    text-align: center;
+}
+
+.layout-logo-top .business-card-logo-block {
+    width: 20mm;
+    height: 14mm;
+}
+
+.layout-centered .business-card-front-inner {
+    align-items: center;
+    text-align: center;
+}
+
+.layout-centered .business-card-front-body {
+    align-items: center;
+}
+
+.layout-split .business-card-front-inner {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    align-items: center;
+    gap: 4mm;
+}
+
+.layout-split:not(.has-logo) .business-card-front-inner {
+    grid-template-columns: 1fr;
+}
+
+.layout-split .business-card-logo-block {
+    width: 20mm;
+    height: 14mm;
+}
+
+.business-card-name {
+    font-size: 4.1mm;
+    font-weight: 700;
+    letter-spacing: 0.2mm;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.business-card-position {
+    font-size: 2.3mm;
+    text-transform: uppercase;
+    letter-spacing: 0.3mm;
+    color: var(--ink-500);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.business-card-tagline {
+    font-size: 2.1mm;
+    color: var(--ink-500);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.business-card-back {
+    padding: 5mm 6mm;
+    display: flex;
+    flex-direction: column;
+    gap: 3mm;
+    background: #f8fafc;
+}
+
+.layout-brand-strip .business-card-back {
+    padding-top: 10mm;
+}
+
+.business-card-back-logo {
+    width: 14mm;
+    height: 9mm;
+    align-self: flex-end;
+}
+
+.business-card-back-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.layout-split .business-card-back-logo {
+    align-self: flex-start;
+}
+
+.layout-centered .business-card-back-logo {
+    align-self: center;
+}
+
+.business-card-back-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 3mm;
+    padding-bottom: 2mm;
+    border-bottom: 1px solid var(--ink-200);
+}
+
+.business-card-back-org {
+    font-size: 2.7mm;
+    font-weight: 700;
+    letter-spacing: 0.2mm;
+    color: var(--ink-800);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.business-card-back-web {
+    font-size: 2.2mm;
+    color: var(--ink-500);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.layout-centered .business-card-back-header {
+    justify-content: center;
+    flex-direction: column;
+    gap: 1mm;
+    text-align: center;
+}
+
+.business-card-back-body {
+    display: grid;
+    gap: 2.5mm;
+}
+
+.business-card-back-identity {
+    display: none;
+    gap: 1mm;
+    flex-direction: column;
+}
+
+.business-card-back-identity .business-card-name {
+    font-size: 3.4mm;
+}
+
+.business-card-back-identity .business-card-position {
+    font-size: 2mm;
+}
+
+.layout-split .business-card-back-body {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 3mm;
+}
+
+.layout-split .business-card-back-identity {
+    display: flex;
+}
+
+.layout-split .business-card-back-list {
+    border-left: 1px solid var(--ink-200);
+    padding-left: 3mm;
+}
+
+.layout-qr .business-card-back-body {
+    grid-template-columns: 1.3fr 0.8fr;
+    align-items: center;
+    gap: 3mm;
+}
+
+.layout-qr .business-card-back-list {
+    border-right: 1px solid var(--ink-200);
+    padding-right: 3mm;
+}
+
+.layout-centered .business-card-back-body {
+    justify-items: center;
+    text-align: center;
+}
+
+.layout-centered .business-card-back-identity {
+    display: flex;
+    align-items: center;
+}
+
+.layout-centered .business-card-back-item {
+    justify-content: center;
+}
+
+.layout-centered .business-card-back-label {
+    width: auto;
+}
+
+.business-card-back-list {
+    display: grid;
+    gap: 1.6mm;
+    font-size: 2.4mm;
+    color: var(--ink-600);
+}
+
+.business-card-back-item {
+    display: flex;
+    gap: 2.5mm;
+    align-items: baseline;
+    min-width: 0;
+}
+
+.business-card-socials {
+    display: flex;
+    gap: 1.6mm;
+    flex-wrap: wrap;
+    margin-top: 1mm;
+    grid-column: 1 / -1;
+}
+
+.business-card-social-icon {
+    width: 5mm;
+    height: 5mm;
+    border-radius: 50%;
+    background: var(--ink-100);
+    color: var(--ink-700);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.7mm;
+    font-weight: 700;
+    letter-spacing: 0.1mm;
+}
+
+.business-card-contact-icon {
+    width: 4mm;
+    height: 4mm;
+    border-radius: 50%;
+    background: var(--ink-100);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--ink-600);
+    font-size: 2mm;
+    font-weight: 700;
+}
+
+.business-card-contact-icon::before {
+    content: attr(data-icon);
+}
+
+.layout-icon .business-card-contact-icon {
+    display: inline-flex;
+}
+
+.layout-icon .business-card-back-label {
+    display: none;
+}
+
+.business-card-back-label {
+    width: 12mm;
+    font-size: 2mm;
+    text-transform: uppercase;
+    letter-spacing: 0.24mm;
+    color: var(--ink-400);
+    flex-shrink: 0;
+}
+
+.business-card-back-value {
+    font-weight: 600;
+    color: var(--ink-800);
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.business-card-back-value--address {
+    font-weight: 500;
+    white-space: normal;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.business-card-qr {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2mm;
+    border-radius: 2mm;
+    border: 1px solid var(--ink-200);
+    background: #ffffff;
+}
+
+.business-card-qr img {
+    width: 22mm;
+    height: 22mm;
+}
+
+.business-card-qr-placeholder {
+    width: 22mm;
+    height: 22mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2mm;
+    letter-spacing: 0.2mm;
+    color: var(--ink-400);
+}
+
+.business-card-download-list {
+    list-style: none;
+    display: grid;
+    gap: 0.4rem;
+    color: var(--ink-600);
+    margin-bottom: var(--space-4);
+    padding-left: 0;
+}
+
+.business-card-download-list li::before {
+    content: '•';
+    margin-right: 0.4rem;
+    color: var(--brand-600);
+}
+
+.business-card-export {
+    position: fixed;
+    left: -10000px;
+    top: 0;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.business-card-export-page {
+    width: 90mm;
+    height: 50mm;
+    page-break-after: always;
+    break-after: page;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.business-card-export-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+}
+
+.business-card-export .business-card-surface {
+    box-shadow: none;
+}
+
+@media (min-width: 1024px) {
+    .business-card-layout-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1100px) {
+    .business-card-hero {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "header"
+            "layout"
+            "preview";
+    }
+
+    .business-card-hero-header {
+        grid-template-columns: 1fr;
+    }
+
+    .business-card-preview-controls {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .business-card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .business-card-hero,
+    .business-card-grid,
+    .tool-intro,
+    .tool-grid {
+        animation: none;
+    }
+
+    .business-card-flip-inner {
+        transition: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .tool-intro {
+        grid-template-columns: 1fr;
+    }
+
+    .tool-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .business-card-hero {
+        padding: var(--space-5);
+    }
+
+    .business-card-preview-stage {
+        padding: var(--space-4);
+    }
+
+    .business-card-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .business-card-layout-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .business-card-social-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.business-card-page {
+    min-height: 100vh;
+    background: var(--surface-1);
+    padding-bottom: var(--space-8);
+}
+
+.business-card-split-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+    max-width: var(--container-xl, 1400px);
+    margin: 0 auto;
+    padding: var(--space-6);
+    align-items: start;
+}
+
+@media (min-width: 1024px) {
+    .business-card-split-layout {
+        grid-template-columns: 420px 1fr;
+        gap: var(--space-8);
+        padding: var(--space-8);
+    }
+}
+
+/* Sidebar (Left) */
+.business-card-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+.business-card-section {
+    background: #ffffff;
+    border: 1px solid var(--ink-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.business-card-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-5);
+    background: #ffffff;
+    border-bottom: 1px solid var(--ink-100);
+    font-weight: 600;
+    color: var(--ink-800);
+    font-size: 0.95rem;
+}
+
+.business-card-section-body {
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+/* Main Preview (Right) */
+.business-card-main {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+@media (min-width: 1024px) {
+    .business-card-main {
+        position: sticky;
+        top: calc(var(--header-height, 72px) + var(--space-6));
+    }
+}
+
+.business-card-preview-container {
+    background: var(--surface-2);
+    border: 1px solid var(--ink-200);
+    border-radius: var(--radius-xl);
+    padding: var(--space-8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-6);
+    min-height: 500px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Overwrite/Update existing styles to fit new layout */
+.business-card-hero {
+    /* Resetting previous grid styles */
+    display: block;
+    grid-template-columns: none;
+    grid-template-areas: none;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+
+.business-card-hero::before {
+    display: none;
+}
+
+/* Adjust scale controls */
+.business-card-preview-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    background: #ffffff;
+    padding: var(--space-2) var(--space-4);
+    border-radius: 999px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--ink-200);
+}
+
+/* Compact layout options */
+
+
+/* Utilities used in Business Card Generator */
+.w-full {
+    width: 100%;
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.gap-2 {
+    gap: var(--space-2);
+}
+
+.gap-3 {
+    gap: var(--space-3);
+}
+
+.gap-4 {
+    gap: var(--space-4);
+}
+
+.grid {
+    display: grid;
+}
+
+.grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.text-sm {
+    font-size: 0.875rem;
+}
+
+.text-xl {
+    font-size: 1.25rem;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+.font-semibold {
+    font-weight: 600;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-slate-500 {
+    color: var(--ink-500);
+}
+
+.text-slate-600 {
+    color: var(--ink-600);
+}
+
+.text-slate-900 {
+    color: var(--ink-900);
+}
+
+.text-red-500 {
+    color: var(--danger-500);
+}
+
+.bg-gray-300 {
+    background-color: var(--ink-300);
+}
+
+.border {
+    border-width: 1px;
+    border-style: solid;
+}
+
+.border-slate-200 {
+    border-color: var(--ink-200);
+}
+
+.rounded {
+    border-radius: var(--radius-sm);
+}
+
+.p-2 {
+    padding: var(--space-2);
+}
+
+.p-4 {
+    padding: var(--space-4);
+}
+
+.py-2 {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+}
+
+.mx-2 {
+    margin-left: var(--space-2);
+    margin-right: var(--space-2);
+}
+
+.mt-4 {
+    margin-top: var(--space-4);
+}
+
+.mt-2 {
+    margin-top: var(--space-2);
+}
+
+.mx-auto {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.max-w-md {
+    max-width: 28rem;
+}
+
+.w-48 {
+    width: 12rem;
+}
+
+.w-px {
+    width: 1px;
+}
+
+.h-4 {
+    height: 1rem;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.flex-1 {
+    flex: 1;
+}

@@ -1,8 +1,8 @@
 :root {
   color-scheme: light;
 
-  --font-sans: 'Inter', 'Segoe UI', sans-serif;
-  --font-serif: 'Inter', 'Segoe UI', sans-serif;
+  --font-sans: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-serif: 'Space Grotesk', 'Segoe UI', sans-serif;
 
   --brand-50: #fff1f2;
   --brand-100: #ffe4e6;

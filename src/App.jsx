@@ -22,7 +22,9 @@ import TrainingEditor from './pages/admin/TrainingEditor';
 import BookingManagement from './pages/admin/BookingManagement';
 import PricingManagement from './pages/admin/PricingManagement';
 import OfficialLetterheadGenerator from './pages/OfficialLetterheadGenerator';
+import BusinessCardGenerator from './pages/BusinessCardGenerator';
 import BusinessTraining from './pages/BusinessTraining';
+import NegeAI from './pages/NegeAI';
 import './pages/Home.css';
 
 import AuthModal from './components/AuthModal';
@@ -30,9 +32,10 @@ import AuthModal from './components/AuthModal';
 const AppShell = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isHome = location.pathname === '/';
 
   return (
-    <div className={`app-shell ${isAdminRoute ? 'app-shell--admin' : ''}`}>
+    <div className={`app-shell ${isAdminRoute ? 'app-shell--admin' : ''} ${isHome ? 'app-shell--mono' : ''}`}>
       {!isAdminRoute && <Header />}
       <AuthModal />
       <main>
@@ -56,7 +59,9 @@ const AppShell = () => {
           } />
           <Route path="/ai-assistant/account-statement-organizer" element={<AccountStatementOrganizer />} />
           <Route path="/ai-assistant/social-insurance-holiday" element={<SocialInsuranceHoliday />} />
+          <Route path="/nege-ai" element={<NegeAI />} />
           <Route path="/ai-assistant/official-letterhead" element={<OfficialLetterheadGenerator />} />
+          <Route path="/ai-assistant/business-card" element={<BusinessCardGenerator />} />
           <Route path="/ai-assistant/business-training" element={<BusinessTraining />} />
 
           {/* Admin Routes */}
@@ -70,10 +75,10 @@ const AppShell = () => {
             <Route path="logs" element={<AuditLogs />} />
             <Route path="payments" element={<PaymentManagement />} />
             <Route path="pricing" element={<PricingManagement />} />
-              <Route path="trainings" element={<TrainingManagement />} />
-              <Route path="trainings/new" element={<TrainingEditor />} />
-              <Route path="trainings/:id" element={<TrainingEditor />} />
-              <Route path="bookings" element={<BookingManagement />} />
+            <Route path="trainings" element={<TrainingManagement />} />
+            <Route path="trainings/new" element={<TrainingEditor />} />
+            <Route path="trainings/:id" element={<TrainingEditor />} />
+            <Route path="bookings" element={<BookingManagement />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
         </Routes>

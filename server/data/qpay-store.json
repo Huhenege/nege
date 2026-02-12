@@ -97,6 +97,14 @@
       "status": "CREATED",
       "createdAt": "2026-02-10T09:19:56.058Z",
       "updatedAt": "2026-02-10T09:19:56.058Z"
+    },
+    "ae1a46ac-3103-41ad-94b5-17f980d0dd4e": {
+      "invoice_id": "ae1a46ac-3103-41ad-94b5-17f980d0dd4e",
+      "sender_invoice_no": "NDSH-1770732212977-816",
+      "amount": 800,
+      "status": "CREATED",
+      "createdAt": "2026-02-10T14:03:33.166Z",
+      "updatedAt": "2026-02-10T14:03:33.166Z"
     }
   },
   "grants": {
@@ -127,12 +135,21 @@
       "creditsUsed": 1,
       "createdAt": "2026-02-10T11:10:26.387Z",
       "usedAt": "2026-02-10T11:10:32.544Z"
+    },
+    "149a87b7-3b46-49e3-9fbb-e240599a65c8": {
+      "userId": "IVZejzdajfTSddiSOEZ4DrosPXK2",
+      "toolKey": "ndsh_holiday",
+      "remainingUses": 0,
+      "source": "credits",
+      "creditsUsed": 1,
+      "createdAt": "2026-02-11T08:38:14.855Z",
+      "usedAt": "2026-02-11T08:38:16.951Z"
     }
   },
   "credits": {
     "IVZejzdajfTSddiSOEZ4DrosPXK2": {
-      "balance": 8,
-      "updatedAt": "2026-02-10T11:10:26.387Z"
+      "balance": 7,
+      "updatedAt": "2026-02-11T08:38:14.854Z"
     }
   }
 }

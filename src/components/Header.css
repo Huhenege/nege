@@ -30,6 +30,18 @@
     gap: var(--space-4);
 }
 
+.header-nav-link {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--ink-600);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.header-nav-link:hover {
+    color: var(--brand-600);
+}
+
 .header-user-container {
     position: relative;
     display: flex;

@@ -1,0 +1,434 @@
+/* NegeAI.css */
+.nege-ai-page {
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+    color: var(--ink-900);
+    background: #ffffff;
+    overflow-x: hidden;
+}
+
+/* Animations */
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+@keyframes pulse-glow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(79, 70, 229, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+    }
+}
+
+@keyframes gradient-x {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.8s ease-out forwards;
+}
+
+/* Hero Section */
+.nege-hero {
+    position: relative;
+    padding: var(--space-20) 0 var(--space-16);
+    background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.1) 0%, rgba(255, 255, 255, 0) 50%);
+    overflow: hidden;
+}
+
+.nege-hero-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: var(--space-10);
+    align-items: center;
+}
+
+.nege-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--brand-600);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: var(--space-6);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.nege-hero-title {
+    font-size: 3.5rem;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-6);
+    background: linear-gradient(135deg, #1e293b 0%, #4f46e5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.nege-hero-sub {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    color: var(--ink-600);
+    margin-bottom: var(--space-8);
+    max-width: 600px;
+}
+
+.nege-hero-actions {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.btn-glow {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-glow::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transform: rotate(45deg);
+    animation: gradient-x 3s linear infinite;
+}
+
+.nege-hero-bullets {
+    margin-top: var(--space-10);
+    display: grid;
+    gap: var(--space-3);
+}
+
+.nege-bullet {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--ink-700);
+    font-weight: 500;
+}
+
+.nege-bullet-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ecfdf5;
+    color: #10b981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Visualization */
+.nege-viz {
+    position: relative;
+}
+
+.nege-viz-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+        0 20px 25px -5px rgba(0, 0, 0, 0.1),
+        0 10px 10px -5px rgba(0, 0, 0, 0.04),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    animation: float 6s ease-in-out infinite;
+}
+
+/* Section Common */
+.nege-section {
+    padding: var(--space-20) 0;
+}
+
+.nege-section-dark {
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.nege-section-header {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto var(--space-16);
+}
+
+.nege-section-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: var(--space-4);
+    letter-spacing: -0.02em;
+}
+
+.nege-section-subtitle {
+    font-size: 1.1rem;
+    color: var(--ink-500);
+    line-height: 1.6;
+}
+
+.nege-section-dark .nege-section-subtitle {
+    color: #94a3b8;
+}
+
+/* Features Grid */
+.nege-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-8);
+}
+
+.nege-feature-card {
+    background: #ffffff;
+    border: 1px solid var(--ink-100);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+    transition: all 0.3s ease;
+}
+
+.nege-feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--brand-200);
+}
+
+.nege-feature-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--brand-50);
+    color: var(--brand-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: var(--space-5);
+}
+
+.nege-feature-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: var(--space-3);
+    color: var(--ink-900);
+}
+
+.nege-feature-desc {
+    color: var(--ink-500);
+    line-height: 1.6;
+}
+
+/* AI Capabilities */
+.nege-ai-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-6);
+}
+
+.nege-ai-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    backdrop-filter: blur(4px);
+}
+
+.nege-ai-card h4 {
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.nege-ai-card p {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* Workflow Steps */
+.nege-workflow {
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.nege-workflow-step {
+    display: flex;
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
+    position: relative;
+}
+
+.nege-workflow-step:last-child {
+    margin-bottom: 0;
+}
+
+.nege-workflow-num {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--brand-600);
+    color: white;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    z-index: 1;
+    position: relative;
+}
+
+.nege-workflow-step::before {
+    content: '';
+    position: absolute;
+    top: 40px;
+    left: 20px;
+    bottom: -40px;
+    width: 2px;
+    background: var(--ink-200);
+    z-index: 0;
+}
+
+.nege-workflow-step:last-child::before {
+    display: none;
+}
+
+.nege-workflow-content h4 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+}
+
+.nege-workflow-content p {
+    color: var(--ink-500);
+}
+
+/* FAQ */
+.nege-faq-grid {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.nege-faq-item {
+    background: #f8fafc;
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.nege-faq-item:hover {
+    border-color: var(--ink-200);
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+}
+
+.nege-faq-q {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: var(--space-3);
+    color: var(--ink-800);
+}
+
+.nege-faq-a {
+    color: var(--ink-600);
+    line-height: 1.6;
+}
+
+/* CTA Footer */
+.nege-cta-footer {
+    background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+    color: white;
+    padding: var(--space-16) 0;
+    text-align: center;
+}
+
+.nege-cta-footer h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: var(--space-6);
+}
+
+/* Utilities */
+.text-gradient {
+    background: linear-gradient(135deg, #4f46e5 0%, #ec4899 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+@media (max-width: 1024px) {
+    .nege-hero-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: var(--space-12);
+    }
+
+    .nege-hero-actions {
+        justify-content: center;
+    }
+
+    .nege-hero-bullets {
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .nege-hero-title {
+        font-size: 2.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .nege-section-title {
+        font-size: 2rem;
+    }
+}
