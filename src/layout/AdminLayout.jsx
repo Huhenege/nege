@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Activity, Settings, LogOut, Menu, X, CreditCard, GraduationCap, CalendarCheck, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Users, Activity, Settings, LogOut, Menu, X, CreditCard, GraduationCap, CalendarCheck, DollarSign, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './AdminLayout.css';
 
@@ -17,12 +17,14 @@ const AdminLayout = () => {
     const menuItems = [
         { path: '/admin', icon: LayoutDashboard, label: 'Хяналтын самбар' },
         { path: '/admin/users', icon: Users, label: 'Хэрэглэгчид' },
-        { path: '/admin/payments', icon: CreditCard, label: 'Төлбөр' },
+        { path: '/admin/business-cards', icon: CreditCard, label: 'Нэрийн хуудас' },
+        { path: '/admin/payments', icon: DollarSign, label: 'Төлбөр' },
         { path: '/admin/pricing', icon: DollarSign, label: 'Үнийн тохиргоо' },
         { path: '/admin/trainings', icon: GraduationCap, label: 'Сургалт' },
         { path: '/admin/bookings', icon: CalendarCheck, label: 'Захиалга' },
         { path: '/admin/logs', icon: Activity, label: 'Лог' },
         { path: '/admin/settings', icon: Settings, label: 'Тохиргоо' },
+        { path: '/admin/contracts', icon: FileText, label: 'Гэрээний загвар' },
     ];
 
     const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);

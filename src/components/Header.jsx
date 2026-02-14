@@ -39,12 +39,10 @@ const Header = () => {
             <div className="container site-header__inner">
                 <Link to="/" className="site-header__logo">
                     <Logo style={{ height: '34px', width: 'auto' }} />
+                    <span className="site-header__brand-text">Nege AI</span>
                 </Link>
 
                 <nav className="site-header__nav">
-                    <Link to="/nege-ai" className="header-nav-link">
-                        Nege AI
-                    </Link>
                     {currentUser ? (
                         <div className="header-user-container" ref={dropdownRef}>
                             <button

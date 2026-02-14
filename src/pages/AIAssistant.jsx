@@ -16,6 +16,7 @@ const AIAssistant = () => {
         "/ai-assistant/social-insurance-holiday",
         "/ai-assistant/official-letterhead",
         "/ai-assistant/business-card",
+        "/ai-assistant/contract-generator",
         "/ai-assistant/business-training"
     ]);
 
@@ -63,6 +64,18 @@ const AIAssistant = () => {
             description: '90x50 мм хэмжээтэй минимал нэрийн хуудсыг PDF болон PNG-ээр бэлтгэнэ.',
             path: '/ai-assistant/business-card',
             icon: IdCard,
+            category: 'Албан бичиг',
+            badge: 'Free',
+            badgeTone: 'badge-success',
+            cta: 'Эхлүүлэх',
+        },
+        {
+            id: 'contract',
+            toolKey: 'contract_generator',
+            title: 'Гэрээ үүсгэгч',
+            description: 'Бэлэн загварууд ашиглан гэрээгээ хялбархан бүрдүүлж, PDF-ээр татах.',
+            path: '/ai-assistant/contract-generator',
+            icon: FileText,
             category: 'Албан бичиг',
             badge: 'Free',
             badgeTone: 'badge-success',

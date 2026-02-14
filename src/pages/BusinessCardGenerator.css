@@ -788,6 +788,10 @@
     font-family: var(--card-font, var(--font-sans));
 }
 
+.business-card-surface.radius-square {
+    border-radius: 0;
+}
+
 .business-card-front {
     background: #ffffff;
 }
@@ -1213,14 +1217,21 @@
     z-index: -1;
 }
 
+.business-card-export-root {
+    display: block;
+    font-size: 0;
+    line-height: 0;
+}
+
 .business-card-export-page {
     width: 90mm;
     height: 50mm;
+    display: block;
+    overflow: hidden;
+    position: relative;
+    margin: 0;
     page-break-after: always;
     break-after: page;
-    display: flex;
-    align-items: stretch;
-    justify-content: stretch;
 }
 
 .business-card-export-page:last-child {
@@ -1230,6 +1241,18 @@
 
 .business-card-export .business-card-surface {
     box-shadow: none;
+}
+
+.business-card-rendered-svg {
+    width: 100%;
+    height: 100%;
+    line-height: 0;
+}
+
+.business-card-rendered-svg svg {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
 }
 
 @media (min-width: 1024px) {
@@ -1395,6 +1418,39 @@
     overflow: hidden;
 }
 
+.business-card-preview-wrapper {
+    width: min(100%, 90mm);
+    aspect-ratio: 9 / 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-origin: center center;
+}
+
+.business-card-3d-scene {
+    width: 100%;
+    height: 100%;
+    perspective: 1400px;
+}
+
+.business-card-3d-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.6s ease;
+}
+
+.business-card-3d-scene.flipped .business-card-3d-card {
+    transform: rotateY(180deg);
+}
+
+.business-card-face svg {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
 /* Overwrite/Update existing styles to fit new layout */
 .business-card-hero {
     /* Resetting previous grid styles */
@@ -1426,163 +1482,163 @@
 /* Compact layout options */
 
 
-/* Utilities used in Business Card Generator */
-.w-full {
+/* Utilities used in Business Card Generator (scoped to this page only) */
+.business-card-page .w-full {
     width: 100%;
 }
 
-.flex {
+.business-card-page .flex {
     display: flex;
 }
 
-.flex-col {
+.business-card-page .flex-col {
     flex-direction: column;
 }
 
-.items-center {
+.business-card-page .items-center {
     align-items: center;
 }
 
-.justify-center {
+.business-card-page .justify-center {
     justify-content: center;
 }
 
-.justify-between {
+.business-card-page .justify-between {
     justify-content: space-between;
 }
 
-.gap-2 {
+.business-card-page .gap-2 {
     gap: var(--space-2);
 }
 
-.gap-3 {
+.business-card-page .gap-3 {
     gap: var(--space-3);
 }
 
-.gap-4 {
+.business-card-page .gap-4 {
     gap: var(--space-4);
 }
 
-.grid {
+.business-card-page .grid {
     display: grid;
 }
 
-.grid-cols-2 {
+.business-card-page .grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.text-sm {
+.business-card-page .text-sm {
     font-size: 0.875rem;
 }
 
-.text-xl {
+.business-card-page .text-xl {
     font-size: 1.25rem;
 }
 
-.font-bold {
+.business-card-page .font-bold {
     font-weight: 700;
 }
 
-.font-semibold {
+.business-card-page .font-semibold {
     font-weight: 600;
 }
 
-.text-center {
+.business-card-page .text-center {
     text-align: center;
 }
 
-.text-left {
+.business-card-page .text-left {
     text-align: left;
 }
 
-.text-right {
+.business-card-page .text-right {
     text-align: right;
 }
 
-.text-slate-500 {
+.business-card-page .text-slate-500 {
     color: var(--ink-500);
 }
 
-.text-slate-600 {
+.business-card-page .text-slate-600 {
     color: var(--ink-600);
 }
 
-.text-slate-900 {
+.business-card-page .text-slate-900 {
     color: var(--ink-900);
 }
 
-.text-red-500 {
+.business-card-page .text-red-500 {
     color: var(--danger-500);
 }
 
-.bg-gray-300 {
+.business-card-page .bg-gray-300 {
     background-color: var(--ink-300);
 }
 
-.border {
+.business-card-page .border {
     border-width: 1px;
     border-style: solid;
 }
 
-.border-slate-200 {
+.business-card-page .border-slate-200 {
     border-color: var(--ink-200);
 }
 
-.rounded {
+.business-card-page .rounded {
     border-radius: var(--radius-sm);
 }
 
-.p-2 {
+.business-card-page .p-2 {
     padding: var(--space-2);
 }
 
-.p-4 {
+.business-card-page .p-4 {
     padding: var(--space-4);
 }
 
-.py-2 {
+.business-card-page .py-2 {
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
 }
 
-.mx-2 {
+.business-card-page .mx-2 {
     margin-left: var(--space-2);
     margin-right: var(--space-2);
 }
 
-.mt-4 {
+.business-card-page .mt-4 {
     margin-top: var(--space-4);
 }
 
-.mt-2 {
+.business-card-page .mt-2 {
     margin-top: var(--space-2);
 }
 
-.mx-auto {
+.business-card-page .mx-auto {
     margin-left: auto;
     margin-right: auto;
 }
 
-.max-w-md {
+.business-card-page .max-w-md {
     max-width: 28rem;
 }
 
-.w-48 {
+.business-card-page .w-48 {
     width: 12rem;
 }
 
-.w-px {
+.business-card-page .w-px {
     width: 1px;
 }
 
-.h-4 {
+.business-card-page .h-4 {
     height: 1rem;
 }
 
-.cursor-pointer {
+.business-card-page .cursor-pointer {
     cursor: pointer;
 }
 
-.flex-1 {
+.business-card-page .flex-1 {
     flex: 1;
 }

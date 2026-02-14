@@ -1,0 +1,150 @@
+.rich-text-editor {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+}
+
+.rich-text-menubar {
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.rich-text-menubar .button-group {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.rich-text-menubar button {
+    padding: 0.4rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.25rem;
+    color: #4b5563;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rich-text-menubar .toolbar-button-text {
+    margin-left: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.rich-text-menubar button:hover:not(:disabled) {
+    background-color: #e5e7eb;
+    color: #111827;
+}
+
+.rich-text-menubar button.is-active {
+    background-color: #dbeafe;
+    /* blue-100 */
+    color: #2563eb;
+    /* blue-600 */
+}
+
+.rich-text-menubar button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.rich-text-menubar .divider {
+    width: 1px;
+    height: 1.5rem;
+    background-color: #e5e7eb;
+    margin: 0 0.25rem;
+}
+
+.editor-content-wrapper {
+    padding: 1rem;
+    min-height: 300px;
+    cursor: text;
+}
+
+/* ProseMirror specific styles */
+.ProseMirror {
+    outline: none;
+    min-height: 300px;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+    color: #9ca3af;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+}
+
+.ProseMirror>*+* {
+    margin-top: 0.75em;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+    padding: 0 1rem;
+    margin: 0.75em 0;
+}
+
+.ProseMirror ul li {
+    list-style-type: disc;
+}
+
+.ProseMirror ol li {
+    list-style-type: decimal;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3 {
+    line-height: 1.1;
+    font-weight: 700;
+}
+
+.ProseMirror h1 {
+    font-size: 1.5rem;
+}
+
+.ProseMirror h2 {
+    font-size: 1.25rem;
+}
+
+.ProseMirror h3 {
+    font-size: 1.125rem;
+}
+
+.ProseMirror a {
+    color: #2563eb;
+    cursor: pointer;
+}
+
+.ProseMirror table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+    margin: 0.75rem 0;
+}
+
+.ProseMirror table td,
+.ProseMirror table th {
+    border: 1px solid #d1d5db;
+    padding: 0.55rem 0.6rem;
+    vertical-align: top;
+}
+
+.ProseMirror table p {
+    margin: 0 0 0.45rem;
+}
+
+.ProseMirror table p:last-child {
+    margin-bottom: 0;
+}

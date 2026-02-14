@@ -16,14 +16,18 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import AuditLogs from './pages/admin/AuditLogs';
 import AdminSettings from './pages/admin/AdminSettings';
+import BusinessCardTemplates from './pages/admin/BusinessCardTemplates';
 import PaymentManagement from './pages/admin/PaymentManagement';
 import TrainingManagement from './pages/admin/TrainingManagement';
 import TrainingEditor from './pages/admin/TrainingEditor';
 import BookingManagement from './pages/admin/BookingManagement';
 import PricingManagement from './pages/admin/PricingManagement';
+import ContractTemplates from './pages/admin/ContractTemplates';
+import ContractTemplateEditor from './pages/admin/ContractTemplateEditor';
 import OfficialLetterheadGenerator from './pages/OfficialLetterheadGenerator';
 import BusinessCardGenerator from './pages/BusinessCardGenerator';
 import BusinessTraining from './pages/BusinessTraining';
+import ContractGenerator from './pages/ContractGenerator';
 import NegeAI from './pages/NegeAI';
 import './pages/Home.css';
 
@@ -63,6 +67,8 @@ const AppShell = () => {
           <Route path="/ai-assistant/official-letterhead" element={<OfficialLetterheadGenerator />} />
           <Route path="/ai-assistant/business-card" element={<BusinessCardGenerator />} />
           <Route path="/ai-assistant/business-training" element={<BusinessTraining />} />
+          <Route path="/ai-assistant/contract-generator" element={<ContractGenerator />} />
+          <Route path="/ai-assistant/contract-generator/:templateId" element={<ContractGenerator />} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={
@@ -72,6 +78,7 @@ const AppShell = () => {
           }>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="business-cards" element={<BusinessCardTemplates />} />
             <Route path="logs" element={<AuditLogs />} />
             <Route path="payments" element={<PaymentManagement />} />
             <Route path="pricing" element={<PricingManagement />} />
@@ -80,6 +87,9 @@ const AppShell = () => {
             <Route path="trainings/:id" element={<TrainingEditor />} />
             <Route path="bookings" element={<BookingManagement />} />
             <Route path="settings" element={<AdminSettings />} />
+            <Route path="contracts" element={<ContractTemplates />} />
+            <Route path="contracts/new" element={<ContractTemplateEditor />} />
+            <Route path="contracts/:id" element={<ContractTemplateEditor />} />
           </Route>
         </Routes>
       </main>
