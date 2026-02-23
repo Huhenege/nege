@@ -7,6 +7,8 @@ import { useBilling } from '../contexts/BillingContext';
 import useAccess from '../hooks/useAccess';
 import { apiFetch } from '../lib/apiClient';
 import { getGuestSessionId } from '../lib/guest';
+import ToolPaymentDialog from '../components/ToolPaymentDialog';
+import ToolPaymentStatusCard from '../components/ToolPaymentStatusCard';
 import './AccountStatementOrganizer.css';
 
 const PAYMENT_STORAGE_KEY = 'account-statement-grant';
@@ -24,6 +26,7 @@ const AccountStatementOrganizer = () => {
     const [paymentError, setPaymentError] = useState(null);
     const [isCheckingPayment, setIsCheckingPayment] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('pay');
+    const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
     const toolPricing = billingConfig?.tools?.account_statement || { payPerUsePrice: 1000, creditCost: 1, active: true };
     const isToolActive = toolPricing?.active !== false;
@@ -45,15 +48,22 @@ const AccountStatementOrganizer = () => {
         }
     }, []);
 
+    useEffect(() => {
+        if (paymentGrant?.grantToken && !paymentGrant.used) {
+            setShowPaymentDialog(false);
+        }
+    }, [paymentGrant]);
+
     const storeGrant = (grant) => {
         localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(grant));
         setPaymentGrant(grant);
         setPaymentStatus('paid');
     };
 
-    const markGrantUsed = () => {
-        if (!paymentGrant) return;
-        const updated = { ...paymentGrant, used: true, usedAt: new Date().toISOString() };
+    const markGrantUsed = (grantOverride = null) => {
+        const grant = grantOverride || paymentGrant;
+        if (!grant) return;
+        const updated = { ...grant, used: true, usedAt: new Date().toISOString() };
         localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(updated));
         setPaymentGrant(updated);
     };
@@ -200,13 +210,15 @@ const AccountStatementOrganizer = () => {
         }
     };
 
-    const handleGenerate = async () => {
+    const handleGenerate = async ({ adminBypass = false } = {}) => {
         if (!isToolActive) {
             alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
             return;
         }
-        if (!paymentGrant || paymentGrant.used) {
-            alert('Файлыг боловсруулахын өмнө төлбөр төлнө үү.');
+        const isAdmin = currentUser?.role === 'admin';
+        const activeGrant = paymentGrant?.grantToken && !paymentGrant.used ? paymentGrant : null;
+        if (!activeGrant && !adminBypass) {
+            setShowPaymentDialog(true);
             return;
         }
         if (files.length === 0) return;
@@ -223,24 +235,45 @@ const AccountStatementOrganizer = () => {
 
             exportToAndDownloadExcel(allTransactions);
             setIsDone(true);
-            markGrantUsed();
-            try {
-                await apiFetch('/usage/log', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    auth: !!currentUser,
-                    body: JSON.stringify({
-                        toolKey: 'account_statement',
-                        paymentMethod: paymentGrant?.creditsUsed ? 'credits' : 'pay_per_use',
-                        amount: paymentGrant?.amount || discountedPrice,
-                        creditsUsed: paymentGrant?.creditsUsed || 0,
-                        invoiceId: paymentGrant?.invoice_id || null,
-                        grantToken: paymentGrant?.grantToken || null,
-                        guestSessionId: currentUser ? null : getGuestSessionId(),
-                    }),
-                });
-            } catch (error) {
-                console.error('Usage log error:', error);
+            if (activeGrant) {
+                markGrantUsed(activeGrant);
+                try {
+                    await apiFetch('/usage/log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        auth: !!currentUser,
+                        body: JSON.stringify({
+                            toolKey: 'account_statement',
+                            paymentMethod: activeGrant?.creditsUsed ? 'credits' : 'pay_per_use',
+                            amount: activeGrant?.amount || discountedPrice,
+                            creditsUsed: activeGrant?.creditsUsed || 0,
+                            invoiceId: activeGrant?.invoice_id || null,
+                            grantToken: activeGrant?.grantToken || null,
+                            guestSessionId: currentUser ? null : getGuestSessionId(),
+                        }),
+                    });
+                } catch (error) {
+                    console.error('Usage log error:', error);
+                }
+            } else if (isAdmin && adminBypass) {
+                try {
+                    await apiFetch('/usage/log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        auth: !!currentUser,
+                        body: JSON.stringify({
+                            toolKey: 'account_statement',
+                            paymentMethod: 'admin_free',
+                            amount: 0,
+                            creditsUsed: 0,
+                            invoiceId: null,
+                            grantToken: null,
+                            guestSessionId: null,
+                        }),
+                    });
+                } catch (error) {
+                    console.error('Usage log error:', error);
+                }
             }
         } catch (error) {
             console.error(error);
@@ -257,13 +290,7 @@ const AccountStatementOrganizer = () => {
 
     const paymentReady = paymentGrant?.grantToken && !paymentGrant.used;
     const paymentUsed = paymentGrant?.used;
-    const paymentBadge = !isToolActive
-        ? { label: 'Түр хаалттай', tone: 'badge-warning' }
-        : paymentReady
-            ? { label: 'Идэвхтэй', tone: 'badge-success' }
-            : paymentUsed
-                ? { label: 'Ашигласан', tone: 'badge-muted' }
-                : { label: 'Төлбөр хүлээгдэж байна', tone: 'badge-warning' };
+    const paymentRequiredBeforeGenerate = !paymentReady;
 
     let activeStep = 0;
     if (paymentReady) {
@@ -314,69 +341,15 @@ const AccountStatementOrganizer = () => {
                 </div>
 
                 <div className="tool-grid">
-                    <div className="card">
-                        <div className="card-header">
-                            <div className="card-title">Төлбөрийн эрх</div>
-                            <span className={`badge ${paymentBadge.tone}`}>{paymentBadge.label}</span>
-                        </div>
-                        <div className="card-body tool-pay">
-                            {paymentReady ? (
-                                <div className="alert alert-success tool-pay-success">
-                                    1 удаагийн эрх идэвхтэй байна.
-                                    <button onClick={resetPayment} className="btn btn-ghost btn-sm">
-                                        Дахин төлөх
-                                    </button>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="segmented" role="tablist" aria-label="Төлбөрийн сонголт">
-                                        <button
-                                            type="button"
-                                            className={paymentMethod === 'pay' ? 'active' : ''}
-                                            onClick={() => setPaymentMethod('pay')}
-                                        >
-                                            QPay төлбөр
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className={paymentMethod === 'credits' ? 'active' : ''}
-                                            onClick={() => setPaymentMethod('credits')}
-                                        >
-                                            Credits
-                                        </button>
-                                    </div>
-                                    <div className="tool-pay-actions">
-                                        <button
-                                            onClick={paymentMethod === 'credits' ? consumeCredits : createPaymentInvoice}
-                                            disabled={paymentStatus === 'creating' || !isToolActive}
-                                            className="btn btn-primary"
-                                        >
-                                            {paymentMethod === 'credits' ? 'Credits ашиглах' : 'QPay QR үүсгэх'}
-                                        </button>
-                                        {paymentMethod === 'pay' && (
-                                            <button
-                                                onClick={checkPaymentStatus}
-                                                disabled={!paymentInvoice || isCheckingPayment || !isToolActive}
-                                                className="btn btn-outline"
-                                            >
-                                                {isCheckingPayment ? 'Шалгаж байна...' : 'Төлбөр шалгах'}
-                                            </button>
-                                        )}
-                                    </div>
-                                    {paymentMethod === 'pay' && (
-                                        <div className="tool-pay-qr">
-                                            {paymentInvoice?.qr_image ? (
-                                                <img src={`data:image/png;base64,${paymentInvoice.qr_image}`} alt="QPay QR" />
-                                            ) : (
-                                                <div className="tool-pay-placeholder">QR код энд гарна</div>
-                                            )}
-                                        </div>
-                                    )}
-                                    {paymentError && <p className="tool-pay-error">{paymentError}</p>}
-                                </>
-                            )}
-                        </div>
-                    </div>
+                    <ToolPaymentStatusCard
+                        isToolActive={isToolActive}
+                        paymentReady={paymentReady}
+                        paymentUsed={paymentUsed}
+                        discountedPrice={discountedPrice}
+                        creditCost={creditCost}
+                        onOpenPayment={() => setShowPaymentDialog(true)}
+                        onResetPayment={resetPayment}
+                    />
 
                     <div className="card">
                         <div className="card-header">
@@ -397,7 +370,7 @@ const AccountStatementOrganizer = () => {
                                     <div className="tool-action">
                                         <button
                                             onClick={handleGenerate}
-                                            disabled={files.length === 0 || isProcessing || !isToolActive}
+                                            disabled={files.length === 0 || isProcessing || !isToolActive || paymentRequiredBeforeGenerate}
                                             className="btn btn-primary btn-lg"
                                         >
                                             {isProcessing ? 'Боловсруулж байна...' : `Цэгцлэх (${files.length} файл)`}
@@ -409,6 +382,29 @@ const AccountStatementOrganizer = () => {
                     </div>
                 </div>
             </div>
+            <ToolPaymentDialog
+                open={showPaymentDialog && !paymentReady}
+                onClose={() => setShowPaymentDialog(false)}
+                discountedPrice={discountedPrice}
+                creditCost={creditCost}
+                paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
+                onCreateInvoice={createPaymentInvoice}
+                onConsumeCredits={consumeCredits}
+                onCheckPayment={checkPaymentStatus}
+                paymentStatus={paymentStatus}
+                paymentInvoice={paymentInvoice}
+                isCheckingPayment={isCheckingPayment}
+                paymentError={paymentError}
+                isToolActive={isToolActive}
+                currentUser={currentUser}
+                creditBalance={userProfile?.credits?.balance ?? null}
+                isAdminFree={currentUser?.role === 'admin'}
+                onAdminContinue={async () => {
+                    setShowPaymentDialog(false);
+                    await handleGenerate({ adminBypass: true });
+                }}
+            />
         </div>
     );
 };

@@ -182,6 +182,205 @@
     line-height: 1.4;
 }
 
+.cg-pay-card {
+    border: 1px solid #dbe3ef;
+    background: #f8fafc;
+    border-radius: 0.8rem;
+    padding: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.cg-pay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cg-pay-header h3 {
+    margin: 0;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #0f172a;
+}
+
+.cg-pay-pill {
+    border-radius: 9999px;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.67rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+.cg-pay-pill.success {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #86efac;
+}
+
+.cg-pay-pill.warning {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+.cg-pay-pill.muted {
+    background: #e2e8f0;
+    color: #334155;
+    border-color: #cbd5e1;
+}
+
+.cg-pay-price {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.cg-pay-price span {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.cg-pay-ready {
+    border: 1px solid #86efac;
+    background: #f0fdf4;
+    border-radius: 0.65rem;
+    padding: 0.55rem 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.cg-pay-ready p {
+    margin: 0;
+    font-size: 0.78rem;
+    color: #166534;
+}
+
+.cg-pay-ready button {
+    border: 0;
+    background: #14532d;
+    color: #ffffff;
+    font-size: 0.72rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 9999px;
+    cursor: pointer;
+}
+
+.cg-pay-methods {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+}
+
+.cg-pay-methods button {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    padding: 0.45rem 0.55rem;
+    border-radius: 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cg-pay-methods button.active {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #ffffff;
+}
+
+.cg-pay-methods button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cg-pay-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.cg-pay-btn {
+    width: 100%;
+    border-radius: 0.55rem;
+    padding: 0.48rem 0.7rem;
+    font-size: 0.77rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.cg-pay-btn--primary {
+    background: #1d4ed8;
+    color: #ffffff;
+    border-color: #1d4ed8;
+}
+
+.cg-pay-btn--primary:hover:not(:disabled) {
+    background: #1e40af;
+}
+
+.cg-pay-btn--outline {
+    background: #ffffff;
+    color: #1d4ed8;
+    border-color: #93c5fd;
+}
+
+.cg-pay-btn--outline:hover:not(:disabled) {
+    border-color: #1d4ed8;
+}
+
+.cg-pay-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.cg-pay-qr {
+    background: #ffffff;
+    border: 1px dashed #cbd5e1;
+    border-radius: 0.65rem;
+    padding: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 140px;
+}
+
+.cg-pay-qr img {
+    max-width: 100%;
+    width: 160px;
+    border-radius: 0.5rem;
+}
+
+.cg-pay-qr-placeholder {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.cg-pay-hint {
+    margin: 0;
+    font-size: 0.74rem;
+    color: #475569;
+}
+
+.cg-pay-error {
+    margin: 0;
+    font-size: 0.74rem;
+    color: #b91c1c;
+}
+
 .cg-preview {
     flex: 1;
     background-color: #f3f4f6;
@@ -211,6 +410,52 @@
     margin: 0 auto;
     color: #1a1a1a;
     transition: transform 0.3s ease-out;
+}
+
+.cg-export-surface {
+    position: fixed;
+    left: -10000px;
+    top: -10000px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cg-export-paper {
+    width: 210mm;
+    min-height: 297mm;
+    box-sizing: border-box;
+    padding: 20mm 15mm 15mm 20mm;
+    background: #ffffff;
+    color: #111827;
+    font-family: "Times New Roman", serif;
+    font-size: 12pt;
+    line-height: 1.6;
+}
+
+.cg-export-paper a {
+    color: #0f172a;
+    text-decoration: underline;
+    word-break: break-all;
+}
+
+.cg-export-paper .variable-placeholder {
+    color: #475569;
+    font-style: italic;
+    font-size: 11pt;
+}
+
+.cg-export-paper table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 0.9rem 0;
+}
+
+.cg-export-paper td,
+.cg-export-paper th {
+    border: 1px solid #cbd5e1;
+    padding: 0.55rem 0.65rem;
+    vertical-align: top;
 }
 
 .prose-content {

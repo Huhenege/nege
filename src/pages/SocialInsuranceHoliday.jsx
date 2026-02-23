@@ -28,6 +28,8 @@ import useAccess from '../hooks/useAccess';
 import { apiFetch } from '../lib/apiClient';
 import { getGuestSessionId } from '../lib/guest';
 import ToolHeader from '../components/ToolHeader';
+import ToolPaymentDialog from '../components/ToolPaymentDialog';
+import ToolPaymentStatusCard from '../components/ToolPaymentStatusCard';
 
 const STORAGE_KEY = 'ndsh-saved-data';
 const PAYMENT_STORAGE_KEY = 'ndsh-payment-grant';
@@ -66,8 +68,8 @@ const SocialInsuranceHoliday = () => {
     const creditCost = Number(toolPricing.creditCost || 1);
     const isPaymentActive = !!paymentGrant?.grantToken && !paymentGrant.used;
     const isPaymentUsed = !!paymentGrant?.grantToken && paymentGrant.used;
+    const paymentRequiredBeforeAnalyze = !isPaymentActive;
     const creditBalance = typeof userProfile?.credits?.balance === 'number' ? userProfile.credits.balance : null;
-    const hasEnoughCredits = !!currentUser && (creditBalance ?? 0) >= creditCost;
     const creditBalanceLabel = currentUser ? (creditBalance ?? 0).toLocaleString() : 'Нэвтэрч харах';
 
     const fileInputRef = React.useRef(null);
@@ -387,6 +389,14 @@ const SocialInsuranceHoliday = () => {
         setPaymentGrant(updated);
     };
 
+    const resetPaymentGrant = () => {
+        localStorage.removeItem(PAYMENT_STORAGE_KEY);
+        setPaymentInvoice(null);
+        setPaymentGrant(null);
+        setPaymentStatus('idle');
+        setPaymentError(null);
+    };
+
     const processFile = async () => {
         if (!isToolActive) {
             showToast({
@@ -518,7 +528,7 @@ const SocialInsuranceHoliday = () => {
                 title: 'Амжилттай хадгалагдлаа!',
                 description: `Амралтын хоног: ${vacationCalculation.total} өдөр`,
             });
-        } catch (e) {
+        } catch {
             showToast({
                 variant: 'error',
                 title: 'Алдаа',
@@ -944,175 +954,19 @@ const SocialInsuranceHoliday = () => {
                                     )}
                                 </div>
 
-                                <div className="ndsh2-payment-bar">
-                                    <div className="ndsh2-payment-info">
-                                        <p>Үйлчилгээний төлбөр</p>
-                                        <div className="ndsh2-payment-price">
-                                            <strong>{discountedPrice.toLocaleString()}₮</strong>
-                                            <span>эсвэл {creditCost} credit</span>
-                                        </div>
-                                        <span className="ndsh2-payment-balance">
-                                            Credits үлдэгдэл: <strong>{creditBalanceLabel}</strong>
-                                        </span>
-                                    </div>
-                                    <div className="ndsh2-payment-actions">
-                                        <div className="ndsh2-payment-status">
-                                            {!isToolActive ? (
-                                                <span className="ndsh2-badge ndsh2-badge--muted">Түр хаалттай</span>
-                                            ) : isPaymentActive ? (
-                                                <span className="ndsh2-badge ndsh2-badge--success">Төлсөн</span>
-                                            ) : paymentStatus === 'creating' ? (
-                                                <span className="ndsh2-badge ndsh2-badge--blue">Төлбөр үүсгэж байна</span>
-                                            ) : paymentStatus === 'pending' ? (
-                                                <span className="ndsh2-badge ndsh2-badge--amber">Төлбөр хүлээгдэж байна</span>
-                                            ) : paymentStatus === 'error' ? (
-                                                <span className="ndsh2-badge ndsh2-badge--danger">Алдаа гарсан</span>
-                                            ) : isPaymentUsed ? (
-                                                <span className="ndsh2-badge ndsh2-badge--muted">Ашигласан</span>
-                                            ) : (
-                                                <span className="ndsh2-badge ndsh2-badge--muted">Төлбөр төлөөгүй</span>
-                                            )}
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className={`ndsh2-btn ${showPaymentOptions ? 'ndsh2-btn--primary' : 'ndsh2-btn--outline'}`}
-                                            onClick={() => {
-                                                if (isPaymentActive) return;
-                                                if (!isToolActive) return;
-                                                setShowPaymentOptions((prev) => {
-                                                    const next = !prev;
-                                                    if (!prev) {
-                                                        setPaymentMethod('pay');
-                                                    }
-                                                    return next;
-                                                });
-                                            }}
-                                            disabled={isPaymentActive || !isToolActive}
-                                        >
-                                            <Sparkles className="ndsh2-icon" />
-                                            {isPaymentActive ? 'Төлбөр төлсөн' : 'Төлбөр төлөх'}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {showPaymentOptions && isToolActive && (
-                                    <div className="ndsh2-payment-panel">
-                                        <div className="ndsh2-payment-tabs">
-                                            <button
-                                                type="button"
-                                                className={`ndsh2-btn ${paymentMethod === 'pay' ? 'ndsh2-btn--primary' : 'ndsh2-btn--outline'}`}
-                                                onClick={() => setPaymentMethod('pay')}
-                                                disabled={!isToolActive}
-                                            >
-                                                QPay төлбөр
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={`ndsh2-btn ${paymentMethod === 'credits' ? 'ndsh2-btn--primary' : 'ndsh2-btn--outline'}`}
-                                                onClick={() => setPaymentMethod('credits')}
-                                                disabled={!isToolActive}
-                                            >
-                                                Credits ашиглах
-                                            </button>
-                                        </div>
-
-                                        <div className="ndsh2-pay-grid">
-                                            <div className="ndsh2-pay-actions">
-                                                <button
-                                                    type="button"
-                                                    className="ndsh2-btn ndsh2-btn--primary"
-                                                    onClick={paymentMethod === 'credits' ? consumeCredits : createPaymentInvoice}
-                                                    disabled={
-                                                        paymentStatus === 'creating' ||
-                                                        !isToolActive ||
-                                                        (paymentMethod === 'credits' && (!currentUser || !hasEnoughCredits))
-                                                    }
-                                                >
-                                                    <Sparkles className="ndsh2-icon" />
-                                                    {paymentMethod === 'credits' ? 'Credits ашиглах' : 'QPay QR үүсгэх'}
-                                                </button>
-                                                {paymentMethod === 'pay' && (
-                                                    <button
-                                                        type="button"
-                                                        className="ndsh2-btn ndsh2-btn--outline"
-                                                        onClick={checkPaymentStatus}
-                                                        disabled={!paymentInvoice || isCheckingPayment}
-                                                    >
-                                                        <CheckCircle2 className="ndsh2-icon" />
-                                                        {isCheckingPayment ? 'Шалгаж байна...' : 'Төлбөр шалгах'}
-                                                    </button>
-                                                )}
-                                                {paymentMethod === 'credits' && (
-                                                    <p className="ndsh2-payment-hint">
-                                                        Зарцуулалт: {creditCost} credit
-                                                        {!currentUser && ' · Нэвтэрч ашиглана'}
-                                                    </p>
-                                                )}
-                                                {paymentMethod === 'credits' && currentUser && !hasEnoughCredits && (
-                                                    <p className="ndsh2-payment-hint ndsh2-payment-hint--warn">
-                                                        Үлдэгдэл хүрэлцэхгүй байна.
-                                                    </p>
-                                                )}
-                                                {paymentError && <p className="ndsh2-pay-error">{paymentError}</p>}
-                                            </div>
-
-                                            <div className="ndsh2-pay-qr">
-                                                {paymentMethod === 'pay' ? (
-                                                    paymentInvoice?.qr_image ? (
-                                                        <div className="ndsh2-qr-container">
-                                                            <img
-                                                                src={`data:image/png;base64,${paymentInvoice.qr_image}`}
-                                                                alt="QPay QR"
-                                                            />
-                                                            {paymentInvoice?.qr_text && (
-                                                                <textarea readOnly value={paymentInvoice.qr_text} className="ndsh2-qr-text" />
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="ndsh2-pay-placeholder">
-                                                            QR код энд гарна
-                                                        </div>
-                                                    )
-                                                ) : (
-                                                    <div className="ndsh2-credits-box">
-                                                        <div className="ndsh2-credits-row">
-                                                            <span>Credits үлдэгдэл</span>
-                                                            <strong>{creditBalanceLabel}</strong>
-                                                        </div>
-                                                        <div className="ndsh2-credits-row">
-                                                            <span>Зарцуулалт</span>
-                                                            <strong>{creditCost} credit</strong>
-                                                        </div>
-                                                        {!currentUser && (
-                                                            <p className="ndsh2-credits-hint">Credits ашиглахын тулд нэвтэрнэ үү.</p>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {paymentMethod === 'pay' && paymentInvoice?.urls && paymentInvoice.urls.length > 0 && (
-                                                <div className="ndsh2-pay-banks">
-                                                    <p className="ndsh2-banks-label">Банкны апп-аар төлөх:</p>
-                                                    <div className="ndsh2-bank-grid">
-                                                        {paymentInvoice.urls.map((bank, idx) => (
-                                                            <a
-                                                                key={idx}
-                                                                href={bank.link}
-                                                                className="ndsh2-bank-item"
-                                                                title={bank.description}
-                                                            >
-                                                                <div className="ndsh2-bank-logo">
-                                                                    <img src={bank.logo} alt={bank.name} />
-                                                                </div>
-                                                                <span className="ndsh2-bank-name">{bank.description}</span>
-                                                            </a>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
+                                <ToolPaymentStatusCard
+                                    isToolActive={isToolActive}
+                                    paymentReady={isPaymentActive}
+                                    paymentUsed={isPaymentUsed}
+                                    discountedPrice={discountedPrice}
+                                    creditCost={creditCost}
+                                    onOpenPayment={() => {
+                                        setPaymentMethod('pay');
+                                        setShowPaymentOptions(true);
+                                    }}
+                                    onResetPayment={resetPaymentGrant}
+                                    creditBalanceLabel={creditBalanceLabel}
+                                />
 
                                 <div className="ndsh2-action-row">
                                     <button
@@ -1134,7 +988,7 @@ const SocialInsuranceHoliday = () => {
                                             type="button"
                                             className="ndsh2-btn ndsh2-btn--primary"
                                             onClick={processFile}
-                                            disabled={!file || isProcessing || !isToolActive}
+                                            disabled={!file || isProcessing || !isToolActive || paymentRequiredBeforeAnalyze}
                                         >
                                             <Brain className="ndsh2-icon" />
                                             AI-аар шинжлэх
@@ -1633,6 +1487,24 @@ const SocialInsuranceHoliday = () => {
                     </div>
                 )}
             </div>
+            <ToolPaymentDialog
+                open={showPaymentOptions && !isPaymentActive}
+                onClose={() => setShowPaymentOptions(false)}
+                discountedPrice={discountedPrice}
+                creditCost={creditCost}
+                paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
+                onCreateInvoice={createPaymentInvoice}
+                onConsumeCredits={consumeCredits}
+                onCheckPayment={checkPaymentStatus}
+                paymentStatus={paymentStatus}
+                paymentInvoice={paymentInvoice}
+                isCheckingPayment={isCheckingPayment}
+                paymentError={paymentError}
+                isToolActive={isToolActive}
+                currentUser={currentUser}
+                creditBalance={creditBalance}
+            />
         </div>
     );
 };

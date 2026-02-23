@@ -1,0 +1,53 @@
+.tps-card {
+    width: 100%;
+}
+
+.tps-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.tps-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.tps-label {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--ink-600);
+    font-weight: 600;
+}
+
+.tps-price {
+    margin: 0.25rem 0 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--ink-900);
+}
+
+.tps-sub {
+    margin: 0.2rem 0 0;
+    font-size: 0.82rem;
+    color: var(--ink-500);
+}
+
+.tps-balance {
+    margin: 0.45rem 0 0;
+    font-size: 0.8rem;
+    color: var(--ink-600);
+}
+
+.tps-alert {
+    margin: 0;
+}
+
+.tps-alert--muted {
+    background: var(--ink-50);
+    border-color: var(--ink-200);
+    color: var(--ink-600);
+}

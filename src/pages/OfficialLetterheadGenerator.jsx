@@ -20,6 +20,8 @@ import { apiFetch } from '../lib/apiClient';
 import { getGuestSessionId } from '../lib/guest';
 import './OfficialLetterheadGenerator.css';
 import ToolHeader from '../components/ToolHeader';
+import ToolPaymentDialog from '../components/ToolPaymentDialog';
+import ToolPaymentStatusCard from '../components/ToolPaymentStatusCard';
 
 const PAYMENT_STORAGE_KEY = 'letterhead-payment-grant';
 
@@ -66,7 +68,7 @@ const OfficialLetterheadGenerator = () => {
     const [paymentError, setPaymentError] = useState(null);
     const [isCheckingPayment, setIsCheckingPayment] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('pay'); // pay | credits
-    const [isPaid, setIsPaid] = useState(false);
+    const [showPaymentDialog, setShowPaymentDialog] = useState(false);
     const documentRef = useRef(null);
     const measureRef = useRef(null);
     const measureHeaderRef = useRef(null);
@@ -102,12 +104,18 @@ const OfficialLetterheadGenerator = () => {
             const parsed = JSON.parse(saved);
             if (parsed?.grantToken && !parsed?.used) {
                 setPaymentGrant(parsed);
-                setIsPaid(true);
+                setPaymentStatus('paid');
             }
         } catch (error) {
             console.error('Failed to restore payment grant', error);
         }
     }, []);
+
+    useEffect(() => {
+        if (paymentGrant?.grantToken && !paymentGrant?.used) {
+            setShowPaymentDialog(false);
+        }
+    }, [paymentGrant]);
 
     useEffect(() => {
         const loadTemplates = async () => {
@@ -178,26 +186,24 @@ const OfficialLetterheadGenerator = () => {
     const storeGrant = (grant) => {
         localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(grant));
         setPaymentGrant(grant);
-        setIsPaid(true);
-        setPaymentStatus('success');
+        setPaymentStatus('paid');
     };
 
     const resetPayment = () => {
         setPaymentInvoice(null);
         setPaymentGrant(null);
-        setIsPaid(false);
         setPaymentStatus('idle');
         setPaymentError(null);
         localStorage.removeItem(PAYMENT_STORAGE_KEY);
     };
 
-    const markGrantUsed = () => {
-        if (!paymentGrant) return;
-        const updated = { ...paymentGrant, used: true, usedAt: new Date().toISOString() };
+    const markGrantUsed = (grantOverride = null) => {
+        const grant = grantOverride || paymentGrant;
+        if (!grant) return;
+        const updated = { ...grant, used: true, usedAt: new Date().toISOString() };
         localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(updated));
         setPaymentGrant(updated);
-        setIsPaid(false);
-        setPaymentStatus('idle');
+        setPaymentStatus('used');
     };
 
     const createPaymentInvoice = async () => {
@@ -341,7 +347,7 @@ const OfficialLetterheadGenerator = () => {
         }
     };
 
-    const generatePDF = () => {
+    const generatePDF = async ({ activeGrant = null, adminBypass = false } = {}) => {
         setIsGenerating(true);
         const element = documentRef.current;
         if (element) {
@@ -355,36 +361,57 @@ const OfficialLetterheadGenerator = () => {
             jsPDF: { unit: 'mm', format: config.paperSize.toLowerCase(), orientation: config.orientation }
         };
 
-        html2pdf().set(opt).from(element).save().then(async () => {
+        try {
+            await html2pdf().set(opt).from(element).save();
+
+            if (activeGrant) {
+                markGrantUsed(activeGrant);
+                try {
+                    await apiFetch('/usage/log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        auth: !!currentUser,
+                        body: JSON.stringify({
+                            toolKey: 'official_letterhead',
+                            paymentMethod: activeGrant?.creditsUsed ? 'credits' : 'pay_per_use',
+                            amount: activeGrant?.amount || discountedPrice,
+                            creditsUsed: activeGrant?.creditsUsed || 0,
+                            invoiceId: activeGrant?.invoice_id || null,
+                            grantToken: activeGrant?.grantToken || null,
+                            guestSessionId: currentUser ? null : getGuestSessionId(),
+                        }),
+                    });
+                } catch (error) {
+                    console.error('Usage log error:', error);
+                }
+            } else if (currentUser?.role === 'admin' && adminBypass) {
+                try {
+                    await apiFetch('/usage/log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        auth: !!currentUser,
+                        body: JSON.stringify({
+                            toolKey: 'official_letterhead',
+                            paymentMethod: 'admin_free',
+                            amount: 0,
+                            creditsUsed: 0,
+                            invoiceId: null,
+                            grantToken: null,
+                            guestSessionId: null,
+                        }),
+                    });
+                } catch (error) {
+                    console.error('Usage log error:', error);
+                }
+            }
+        } catch (error) {
+            console.error('PDF generation failed:', error);
+        } finally {
             if (element) {
                 element.classList.remove('ob-printing');
             }
             setIsGenerating(false);
-            markGrantUsed();
-            try {
-                await apiFetch('/usage/log', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    auth: !!currentUser,
-                    body: JSON.stringify({
-                        toolKey: 'official_letterhead',
-                        paymentMethod: paymentGrant?.creditsUsed ? 'credits' : 'pay_per_use',
-                        amount: paymentGrant?.amount || discountedPrice,
-                        creditsUsed: paymentGrant?.creditsUsed || 0,
-                        invoiceId: paymentGrant?.invoice_id || null,
-                        grantToken: paymentGrant?.grantToken || null,
-                        guestSessionId: currentUser ? null : getGuestSessionId(),
-                    }),
-                });
-            } catch (error) {
-                console.error('Usage log error:', error);
-            }
-        }).catch(() => {
-            if (element) {
-                element.classList.remove('ob-printing');
-            }
-            setIsGenerating(false);
-        });
+        }
     };
 
     const [isAiGenerating, setIsAiGenerating] = useState(false);
@@ -425,21 +452,21 @@ const OfficialLetterheadGenerator = () => {
         }
     };
 
-    const handleDownloadClick = () => {
+    const handleDownloadClick = async ({ adminBypass = false } = {}) => {
         if (!isToolActive) {
             alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
             return;
         }
-        if (isPaid) {
-            generatePDF();
+        const activeGrant = paymentGrant?.grantToken && !paymentGrant?.used ? paymentGrant : null;
+        if (activeGrant || adminBypass) {
+            await generatePDF({ activeGrant, adminBypass });
             return;
         }
-        if (paymentMethod === 'credits') {
-            consumeCredits();
-        } else {
-            createPaymentInvoice();
-        }
+        setShowPaymentDialog(true);
     };
+    const paymentReady = paymentGrant?.grantToken && !paymentGrant?.used;
+    const paymentUsed = paymentGrant?.used;
+    const paymentRequiredBeforeDownload = !paymentReady;
 
     // --- UI Helpers ---
     const getPaperMargins = (paperSize, orientation) => {
@@ -832,84 +859,29 @@ const OfficialLetterheadGenerator = () => {
                     </div>
 
                     <div className="ob-action-sidebar">
-                        <div style={{ marginBottom: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                            <div style={{ fontWeight: '700', marginBottom: '0.5rem' }}>Төлбөрийн сонголт</div>
-                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setPaymentMethod('pay')}
-                                    disabled={!isToolActive}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.5rem',
-                                        borderRadius: '8px',
-                                        border: paymentMethod === 'pay' ? '2px solid var(--brand-600)' : '1px solid var(--ink-300)',
-                                        background: paymentMethod === 'pay' ? 'var(--brand-600)' : 'white',
-                                        color: paymentMethod === 'pay' ? 'white' : 'var(--ink-800)',
-                                        fontWeight: '600',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    QPay
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setPaymentMethod('credits')}
-                                    disabled={!isToolActive}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.5rem',
-                                        borderRadius: '8px',
-                                        border: paymentMethod === 'credits' ? '2px solid var(--brand-600)' : '1px solid var(--ink-300)',
-                                        background: paymentMethod === 'credits' ? 'var(--brand-600)' : 'white',
-                                        color: paymentMethod === 'credits' ? 'white' : 'var(--ink-800)',
-                                        fontWeight: '600',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Credits
-                                </button>
-                            </div>
-                            <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
-                                {paymentMethod === 'credits'
-                                    ? `${creditCost} credit`
-                                    : `${discountedPrice.toLocaleString()}₮`}
-                            </div>
-                        </div>
+                        <ToolPaymentStatusCard
+                            isToolActive={isToolActive}
+                            paymentReady={paymentReady}
+                            paymentUsed={paymentUsed}
+                            discountedPrice={discountedPrice}
+                            creditCost={creditCost}
+                            onOpenPayment={() => setShowPaymentDialog(true)}
+                            onResetPayment={resetPayment}
+                            creditBalanceLabel={currentUser ? (userProfile?.credits?.balance ?? 0).toLocaleString() : 'Нэвтэрч харах'}
+                        />
                         <button
-                            className={`ob-btn ob-btn--primary ob-btn--full ${isPaid ? 'paid' : ''}`}
+                            className={`ob-btn ob-btn--primary ob-btn--full ${paymentReady ? 'paid' : ''}`}
                             onClick={handleDownloadClick}
-                            disabled={isGenerating || paymentStatus === 'creating' || !isToolActive}
+                            disabled={isGenerating || !isToolActive || paymentRequiredBeforeDownload}
                         >
                             {isGenerating ? <Loader2 className="ob-spin" /> : <Download size={20} />}
-                            {isPaid ? 'PDF Татах' : (paymentMethod === 'credits' ? 'Credits ашиглаж татах' : `PDF Татах (${discountedPrice.toLocaleString()}₮)`)}
+                            PDF Татах
                         </button>
                     </div>
                 </div>
 
                 {/* Main: Preview */}
                 <div className="ob-preview-area">
-                    {paymentStatus === 'pending' && !isPaid && (
-                        <div className="ob-payment-overlay">
-                            <div className="ob-payment-card">
-                                <h3>Төлбөр төлөх</h3>
-                                <p>Бланк үүсгэхэд нэг удаа {discountedPrice.toLocaleString()}₮ төлнө.</p>
-                                {paymentInvoice?.qr_image && (
-                                    <img src={`data:image/png;base64,${paymentInvoice.qr_image}`} alt="QPay QR" />
-                                )}
-                                <div className="ob-payment-actions">
-                                    <button className="ob-btn ob-btn--primary" onClick={checkPaymentStatus} disabled={isCheckingPayment}>
-                                        {isCheckingPayment ? 'Шалгаж байна...' : 'Төлбөр шалгах'}
-                                    </button>
-                                    <button className="ob-btn ob-btn--ghost" onClick={resetPayment}>
-                                        Болих
-                                    </button>
-                                </div>
-                                {paymentError && <p style={{ marginTop: '0.75rem', color: '#dc2626' }}>{paymentError}</p>}
-                            </div>
-                        </div>
-                    )}
-
                     <div className="ob-paper-wrapper">
                         <div className="ob-paper-stack" ref={documentRef}>
                             {pages.map((pageParagraphs, pageIndex) => {
@@ -1071,6 +1043,29 @@ const OfficialLetterheadGenerator = () => {
                     </div>
                 </div>
             </div>
+            <ToolPaymentDialog
+                open={showPaymentDialog && !paymentReady}
+                onClose={() => setShowPaymentDialog(false)}
+                discountedPrice={discountedPrice}
+                creditCost={creditCost}
+                paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
+                onCreateInvoice={createPaymentInvoice}
+                onConsumeCredits={consumeCredits}
+                onCheckPayment={checkPaymentStatus}
+                paymentStatus={paymentStatus}
+                paymentInvoice={paymentInvoice}
+                isCheckingPayment={isCheckingPayment}
+                paymentError={paymentError}
+                isToolActive={isToolActive}
+                currentUser={currentUser}
+                creditBalance={userProfile?.credits?.balance ?? null}
+                isAdminFree={currentUser?.role === 'admin'}
+                onAdminContinue={async () => {
+                    setShowPaymentDialog(false);
+                    await handleDownloadClick({ adminBypass: true });
+                }}
+            />
         </div>
     );
 };

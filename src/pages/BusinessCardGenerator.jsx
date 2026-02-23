@@ -5,9 +5,15 @@ import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 import ToolHeader from '../components/ToolHeader';
 import { useAuth } from '../contexts/AuthContext';
+import { useBilling } from '../contexts/BillingContext';
+import useAccess from '../hooks/useAccess';
 import { db } from '../lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { populateBusinessCardSvg } from '../lib/businessCardCanvas';
+import { apiFetch } from '../lib/apiClient';
+import { getGuestSessionId } from '../lib/guest';
+import ToolPaymentDialog from '../components/ToolPaymentDialog';
+import ToolPaymentStatusCard from '../components/ToolPaymentStatusCard';
 import './BusinessCardGenerator.css';
 
 // Font options
@@ -107,6 +113,7 @@ const placeholderRegex = /\{\{\s*([^}]+)\s*\}\}/g;
 const supportedFieldTypes = new Set(['text', 'textarea', 'email', 'tel', 'url', 'image']);
 const PX_PER_MM = 300 / 25.4;
 const DEFAULT_TEMPLATE_SIZE_MM = { widthMm: 90, heightMm: 50 };
+const PAYMENT_STORAGE_KEY = 'business-card-grant';
 
 const parseSvgLength = (rawValue) => {
     if (rawValue == null) return null;
@@ -277,7 +284,9 @@ const buildTemplateFieldDefinitions = (template) => {
 };
 
 const BusinessCardGenerator = () => {
-    const { currentUser, isToolActive } = useAuth();
+    const { currentUser, refreshUserProfile, userProfile } = useAuth();
+    const { config: billingConfig } = useBilling();
+    const { discountPercent } = useAccess();
 
     // State
     const [templates, setTemplates] = useState([]);
@@ -301,12 +310,23 @@ const BusinessCardGenerator = () => {
     const [isGenerating, setIsGenerating] = useState(false);
 
     const [paymentMethod, setPaymentMethod] = useState('pay');
-    const [paymentStatus] = useState('idle');
-    const [paymentUsed, setPaymentUsed] = useState(false);
+    const [paymentStatus, setPaymentStatus] = useState('idle');
+    const [paymentInvoice, setPaymentInvoice] = useState(null);
+    const [paymentGrant, setPaymentGrant] = useState(null);
+    const [paymentError, setPaymentError] = useState(null);
+    const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+    const [showPaymentDialog, setShowPaymentDialog] = useState(false);
     const templateCardSize = useMemo(
         () => extractTemplateSizeMm(selectedTemplate?.svgContent),
         [selectedTemplate?.svgContent]
     );
+
+    const toolPricing = billingConfig?.tools?.business_card || { payPerUsePrice: 1000, creditCost: 1, active: true };
+    const isToolActive = toolPricing?.active !== false;
+    const basePrice = Number(toolPricing.payPerUsePrice || 0);
+    const discountedPrice = Math.max(0, Math.round(basePrice * (1 - (discountPercent || 0) / 100)));
+    const creditCost = Number(toolPricing.creditCost || 1);
+    const creditBalance = typeof userProfile?.credits?.balance === 'number' ? userProfile.credits.balance : null;
 
     // Fetch Templates
     useEffect(() => {
@@ -335,6 +355,30 @@ const BusinessCardGenerator = () => {
         const font = fontOptions.find((f) => f.id === fontId);
         setActiveFont(font);
     }, [fontId]);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(PAYMENT_STORAGE_KEY);
+            if (!saved) return;
+            const parsed = JSON.parse(saved);
+            if (parsed?.grantToken && !parsed?.used) {
+                setPaymentGrant(parsed);
+                setPaymentStatus('paid');
+            }
+        } catch (error) {
+            console.error('Failed to restore payment grant', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        setPaymentError(null);
+    }, [paymentMethod]);
+
+    useEffect(() => {
+        if (paymentGrant?.grantToken && !paymentGrant?.used) {
+            setShowPaymentDialog(false);
+        }
+    }, [paymentGrant]);
 
     const templateFieldDefs = useMemo(
         () => (selectedTemplate ? buildTemplateFieldDefinitions(selectedTemplate) : []),
@@ -476,14 +520,162 @@ END:VCARD`;
         handleFieldChange(name, value);
     };
 
-    const createPaymentInvoice = async () => {
-        // Mock payment for now or existing logic
-        alert("Payment integration pending refactor");
+    const storeGrant = (grant) => {
+        localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(grant));
+        setPaymentGrant(grant);
+        setPaymentStatus('paid');
     };
 
-    const consumeCreditsLocal = () => {
-        // Mock credits
-        setPaymentUsed(true);
+    const markGrantUsed = (grantOverride = null) => {
+        const grant = grantOverride || paymentGrant;
+        if (!grant) return;
+        const updated = { ...grant, used: true, usedAt: new Date().toISOString() };
+        localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(updated));
+        setPaymentGrant(updated);
+        setPaymentStatus('idle');
+    };
+
+    const resetPayment = () => {
+        setPaymentInvoice(null);
+        setPaymentGrant(null);
+        setPaymentStatus('idle');
+        setPaymentError(null);
+        setShowPaymentDialog(false);
+        localStorage.removeItem(PAYMENT_STORAGE_KEY);
+    };
+
+    const createPaymentInvoice = async () => {
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return;
+        }
+        try {
+            setPaymentStatus('creating');
+            setPaymentError(null);
+            let response = await apiFetch('/billing/invoice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({ type: 'tool', toolKey: 'business_card' })
+            });
+            let data = await response.json();
+            if (!response.ok) {
+                if (response.status !== 404) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: discountedPrice,
+                        description: 'Нэрийн хуудас (QPay)'
+                    })
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
+            }
+            setPaymentInvoice(data);
+            setPaymentStatus('pending');
+        } catch (error) {
+            let message = error instanceof Error ? error.message : 'Төлбөрийн системд алдаа гарлаа';
+            if (error instanceof TypeError || String(error?.message || '').includes('Failed to fetch')) {
+                message = 'QPay сервер асаагүй байна. `npm run qpay:server` ажиллуулна уу.';
+            }
+            setPaymentStatus('error');
+            setPaymentError(message);
+        }
+    };
+
+    const checkPaymentStatus = async () => {
+        if (!paymentInvoice?.invoice_id) return;
+        setIsCheckingPayment(true);
+        try {
+            let response = await apiFetch('/billing/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id })
+            });
+            let data = await response.json();
+            if (!response.ok) {
+                if (response.status !== 404) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id })
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
+            }
+            if (data.paid) {
+                storeGrant({
+                    invoice_id: paymentInvoice.invoice_id,
+                    paidAt: new Date().toISOString(),
+                    amount: data.amount || discountedPrice,
+                    grantToken: data.grantToken,
+                    used: false,
+                    creditsUsed: 0,
+                });
+                await refreshUserProfile();
+            }
+        } catch (error) {
+            let message = error instanceof Error ? error.message : 'Төлбөр шалгахад алдаа гарлаа';
+            if (error instanceof TypeError || String(error?.message || '').includes('Failed to fetch')) {
+                message = 'QPay сервер асаагүй байна. `npm run qpay:server` ажиллуулна уу.';
+            }
+            setPaymentError(message);
+        } finally {
+            setIsCheckingPayment(false);
+        }
+    };
+
+    const consumeCredits = async () => {
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return;
+        }
+        if (!currentUser) {
+            alert('Credits ашиглахын тулд нэвтэрнэ үү.');
+            return;
+        }
+        try {
+            setPaymentStatus('creating');
+            setPaymentError(null);
+            const response = await apiFetch('/credits/consume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({
+                    toolKey: 'business_card',
+                    userId: currentUser?.uid || null,
+                    currentBalance: userProfile?.credits?.balance ?? null,
+                    creditCost,
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Credits ашиглахад алдаа гарлаа');
+            }
+            storeGrant({
+                invoice_id: null,
+                paidAt: new Date().toISOString(),
+                amount: 0,
+                grantToken: data.grantToken,
+                used: false,
+                creditsUsed: data.creditsUsed || creditCost,
+            });
+            await refreshUserProfile();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Credits ашиглахад алдаа гарлаа';
+            setPaymentStatus('error');
+            setPaymentError(message);
+        }
     };
 
     const validateField = (fieldDef, value) => {
@@ -524,14 +716,16 @@ END:VCARD`;
         return Object.keys(nextErrors).length === 0;
     };
 
-    const handleDownload = async () => {
+    const handleDownload = async ({ adminBypass = false } = {}) => {
         if (!validateAllFields()) {
             alert('Талбаруудыг шалгаад дахин оролдоно уу.');
             return;
         }
 
-        if (!paymentUsed && currentUser?.role !== 'admin') {
-            alert('Please complete payment first.');
+        const isAdmin = currentUser?.role === 'admin';
+        const activeGrant = paymentGrant?.grantToken && !paymentGrant.used ? paymentGrant : null;
+        if (!activeGrant && !adminBypass) {
+            setShowPaymentDialog(true);
             return;
         }
 
@@ -602,6 +796,48 @@ END:VCARD`;
                 || 'Export';
 
             pdf.save(`BusinessCard_${safePersonName}.pdf`);
+
+            if (!isAdmin && activeGrant) {
+                markGrantUsed(activeGrant);
+                try {
+                    await apiFetch('/usage/log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        auth: !!currentUser,
+                        body: JSON.stringify({
+                            toolKey: 'business_card',
+                            paymentMethod: activeGrant?.creditsUsed ? 'credits' : 'pay_per_use',
+                            amount: activeGrant?.amount || discountedPrice,
+                            creditsUsed: activeGrant?.creditsUsed || 0,
+                            invoiceId: activeGrant?.invoice_id || null,
+                            grantToken: activeGrant?.grantToken || null,
+                            guestSessionId: currentUser ? null : getGuestSessionId(),
+                        }),
+                    });
+                } catch (error) {
+                    console.error('Usage log error:', error);
+                }
+            }
+            if (isAdmin && adminBypass) {
+                try {
+                    await apiFetch('/usage/log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        auth: !!currentUser,
+                        body: JSON.stringify({
+                            toolKey: 'business_card',
+                            paymentMethod: 'admin_free',
+                            amount: 0,
+                            creditsUsed: 0,
+                            invoiceId: null,
+                            grantToken: null,
+                            guestSessionId: null,
+                        }),
+                    });
+                } catch (error) {
+                    console.error('Usage log error:', error);
+                }
+            }
         } catch (error) {
             console.error(error);
             alert('Export failed');
@@ -610,7 +846,9 @@ END:VCARD`;
         }
     };
 
-    const paymentReady = paymentUsed || (currentUser?.role === 'admin');
+    const paymentReady = paymentGrant?.grantToken && !paymentGrant.used;
+    const paymentUsed = paymentGrant?.used;
+    const paymentRequiredBeforeDownload = !paymentReady;
     const hasBackTemplate = Boolean(selectedTemplate?.backSvgContent?.trim());
 
     const hasImageFields = imageFieldDefs.length > 0;
@@ -823,35 +1061,24 @@ END:VCARD`;
                     <div className="business-card-section">
                         <div className="business-card-section-header">Үнэ, төлбөр</div>
                         <div className="business-card-section-body">
-                            <div className="flex flex-col gap-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-semibold text-slate-500">Үнэ</span>
-                                    <div className="text-xl font-bold text-slate-900">
-                                        {currentUser?.role === 'admin' ? 'Үнэгүй (Admin)' : '5,000₮'}
-                                    </div>
-                                </div>
-
-                                {paymentReady ? (
-                                    <div className="flex flex-col gap-3">
-                                        <div className="alert alert-success text-center py-2 text-sm">
-                                            Төлбөр төлөгдсөн. Татах боломжтой.
-                                        </div>
-                                        <button onClick={handleDownload} disabled={isGenerating} className="btn btn-primary w-full">
-                                            {isGenerating ? 'Бэлтгэж байна...' : 'PDF Татах'} <Download size={18} />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col gap-3">
-                                        <div className="flex gap-2">
-                                            <button className={`flex-1 btn btn-sm ${paymentMethod === 'pay' ? 'btn-secondary' : 'btn-outline'}`} onClick={() => setPaymentMethod('pay')}>QPay</button>
-                                            <button className={`flex-1 btn btn-sm ${paymentMethod === 'credits' ? 'btn-secondary' : 'btn-outline'}`} onClick={() => setPaymentMethod('credits')}>Кредит</button>
-                                        </div>
-                                        <button onClick={paymentMethod === 'credits' ? consumeCreditsLocal : createPaymentInvoice} disabled={paymentStatus === 'creating'} className="btn btn-primary w-full">
-                                            {paymentMethod === 'credits' ? 'Кредит ашиглах' : 'Төлбөр төлөх'}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                            <ToolPaymentStatusCard
+                                isToolActive={isToolActive}
+                                paymentReady={paymentReady}
+                                paymentUsed={paymentUsed}
+                                discountedPrice={discountedPrice}
+                                creditCost={creditCost}
+                                onOpenPayment={() => setShowPaymentDialog(true)}
+                                onResetPayment={resetPayment}
+                                creditBalanceLabel={currentUser ? (creditBalance ?? 0).toLocaleString() : 'Нэвтэрч харах'}
+                            />
+                            <button
+                                onClick={handleDownload}
+                                disabled={isGenerating || !isToolActive || paymentRequiredBeforeDownload}
+                                className="btn btn-primary w-full"
+                                style={{ marginTop: '0.75rem' }}
+                            >
+                                {isGenerating ? 'Бэлтгэж байна...' : 'PDF Татах'} <Download size={18} />
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -908,6 +1135,30 @@ END:VCARD`;
                     </div>
                 </div>
             </div>
+
+            <ToolPaymentDialog
+                open={showPaymentDialog && !paymentReady}
+                onClose={() => setShowPaymentDialog(false)}
+                discountedPrice={discountedPrice}
+                creditCost={creditCost}
+                paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
+                onCreateInvoice={createPaymentInvoice}
+                onConsumeCredits={consumeCredits}
+                onCheckPayment={checkPaymentStatus}
+                paymentStatus={paymentStatus}
+                paymentInvoice={paymentInvoice}
+                isCheckingPayment={isCheckingPayment}
+                paymentError={paymentError}
+                isToolActive={isToolActive}
+                currentUser={currentUser}
+                creditBalance={creditBalance}
+                isAdminFree={currentUser?.role === 'admin'}
+                onAdminContinue={async () => {
+                    setShowPaymentDialog(false);
+                    await handleDownload({ adminBypass: true });
+                }}
+            />
 
             {/* Hidden Export */}
             <div className="business-card-export" aria-hidden="true">

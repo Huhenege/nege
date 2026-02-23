@@ -5,6 +5,13 @@ import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/fires
 import { Download, FileText, ArrowLeft, ChevronRight, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import ToolHeader from '../components/ToolHeader';
+import ToolPaymentDialog from '../components/ToolPaymentDialog';
+import ToolPaymentStatusCard from '../components/ToolPaymentStatusCard';
+import { useAuth } from '../contexts/AuthContext';
+import { useBilling } from '../contexts/BillingContext';
+import useAccess from '../hooks/useAccess';
+import { apiFetch } from '../lib/apiClient';
+import { getGuestSessionId } from '../lib/guest';
 import './ContractGenerator.css';
 
 const CONTRACT_TYPE_LABELS = {
@@ -27,6 +34,31 @@ const LEGAL_FRAMEWORK_LABELS = {
     international: 'International / common law',
     mixed: 'Холимог орчин',
 };
+
+const PRINT_STYLE_ALLOWLIST = new Set([
+    'text-align',
+    'font-weight',
+    'font-style',
+    'text-decoration',
+    'font-size',
+    'line-height',
+    'letter-spacing',
+    'white-space',
+    'border',
+    'border-top',
+    'border-right',
+    'border-bottom',
+    'border-left',
+    'border-collapse',
+    'border-spacing',
+    'padding',
+    'padding-top',
+    'padding-right',
+    'padding-bottom',
+    'padding-left',
+    'vertical-align',
+    'width',
+]);
 
 const normalizeArray = (value) => Array.isArray(value) ? value.filter(Boolean) : [];
 
@@ -66,15 +98,38 @@ const normalizeTemplateMeta = (rawMeta) => {
 
 const splitLines = (value) => String(value || '').split('\n').map((item) => item.trim()).filter(Boolean);
 
+const sanitizeFilename = (value) => String(value || 'Contract')
+    .replace(/[\\/:*?"<>|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() || 'Contract';
+
+const PAYMENT_STORAGE_KEY = 'contract-generator-grant';
+
 const ContractGenerator = () => {
     const { templateId } = useParams();
     const navigate = useNavigate();
+    const { currentUser, refreshUserProfile, userProfile } = useAuth();
+    const { config: billingConfig } = useBilling();
+    const { discountPercent } = useAccess();
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [loading, setLoading] = useState(true);
     const [formData, setFormData] = useState({});
     const [generating, setGenerating] = useState(false);
+    const [paymentInvoice, setPaymentInvoice] = useState(null);
+    const [paymentStatus, setPaymentStatus] = useState('idle');
+    const [paymentGrant, setPaymentGrant] = useState(null);
+    const [paymentError, setPaymentError] = useState(null);
+    const [paymentMethod, setPaymentMethod] = useState('pay');
+    const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
     const previewRef = useRef(null);
+
+    const toolPricing = billingConfig?.tools?.contract_generator || { payPerUsePrice: 1000, creditCost: 1, active: true };
+    const isToolActive = toolPricing?.active !== false;
+    const basePrice = Number(toolPricing.payPerUsePrice || 0);
+    const discountedPrice = Math.max(0, Math.round(basePrice * (1 - (discountPercent || 0) / 100)));
+    const creditCost = Number(toolPricing.creditCost || 1);
 
     // Fetch all templates for the list view
     useEffect(() => {
@@ -129,6 +184,191 @@ const ContractGenerator = () => {
         }
     }, [templateId, navigate]);
 
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(PAYMENT_STORAGE_KEY);
+            if (!saved) return;
+            const parsed = JSON.parse(saved);
+            if (parsed?.grantToken && !parsed?.used) {
+                setPaymentGrant(parsed);
+                setPaymentStatus('paid');
+            }
+        } catch (error) {
+            console.error('Failed to restore payment grant', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        setPaymentError(null);
+    }, [paymentMethod]);
+
+    useEffect(() => {
+        if (paymentGrant?.grantToken && !paymentGrant?.used) {
+            setShowPaymentModal(false);
+        }
+    }, [paymentGrant]);
+
+    const storeGrant = (grant) => {
+        localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(grant));
+        setPaymentGrant(grant);
+        setPaymentStatus('paid');
+        setPaymentError(null);
+    };
+
+    const markGrantUsed = (grantOverride = null) => {
+        const grant = grantOverride || paymentGrant;
+        if (!grant) return;
+        const updated = { ...grant, used: true, usedAt: new Date().toISOString() };
+        localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(updated));
+        setPaymentGrant(updated);
+        setPaymentStatus('idle');
+    };
+
+    const resetPayment = () => {
+        setPaymentInvoice(null);
+        setPaymentGrant(null);
+        setPaymentStatus('idle');
+        setPaymentError(null);
+        setShowPaymentModal(false);
+        localStorage.removeItem(PAYMENT_STORAGE_KEY);
+    };
+
+    const createPaymentInvoice = async () => {
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return;
+        }
+        try {
+            setPaymentStatus('creating');
+            setPaymentError(null);
+            let response = await apiFetch('/billing/invoice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({ type: 'tool', toolKey: 'contract_generator' })
+            });
+            let data = await response.json();
+            if (!response.ok) {
+                if (response.status !== 404) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: discountedPrice,
+                        description: 'Гэрээ татах (QPay)'
+                    })
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Нэхэмжлэл үүсгэхэд алдаа гарлаа');
+                }
+            }
+            setPaymentInvoice(data);
+            setPaymentStatus('pending');
+        } catch (error) {
+            let message = error instanceof Error ? error.message : 'Төлбөрийн системд алдаа гарлаа';
+            if (error instanceof TypeError || String(error?.message || '').includes('Failed to fetch')) {
+                message = 'QPay сервер асаагүй байна. `npm run qpay:server` ажиллуулна уу.';
+            }
+            setPaymentStatus('error');
+            setPaymentError(message);
+        }
+    };
+
+    const checkPaymentStatus = async () => {
+        if (!paymentInvoice?.invoice_id) return;
+        setIsCheckingPayment(true);
+        try {
+            let response = await apiFetch('/billing/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id })
+            });
+            let data = await response.json();
+            if (!response.ok) {
+                if (response.status !== 404) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
+                response = await apiFetch('/qpay/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoice_id: paymentInvoice.invoice_id })
+                });
+                data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Төлбөр шалгахад алдаа гарлаа');
+                }
+            }
+            if (data.paid) {
+                storeGrant({
+                    invoice_id: paymentInvoice.invoice_id,
+                    paidAt: new Date().toISOString(),
+                    amount: data.amount || discountedPrice,
+                    grantToken: data.grantToken,
+                    used: false,
+                    creditsUsed: 0,
+                });
+                await refreshUserProfile();
+            }
+        } catch (error) {
+            let message = error instanceof Error ? error.message : 'Төлбөр шалгахад алдаа гарлаа';
+            if (error instanceof TypeError || String(error?.message || '').includes('Failed to fetch')) {
+                message = 'QPay сервер асаагүй байна. `npm run qpay:server` ажиллуулна уу.';
+            }
+            setPaymentError(message);
+        } finally {
+            setIsCheckingPayment(false);
+        }
+    };
+
+    const consumeCredits = async () => {
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return false;
+        }
+        if (!currentUser) {
+            alert('Credits ашиглахын тулд нэвтэрнэ үү.');
+            return false;
+        }
+        try {
+            setPaymentStatus('creating');
+            setPaymentError(null);
+            const response = await apiFetch('/credits/consume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                auth: true,
+                body: JSON.stringify({
+                    toolKey: 'contract_generator',
+                    userId: currentUser?.uid || null,
+                    currentBalance: userProfile?.credits?.balance ?? null,
+                    creditCost,
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Credits ашиглахад алдаа гарлаа');
+            }
+            storeGrant({
+                invoice_id: null,
+                paidAt: new Date().toISOString(),
+                amount: 0,
+                grantToken: data.grantToken,
+                used: false,
+                creditsUsed: data.creditsUsed || creditCost,
+            });
+            await refreshUserProfile();
+            return true;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Credits ашиглахад алдаа гарлаа';
+            setPaymentError(message);
+            setPaymentStatus('error');
+            return false;
+        }
+    };
+
     const handleInputChange = (key, value) => {
         setFormData(prev => ({
             ...prev,
@@ -140,9 +380,10 @@ const ContractGenerator = () => {
         if (!value) return value;
 
         switch (format) {
-            case 'currency':
+            case 'currency': {
                 const num = Number(value.toString().replace(/[^0-9.-]+/g, ""));
                 return new Intl.NumberFormat('en-US').format(num) + '₮';
+            }
             case 'integer':
                 return parseInt(value.toString().replace(/[^0-9.-]+/g, "")).toString();
             case 'long':
@@ -150,7 +391,7 @@ const ContractGenerator = () => {
                     const date = new Date(value);
                     if (isNaN(date.getTime())) return value;
                     return `${date.getFullYear()} оны ${date.getMonth() + 1}-р сарын ${date.getDate()}-ны өдөр`;
-                } catch (e) {
+                } catch {
                     return value;
                 }
             default:
@@ -160,9 +401,9 @@ const ContractGenerator = () => {
 
     const escapeRegex = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    const getPreviewContent = () => {
+    const buildRenderedHtml = ({ forExport = false } = {}) => {
         if (!selectedTemplate) return '';
-        let content = selectedTemplate.content;
+        let content = selectedTemplate.content || '';
 
         // Replace all variables
         if (selectedTemplate.variables) {
@@ -181,28 +422,151 @@ const ContractGenerator = () => {
             });
         }
 
-        // Render HTML
+        if (!forExport || typeof document === 'undefined') {
+            return content;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = content;
+
+        wrapper.querySelectorAll('[style]').forEach((node) => {
+            const rawStyle = String(node.getAttribute('style') || '');
+            const keptRules = rawStyle
+                .split(';')
+                .map((part) => part.trim())
+                .filter(Boolean)
+                .map((rule) => {
+                    const separatorIndex = rule.indexOf(':');
+                    if (separatorIndex === -1) return null;
+                    const prop = rule.slice(0, separatorIndex).trim().toLowerCase();
+                    const val = rule.slice(separatorIndex + 1).trim();
+                    if (!prop || !val || !PRINT_STYLE_ALLOWLIST.has(prop)) return null;
+                    return `${prop}: ${val}`;
+                })
+                .filter(Boolean);
+
+            if (keptRules.length === 0) {
+                node.removeAttribute('style');
+            } else {
+                node.setAttribute('style', keptRules.join('; '));
+            }
+        });
+
+        wrapper.querySelectorAll('[class]').forEach((node) => {
+            node.removeAttribute('class');
+        });
+
+        return wrapper.innerHTML;
+    };
+
+    const getPreviewContent = () => {
+        const content = buildRenderedHtml({ forExport: false });
         return <div className="prose-content" dangerouslySetInnerHTML={{ __html: content }} />;
     };
 
-    const handleDownload = () => {
+    const generatePdf = async () => {
+        if (!selectedTemplate) return false;
         setGenerating(true);
-        const element = previewRef.current;
+        const exportHost = document.createElement('div');
+        exportHost.className = 'cg-export-surface';
+
+        const exportPaper = document.createElement('div');
+        exportPaper.className = 'cg-export-paper';
+        exportPaper.innerHTML = buildRenderedHtml({ forExport: true });
+        exportHost.appendChild(exportPaper);
+        document.body.appendChild(exportHost);
+
         const opt = {
-            margin: [20, 20, 20, 20], // top, left, bottom, right
-            filename: `${selectedTemplate.title || 'Contract'}.pdf`,
+            margin: [0, 0, 0, 0],
+            filename: `${sanitizeFilename(selectedTemplate.title)}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                windowWidth: exportPaper.scrollWidth,
+                scrollX: 0,
+                scrollY: 0,
+            },
+            pagebreak: { mode: ['css', 'legacy'] },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        html2pdf().set(opt).from(element).save().then(() => {
-            setGenerating(false);
-        }).catch((err) => {
+        try {
+            await html2pdf().set(opt).from(exportPaper).save();
+            return true;
+        } catch (err) {
             console.error("PDF generation failed:", err);
-            setGenerating(false);
             alert('PDF үүсгэхэд алдаа гарлаа.');
-        });
+            return false;
+        } finally {
+            setGenerating(false);
+            if (document.body.contains(exportHost)) {
+                document.body.removeChild(exportHost);
+            }
+        }
+    };
+
+    const handleDownload = async ({ adminBypass = false } = {}) => {
+        if (!selectedTemplate) return;
+        if (!isToolActive) {
+            alert('Энэ үйлчилгээ одоогоор түр хаалттай байна.');
+            return;
+        }
+
+        const isAdmin = currentUser?.role === 'admin';
+        const activeGrant = paymentGrant?.grantToken && !paymentGrant.used ? paymentGrant : null;
+        if (!activeGrant && !adminBypass) {
+            setShowPaymentModal(true);
+            return;
+        }
+
+        const success = await generatePdf();
+        if (!success) return;
+
+        if (activeGrant) {
+            markGrantUsed(activeGrant);
+            try {
+                await apiFetch('/usage/log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    auth: !!currentUser,
+                    body: JSON.stringify({
+                        toolKey: 'contract_generator',
+                        paymentMethod: activeGrant?.creditsUsed ? 'credits' : 'pay_per_use',
+                        amount: activeGrant?.amount || discountedPrice,
+                        creditsUsed: activeGrant?.creditsUsed || 0,
+                        invoiceId: activeGrant?.invoice_id || null,
+                        grantToken: activeGrant?.grantToken || null,
+                        guestSessionId: currentUser ? null : getGuestSessionId(),
+                    }),
+                });
+            } catch (error) {
+                console.error('Usage log error:', error);
+            }
+            return;
+        }
+
+        if (isAdmin && adminBypass) {
+            try {
+                await apiFetch('/usage/log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    auth: !!currentUser,
+                    body: JSON.stringify({
+                        toolKey: 'contract_generator',
+                        paymentMethod: 'admin_free',
+                        amount: 0,
+                        creditsUsed: 0,
+                        invoiceId: null,
+                        grantToken: null,
+                        guestSessionId: null,
+                    }),
+                });
+            } catch (error) {
+                console.error('Usage log error:', error);
+            }
+        }
     };
 
     if (loading) {
@@ -299,6 +663,20 @@ const ContractGenerator = () => {
     const selectedUseCases = selectedMeta.identification.useCases.join(', ');
     const selectedAudience = selectedMeta.usage.intendedFor.join(', ');
     const selectedSectionList = splitLines(selectedMeta.structure.sectionList);
+    const paymentReady = paymentGrant?.grantToken && !paymentGrant.used;
+    const paymentUsed = paymentGrant?.used;
+    const paymentRequiredBeforeDownload = !paymentReady;
+    const primaryActionLabel = !isToolActive
+        ? 'Түр хаалттай'
+        : generating
+            ? 'Татаж байна...'
+            : paymentStatus === 'creating'
+                ? 'Бэлтгэж байна...'
+                : paymentRequiredBeforeDownload
+                    ? 'Төлбөр шаардлагатай'
+                    : paymentReady
+                        ? 'Татах (PDF)'
+                        : 'Төлбөр сонгох';
 
     return (
         <div className="cg-page">
@@ -322,11 +700,13 @@ const ContractGenerator = () => {
                 </div>
                 <button
                     onClick={handleDownload}
-                    disabled={generating}
+                    disabled={generating || paymentStatus === 'creating' || isCheckingPayment || !isToolActive || paymentRequiredBeforeDownload}
                     className="cg-btn"
                 >
-                    {generating ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-                    <span className="hidden sm:inline">Татах (PDF)</span>
+                    {generating || paymentStatus === 'creating' || isCheckingPayment
+                        ? <Loader2 size={18} className="animate-spin" />
+                        : <Download size={18} />}
+                    <span className="hidden sm:inline">{primaryActionLabel}</span>
                 </button>
             </div>
 
@@ -402,6 +782,18 @@ const ContractGenerator = () => {
                                 <p className="cg-meta-disclaimer">{selectedMeta.legal.liabilityDisclaimer}</p>
                             )}
                         </section>
+
+                        <ToolPaymentStatusCard
+                            className="cg-pay-card"
+                            isToolActive={isToolActive}
+                            paymentReady={paymentReady}
+                            paymentUsed={paymentUsed}
+                            discountedPrice={discountedPrice}
+                            creditCost={creditCost}
+                            onOpenPayment={() => setShowPaymentModal(true)}
+                            onResetPayment={resetPayment}
+                            creditBalanceLabel={currentUser ? (userProfile?.credits?.balance ?? 0).toLocaleString() : 'Нэвтэрч харах'}
+                        />
 
                         {selectedTemplate.variables && selectedTemplate.variables.map((v) => (
                             <div key={v.key} className="cg-input-group">
@@ -485,6 +877,30 @@ const ContractGenerator = () => {
                     </div>
                 </div>
             </div>
+
+            <ToolPaymentDialog
+                open={showPaymentModal && !paymentReady}
+                onClose={() => setShowPaymentModal(false)}
+                discountedPrice={discountedPrice}
+                creditCost={creditCost}
+                paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
+                onCreateInvoice={createPaymentInvoice}
+                onConsumeCredits={consumeCredits}
+                onCheckPayment={checkPaymentStatus}
+                paymentStatus={paymentStatus}
+                paymentInvoice={paymentInvoice}
+                isCheckingPayment={isCheckingPayment}
+                paymentError={paymentError}
+                isToolActive={isToolActive}
+                currentUser={currentUser}
+                creditBalance={userProfile?.credits?.balance ?? null}
+                isAdminFree={currentUser?.role === 'admin'}
+                onAdminContinue={async () => {
+                    setShowPaymentModal(false);
+                    await handleDownload({ adminBypass: true });
+                }}
+            />
         </div>
     );
 };

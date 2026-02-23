@@ -1613,6 +1613,78 @@ const LETTER_GENERATE_PROMPT = `Чи бол мэргэжлийн албан би
 4. Хэрэв мэдээлэл дутуу бол ерөнхий загвар ашиглаж, хэрэглэгч нөхөж бичих боломжтойгоор [] хаалтанд тэмдэглэ.
 5. Зөвхөн цэвэр текст буцаа, ямар нэгэн тайлбар эсвэл Markdown тэмдэглэгээ (жишээ нь: ''' эсвэл #) бүү ашигла.`;
 
+const EISENHOWER_PLAN_SYSTEM_PROMPT = `Чи бол Eisenhower matrix ашигладаг бүтээмжийн зөвлөх AI.
+
+Даалгавар:
+- Оролтын task жагсаалт бүрийг urgency ба importance оноогоор (1-10) үнэл.
+- Дараах quadrant-д ангил:
+  - do_now: urgent + important
+  - schedule: not urgent + important
+  - delegate: urgent + not important
+  - eliminate: not urgent + not important
+
+ЗААВАЛ БАРИМТЛАХ ДҮРЭМ:
+1) Оролт дахь task бүр JSON items дотор ЯГ НЭГ УДАА орсон байх.
+2) "quadrant" зөвхөн do_now | schedule | delegate | eliminate утгатай байна.
+3) urgency, importance нь зөвхөн 1-10 хооронд бүхэл тоо байна.
+4) reason нь товч шалтгаан, nextAction нь яг одоо хийх next step байна.
+5) Markdown, тайлбар бүү нэм. Зөвхөн JSON буцаа.
+
+Буцаах JSON бүтэц:
+{
+  "items": [
+    {
+      "task": "string",
+      "urgency": 1,
+      "importance": 1,
+      "quadrant": "do_now",
+      "reason": "string",
+      "nextAction": "string"
+    }
+  ],
+  "summary": "string",
+  "actionPlan": {
+    "today": ["string"],
+    "thisWeek": ["string"],
+    "delegate": ["string"],
+    "eliminate": ["string"]
+  }
+}`;
+
+const SWOT_ANALYZE_SYSTEM_PROMPT = `Чи бол стратегийн SWOT анализын эксперт AI.
+
+Зорилго:
+- Өгөгдсөн сэдэв/бизнесийн мэдээллийг SWOT (Strengths, Weaknesses, Opportunities, Threats) болгон задлан шинжил.
+- Матрицын үр дүнд тулгуурлан SO/ST/WO/WT стратегийн санал гарга.
+
+ЗААВАЛ БАРИМТЛАХ ДҮРЭМ:
+1) Зөвхөн JSON буцаа. Markdown, тайлбар бүү нэм.
+2) strengths, weaknesses, opportunities, threats тус бүр 3-8 item байна.
+3) Item бүр:
+   - point: товч дүгнэлт
+   - reason: яагаад гэж тайлбар (1 өгүүлбэр)
+4) strategicActions объект заавал:
+   - so: strength + opportunity-г холбосон үйлдэл
+   - st: strength ашиглан threat бууруулах
+   - wo: weakness сайжруулж opportunity авах
+   - wt: weakness + threat давхардлыг бууруулах хамгаалалтын алхам
+5) summary нь 2-4 өгүүлбэртэй стратегийн товч дүгнэлт байна.
+
+Буцаах JSON бүтэц:
+{
+  "strengths": [{ "point": "string", "reason": "string" }],
+  "weaknesses": [{ "point": "string", "reason": "string" }],
+  "opportunities": [{ "point": "string", "reason": "string" }],
+  "threats": [{ "point": "string", "reason": "string" }],
+  "strategicActions": {
+    "so": ["string"],
+    "st": ["string"],
+    "wo": ["string"],
+    "wt": ["string"]
+  },
+  "summary": "string"
+}`;
+
 const CONTRACT_VARIABLE_MAP_SYSTEM_PROMPT = `You are a strict contract variable extraction engine.
 Read Mongolian or English contract content and produce variable configuration for form generation.
 
@@ -2252,6 +2324,389 @@ async function mapContractVariablesWithAI(params) {
   }
 }
 
+function clampPriorityScore(value, fallback = 5) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.max(1, Math.min(10, Math.round(num)));
+}
+
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => normalizeBusinessText(item)).filter(Boolean);
+}
+
+function buildQuadrantFromScores(urgency, importance) {
+  if (importance >= 6 && urgency >= 6) return 'do_now';
+  if (importance >= 6 && urgency < 6) return 'schedule';
+  if (importance < 6 && urgency >= 6) return 'delegate';
+  return 'eliminate';
+}
+
+function normalizeQuadrantValue(value, urgency, importance) {
+  const key = normalizeBusinessText(value).toLowerCase().replace(/[\s-]+/g, '_');
+  if (['do_now', 'do', 'q1', 'urgent_important', 'important_urgent', 'now'].includes(key)) return 'do_now';
+  if (['schedule', 'q2', 'important_not_urgent', 'not_urgent_important', 'plan'].includes(key)) return 'schedule';
+  if (['delegate', 'q3', 'urgent_not_important', 'not_important_urgent'].includes(key)) return 'delegate';
+  if (['eliminate', 'drop', 'q4', 'not_urgent_not_important', 'delete'].includes(key)) return 'eliminate';
+  return buildQuadrantFromScores(urgency, importance);
+}
+
+function defaultQuadrantReason(quadrant) {
+  if (quadrant === 'do_now') return 'Өндөр ач холбогдолтой бөгөөд шуурхай анхаарах шаардлагатай.';
+  if (quadrant === 'schedule') return 'Ач холбогдол өндөр ч яарал багатай тул төлөвлөж хийх нь зөв.';
+  if (quadrant === 'delegate') return 'Цаг хугацааны дарамттай ч харьцангуй бага стратегийн нөлөөтэй.';
+  return 'Шуурхай биш, ач холбогдол багатай тул бууруулах эсвэл хасах боломжтой.';
+}
+
+function defaultNextAction(quadrant, task) {
+  if (quadrant === 'do_now') return `Өнөөдрийн цагийн блокт "${task}"-ийг эхлүүлж эхний хувилбарыг дуусга.`;
+  if (quadrant === 'schedule') return `"${task}"-т энэ долоо хоногт тодорхой deadline-тэй цаг төлөвлө.`;
+  if (quadrant === 'delegate') return `"${task}"-ийг хариуцах хүнийг томилоод үр дүнгийн шалгуур илгээ.`;
+  return `"${task}"-ийг түр жагсаалтаас хасах эсвэл автомажуулж багасгах шийдвэр гарга.`;
+}
+
+function buildHeuristicFallbackItem(task) {
+  const source = normalizeBusinessText(task);
+  const text = source.toLowerCase();
+
+  const urgency = /(\b(asap|urgent|deadline|due)\b|яаралтай|өнөөдөр|маргааш|энэ\s*долоо\s*хоног)/i.test(text) ? 8 : 4;
+  const importance = /(\b(client|customer|contract|finance|risk|tax|strategy|security)\b|чухал|санхүү|эрсдэл|гэрээ|татвар|клиент|стратеги)/i.test(text) ? 8 : 4;
+  const quadrant = buildQuadrantFromScores(urgency, importance);
+
+  return {
+    task: source,
+    urgency,
+    importance,
+    quadrant,
+    reason: 'AI хариу дутуу үед heuristics ашиглан түр ангиллаа.',
+    nextAction: defaultNextAction(quadrant, source),
+  };
+}
+
+function normalizeEisenhowerPlan(raw, sourceTasks) {
+  const normalizedSourceTasks = sourceTasks
+    .map((item) => normalizeBusinessText(item))
+    .filter(Boolean);
+  const incomingItems = Array.isArray(raw?.items) ? raw.items : [];
+  const items = [];
+  const seenTasks = new Set();
+
+  incomingItems.forEach((item, index) => {
+    const fallbackTask = normalizedSourceTasks[index] || '';
+    const task = normalizeBusinessText(item?.task || fallbackTask);
+    if (!task || seenTasks.has(task)) return;
+
+    const urgency = clampPriorityScore(item?.urgency, 5);
+    const importance = clampPriorityScore(item?.importance, 5);
+    const quadrant = normalizeQuadrantValue(item?.quadrant, urgency, importance);
+    const reason = normalizeBusinessText(item?.reason || item?.rationale || item?.why)
+      || defaultQuadrantReason(quadrant);
+    const nextAction = normalizeBusinessText(item?.nextAction || item?.action || item?.next_step)
+      || defaultNextAction(quadrant, task);
+
+    seenTasks.add(task);
+    items.push({
+      task,
+      urgency,
+      importance,
+      quadrant,
+      reason,
+      nextAction,
+    });
+  });
+
+  normalizedSourceTasks.forEach((task) => {
+    if (seenTasks.has(task)) return;
+    const fallback = buildHeuristicFallbackItem(task);
+    seenTasks.add(task);
+    items.push(fallback);
+  });
+
+  const quadrants = {
+    do_now: [],
+    schedule: [],
+    delegate: [],
+    eliminate: [],
+  };
+  items.forEach((item) => {
+    quadrants[item.quadrant].push(item.task);
+  });
+
+  const rawActionPlan = raw?.actionPlan || {};
+  const actionPlan = {
+    today: normalizeStringArray(rawActionPlan.today),
+    thisWeek: normalizeStringArray(rawActionPlan.thisWeek),
+    delegate: normalizeStringArray(rawActionPlan.delegate),
+    eliminate: normalizeStringArray(rawActionPlan.eliminate),
+  };
+
+  if (actionPlan.today.length === 0) {
+    actionPlan.today = items
+      .filter((item) => item.quadrant === 'do_now')
+      .slice(0, 5)
+      .map((item) => item.nextAction);
+  }
+  if (actionPlan.thisWeek.length === 0) {
+    actionPlan.thisWeek = items
+      .filter((item) => item.quadrant === 'schedule')
+      .slice(0, 5)
+      .map((item) => item.nextAction);
+  }
+  if (actionPlan.delegate.length === 0) {
+    actionPlan.delegate = items
+      .filter((item) => item.quadrant === 'delegate')
+      .slice(0, 5)
+      .map((item) => item.nextAction);
+  }
+  if (actionPlan.eliminate.length === 0) {
+    actionPlan.eliminate = items
+      .filter((item) => item.quadrant === 'eliminate')
+      .slice(0, 5)
+      .map((item) => item.nextAction);
+  }
+
+  const summary = normalizeBusinessText(raw?.summary)
+    || `Нийт ${items.length} task ангиллаа: Do now ${quadrants.do_now.length}, Schedule ${quadrants.schedule.length}, Delegate ${quadrants.delegate.length}, Eliminate ${quadrants.eliminate.length}.`;
+
+  return {
+    items,
+    quadrants,
+    actionPlan,
+    summary,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+async function generateEisenhowerPlanAI(params) {
+  const tasks = Array.isArray(params?.tasks)
+    ? params.tasks.map((item) => normalizeBusinessText(item)).filter(Boolean).slice(0, 80)
+    : [];
+  if (tasks.length === 0) {
+    throw new HttpError(400, 'tasks хоосон байна.');
+  }
+  if (!GEMINI_API_KEY) {
+    throw new HttpError(500, 'GEMINI_API_KEY тохируулагдаагүй байна.');
+  }
+
+  const context = normalizeBusinessText(params?.context || '');
+  const payload = { tasks, context };
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+  const model = genAI.getGenerativeModel({
+    model: GEMINI_MODEL,
+    generationConfig: {
+      responseMimeType: 'application/json',
+      temperature: 0.2,
+    },
+  });
+
+  let text = '';
+  try {
+    const result = await model.generateContent([
+      EISENHOWER_PLAN_SYSTEM_PROMPT,
+      JSON.stringify(payload),
+    ]);
+    text = result?.response?.text?.() || '';
+  } catch (error) {
+    throw new Error(`Eisenhower AI generation алдаа: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  if (!text.trim()) {
+    throw new Error('AI хоосон хариу буцаалаа.');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleanJsonResponse(text));
+  } catch (parseError) {
+    const retryModel = genAI.getGenerativeModel({
+      model: GEMINI_MODEL,
+      generationConfig: { temperature: 0 },
+    });
+    const retryResult = await retryModel.generateContent([
+      EISENHOWER_PLAN_SYSTEM_PROMPT,
+      'Return valid JSON only.',
+      JSON.stringify(payload),
+    ]);
+    const retryText = retryResult?.response?.text?.() || '';
+    if (!retryText.trim()) {
+      throw parseError;
+    }
+    parsed = JSON.parse(cleanJsonResponse(retryText));
+  }
+
+  return normalizeEisenhowerPlan(parsed, tasks);
+}
+
+function normalizeSwotEntryList(rawEntries) {
+  const list = [];
+  const seen = new Set();
+  (Array.isArray(rawEntries) ? rawEntries : []).forEach((item) => {
+    const point = normalizeBusinessText(
+      typeof item === 'string'
+        ? item
+        : (item?.point || item?.title || item?.item || item?.name || '')
+    );
+    const reason = normalizeBusinessText(
+      typeof item === 'string'
+        ? ''
+        : (item?.reason || item?.impact || item?.note || item?.rationale || '')
+    );
+    if (!point) return;
+    const signature = point.toLowerCase();
+    if (seen.has(signature)) return;
+    seen.add(signature);
+    list.push({ point, reason });
+  });
+  return list.slice(0, 8);
+}
+
+function normalizeSwotActionList(rawActions) {
+  const list = [];
+  const seen = new Set();
+  (Array.isArray(rawActions) ? rawActions : []).forEach((item) => {
+    const text = normalizeBusinessText(item);
+    if (!text) return;
+    const signature = text.toLowerCase();
+    if (seen.has(signature)) return;
+    seen.add(signature);
+    list.push(text);
+  });
+  return list.slice(0, 8);
+}
+
+function buildSwotDefaultEntries(topic) {
+  const shortTopic = normalizeBusinessText(topic).slice(0, 120) || 'төсөл';
+  return {
+    strengths: [
+      { point: 'Үндсэн асуудлыг шийдэх тодорхой үнэ цэнтэй саналтай.', reason: `${shortTopic} хэрэглэгчийн бодит хэрэгцээнд чиглэсэн.` },
+      { point: 'Шийдвэр гаргалтыг хурдлуулах AI автоматжуулалтын боломжтой.', reason: 'Гарын ажиллагаа багассанаар багийн бүтээмж нэмэгдэнэ.' },
+      { point: 'Бүтээгдэхүүнийг хурдан сайжруулах уян хөгжүүлэлтийн боломжтой.', reason: 'Жижиг баг давтамжтай туршилт, сайжруулалт хийхэд давуу.' },
+    ],
+    weaknesses: [
+      { point: 'Баг, нөөц хязгаарлагдмал байж болзошгүй.', reason: 'Олон чиглэлийн ажлыг зэрэг гүйцэтгэхэд ачаалал үүсгэнэ.' },
+      { point: 'Брэндийн танигдалт бага байж магадгүй.', reason: 'Шинэ хэрэглэгч татах CAC эхний үед өндөр байх эрсдэлтэй.' },
+      { point: 'Процесс, өгөгдлийн стандарт бүрэн тогтоогүй байж болно.', reason: 'Үйлчилгээний чанарыг тогтвортой барихад саад болж магадгүй.' },
+    ],
+    opportunities: [
+      { point: 'Зах зээлд дижитал автоматжуулалтын эрэлт өсөж байна.', reason: 'Зардал бууруулах, хурд нэмэх хэрэгцээ тогтмол нэмэгдэж байгаа.' },
+      { point: 'Салбарын түншлэл, интеграцийн боломжууд нээлттэй.', reason: 'Existing ecosystem-т холбогдсоноор өсөлтийг хурдлуулна.' },
+      { point: 'Ниш хэрэглэгчдэд төвлөрсөн санал дэвшүүлэх боломжтой.', reason: 'Тодорхой сегментэд эхлээд хүчтэй байр суурь эзлэхэд дөхөм.' },
+    ],
+    threats: [
+      { point: 'Өрсөлдөгчдийн хурдан хуулбарлалт, үнэ буулгалт.', reason: 'Үнэ дээрх өрсөлдөөн margin-д сөргөөр нөлөөлнө.' },
+      { point: 'Эдийн засаг, худалдан авалтын цикл удаашрах эрсдэл.', reason: 'B2B шийдвэр гаргалт сунжрах үед орлого хойшилно.' },
+      { point: 'Өгөгдөл, зохицуулалтын шаардлага чангарах магадлал.', reason: 'Нэмэлт compliance зардал, хугацаа шаардана.' },
+    ],
+  };
+}
+
+function normalizeSwotAnalysis(raw, topic) {
+  const fallback = buildSwotDefaultEntries(topic);
+  const strengths = normalizeSwotEntryList(raw?.strengths);
+  const weaknesses = normalizeSwotEntryList(raw?.weaknesses);
+  const opportunities = normalizeSwotEntryList(raw?.opportunities);
+  const threats = normalizeSwotEntryList(raw?.threats);
+
+  const nextStrengths = strengths.length > 0 ? strengths : fallback.strengths;
+  const nextWeaknesses = weaknesses.length > 0 ? weaknesses : fallback.weaknesses;
+  const nextOpportunities = opportunities.length > 0 ? opportunities : fallback.opportunities;
+  const nextThreats = threats.length > 0 ? threats : fallback.threats;
+
+  const rawActions = raw?.strategicActions || {};
+  const strategicActions = {
+    so: normalizeSwotActionList(rawActions.so || raw?.soStrategies || raw?.SO),
+    st: normalizeSwotActionList(rawActions.st || raw?.stStrategies || raw?.ST),
+    wo: normalizeSwotActionList(rawActions.wo || raw?.woStrategies || raw?.WO),
+    wt: normalizeSwotActionList(rawActions.wt || raw?.wtStrategies || raw?.WT),
+  };
+
+  if (strategicActions.so.length === 0 && nextStrengths[0] && nextOpportunities[0]) {
+    strategicActions.so.push(`${nextStrengths[0].point} давууг ашиглан ${nextOpportunities[0].point.toLowerCase()} чиглэлд пилот эхлүүл.`);
+  }
+  if (strategicActions.st.length === 0 && nextStrengths[0] && nextThreats[0]) {
+    strategicActions.st.push(`${nextStrengths[0].point} дээр тулгуурласан хамгаалалтын differentiation мессеж боловсруул.`);
+  }
+  if (strategicActions.wo.length === 0 && nextWeaknesses[0] && nextOpportunities[0]) {
+    strategicActions.wo.push(`${nextWeaknesses[0].point} асуудлыг 30-45 хоногийн roadmap-оор засч ${nextOpportunities[0].point.toLowerCase()} боломжийг ашигла.`);
+  }
+  if (strategicActions.wt.length === 0 && nextWeaknesses[0] && nextThreats[0]) {
+    strategicActions.wt.push(`${nextWeaknesses[0].point} болон ${nextThreats[0].point.toLowerCase()} эрсдэлийг бууруулах contingency төлөвлөгөө гарга.`);
+  }
+
+  const summary = normalizeBusinessText(raw?.summary)
+    || `SWOT шинжилгээгээр дотоод чадвар дээр суурилан боломж барих (SO), эрсдэлээс хамгаалах (ST), сул талыг нөхөх (WO, WT) 4 чиглэлийн стратеги тодров.`;
+
+  return {
+    strengths: nextStrengths,
+    weaknesses: nextWeaknesses,
+    opportunities: nextOpportunities,
+    threats: nextThreats,
+    strategicActions,
+    summary,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+async function generateSwotAnalysisAI(params) {
+  const topic = normalizeBusinessText(params?.topic || '');
+  const goal = normalizeBusinessText(params?.goal || '');
+  const context = normalizeBusinessText(params?.context || '');
+  if (!topic) {
+    throw new HttpError(400, 'topic хоосон байна.');
+  }
+  if (!GEMINI_API_KEY) {
+    throw new HttpError(500, 'GEMINI_API_KEY тохируулагдаагүй байна.');
+  }
+
+  const payload = { topic, goal, context };
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({
+    model: GEMINI_MODEL,
+    generationConfig: {
+      responseMimeType: 'application/json',
+      temperature: 0.2,
+    },
+  });
+
+  let text = '';
+  try {
+    const result = await model.generateContent([
+      SWOT_ANALYZE_SYSTEM_PROMPT,
+      JSON.stringify(payload),
+    ]);
+    text = result?.response?.text?.() || '';
+  } catch (error) {
+    throw new Error(`SWOT AI generation алдаа: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  if (!text.trim()) {
+    throw new Error('AI хоосон хариу буцаалаа.');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleanJsonResponse(text));
+  } catch (parseError) {
+    const retryModel = genAI.getGenerativeModel({
+      model: GEMINI_MODEL,
+      generationConfig: { temperature: 0 },
+    });
+    const retryResult = await retryModel.generateContent([
+      SWOT_ANALYZE_SYSTEM_PROMPT,
+      'Return valid JSON only.',
+      JSON.stringify(payload),
+    ]);
+    const retryText = retryResult?.response?.text?.() || '';
+    if (!retryText.trim()) {
+      throw parseError;
+    }
+    parsed = JSON.parse(cleanJsonResponse(retryText));
+  }
+
+  return normalizeSwotAnalysis(parsed, topic);
+}
+
 async function generateLetterAI(params) {
   if (!GEMINI_API_KEY) {
     throw new HttpError(500, 'GEMINI_API_KEY тохируулагдаагүй байна.');
@@ -2484,6 +2939,45 @@ const server = http.createServer(async (req, res) => {
       const status = err && typeof err === 'object' && 'status' in err ? Number(err.status) : 500;
       jsonResponse(res, Number.isFinite(status) ? status : 500, {
         error: err instanceof Error ? err.message : 'AI contract mapping error',
+      });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/ai/eisenhower-plan') {
+    try {
+      const body = await readJson(req);
+      const tasks = Array.isArray(body?.tasks)
+        ? body.tasks
+        : (typeof body?.tasks === 'string' ? body.tasks.split(/\r?\n/) : []);
+
+      const plan = await generateEisenhowerPlanAI({
+        tasks,
+        context: body?.context,
+      });
+      jsonResponse(res, 200, { success: true, data: plan });
+    } catch (err) {
+      const status = err && typeof err === 'object' && 'status' in err ? Number(err.status) : 500;
+      jsonResponse(res, Number.isFinite(status) ? status : 500, {
+        error: err instanceof Error ? err.message : 'Eisenhower planning error',
+      });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/ai/swot-analyze') {
+    try {
+      const body = await readJson(req);
+      const swot = await generateSwotAnalysisAI({
+        topic: body?.topic,
+        goal: body?.goal,
+        context: body?.context,
+      });
+      jsonResponse(res, 200, { success: true, data: swot });
+    } catch (err) {
+      const status = err && typeof err === 'object' && 'status' in err ? Number(err.status) : 500;
+      jsonResponse(res, Number.isFinite(status) ? status : 500, {
+        error: err instanceof Error ? err.message : 'SWOT analysis error',
       });
     }
     return;

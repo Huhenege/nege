@@ -29,7 +29,10 @@ const DEFAULT_CONFIG = {
         official_letterhead: { payPerUsePrice: 1000, creditCost: 1, active: true },
         ndsh_holiday: { payPerUsePrice: 1000, creditCost: 1, active: true },
         account_statement: { payPerUsePrice: 1000, creditCost: 1, active: true },
-        business_card: { payPerUsePrice: 1000, creditCost: 1, active: true }
+        business_card: { payPerUsePrice: 1000, creditCost: 1, active: true },
+        contract_generator: { payPerUsePrice: 1000, creditCost: 1, active: true },
+        eisenhower_analyzer: { payPerUsePrice: 1000, creditCost: 1, active: true },
+        swot_analyzer: { payPerUsePrice: 1000, creditCost: 1, active: true }
     },
     credits: {
         bundles: []
@@ -40,7 +43,10 @@ const TOOL_LABELS = {
     official_letterhead: 'Албан бланк үүсгэх',
     ndsh_holiday: 'Ажилсан жил тооцоолох',
     account_statement: 'Дансны хуулга цэгцлэх',
-    business_card: 'Нэрийн хуудас үүсгэх'
+    business_card: 'Нэрийн хуудас үүсгэх',
+    contract_generator: 'Гэрээ үүсгэгч',
+    eisenhower_analyzer: 'Eisenhower Prioritizer',
+    swot_analyzer: 'SWOT Analyzer'
 };
 
 const PricingManagement = () => {

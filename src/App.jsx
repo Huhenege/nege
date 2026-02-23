@@ -28,6 +28,8 @@ import OfficialLetterheadGenerator from './pages/OfficialLetterheadGenerator';
 import BusinessCardGenerator from './pages/BusinessCardGenerator';
 import BusinessTraining from './pages/BusinessTraining';
 import ContractGenerator from './pages/ContractGenerator';
+import EisenhowerPlanner from './pages/EisenhowerPlanner';
+import SwotAnalyzer from './pages/SwotAnalyzer';
 import NegeAI from './pages/NegeAI';
 import './pages/Home.css';
 
@@ -67,6 +69,8 @@ const AppShell = () => {
           <Route path="/ai-assistant/official-letterhead" element={<OfficialLetterheadGenerator />} />
           <Route path="/ai-assistant/business-card" element={<BusinessCardGenerator />} />
           <Route path="/ai-assistant/business-training" element={<BusinessTraining />} />
+          <Route path="/ai-assistant/eisenhower-planner" element={<EisenhowerPlanner />} />
+          <Route path="/ai-assistant/swot-analyzer" element={<SwotAnalyzer />} />
           <Route path="/ai-assistant/contract-generator" element={<ContractGenerator />} />
           <Route path="/ai-assistant/contract-generator/:templateId" element={<ContractGenerator />} />
 
