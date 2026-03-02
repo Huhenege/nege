@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, serverTimestamp, runTransaction, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, serverTimestamp, runTransaction, doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../lib/apiClient';
@@ -22,6 +22,7 @@ import ToolHeader from '../components/ToolHeader';
 const BusinessTraining = () => {
     const { currentUser, openAuthModal, isAuthModalOpen } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [trainings, setTrainings] = useState([]);
     const [selectedTraining, setSelectedTraining] = useState(null);
     const [bookingData, setBookingData] = useState({
@@ -65,6 +66,13 @@ const BusinessTraining = () => {
         return [trainingId, userId, slotId].map((value) => encodeURIComponent(value || '')).join('__');
     };
 
+    const getTimestampMs = (value) => {
+        if (!value) return 0;
+        if (typeof value.toMillis === 'function') return value.toMillis();
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+    };
+
     const getPaymentBreakdown = () => {
         const isFree = selectedTraining?.isFree || Number(selectedTraining?.price || 0) === 0;
         const total = isFree ? 0 : Number(selectedTraining?.price || 0);
@@ -83,11 +91,18 @@ const BusinessTraining = () => {
 
     useEffect(() => {
         const fetchTrainings = async () => {
+            setLoadError('');
             try {
-                const q = query(collection(db, "trainings"), where("active", "==", true));
-                const querySnapshot = await getDocs(q);
-                const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const querySnapshot = await getDocs(collection(db, "trainings"));
+                const data = querySnapshot.docs
+                    .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+                    // Legacy docs may not have `active`; treat missing as visible.
+                    .filter((training) => training?.active !== false)
+                    .sort((a, b) => getTimestampMs(b.createdAt) - getTimestampMs(a.createdAt));
                 setTrainings(data);
+                if (data.length === 0) {
+                    setLoadError('Одоогоор идэвхтэй сургалт бүртгэгдээгүй байна.');
+                }
                 if (data.length > 0) {
                     const withSlots = data.find((training) => Array.isArray(training.availableSlots) && training.availableSlots.length > 0);
                     setSelectedTraining((prev) => {
@@ -101,6 +116,11 @@ const BusinessTraining = () => {
                 }
             } catch (error) {
                 console.error("Error fetching trainings:", error);
+                if (error?.code === 'permission-denied') {
+                    setLoadError('Сургалтын өгөгдөлд зочны эрх хаалттай байна. Firestore rules-ээ дахин deploy хийнэ үү.');
+                } else {
+                    setLoadError('Сургалтын мэдээлэл ачааллахад алдаа гарлаа.');
+                }
             } finally {
                 setLoading(false);
             }
@@ -840,7 +860,7 @@ const BusinessTraining = () => {
                     </div>
                 ) : (
                     <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
-                        <p>Сургалт олдсонгүй.</p>
+                        <p>{loadError || 'Сургалт олдсонгүй.'}</p>
                     </div>
                 )}
             </div>
