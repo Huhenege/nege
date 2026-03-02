@@ -651,6 +651,11 @@ const BusinessTraining = () => {
                         <div className="training-sidebar">
                             <div className="training-sidebar-card">
                                 <h2>Цаг захиалах</h2>
+                                {!currentUser && (
+                                    <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
+                                        Энэ хуудас нээлттэй. Захиалга баталгаажуулах үед нэвтэрнэ.
+                                    </div>
+                                )}
 
                                 {paymentStatus === 'idle' || paymentStatus === 'creating' ? (
                                     <form onSubmit={handleBookingSubmit} className="training-form">

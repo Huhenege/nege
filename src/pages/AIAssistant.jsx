@@ -144,8 +144,8 @@ const toolCatalog = [
         path: '/ai-assistant/business-training',
         icon: GraduationCap,
         category: 'Сургалт',
-        badge: 'Login',
-        badgeTone: 'badge-warning',
+        badge: 'Open',
+        badgeTone: 'badge-success',
         cta: 'Бүртгүүлэх',
     },
     {
