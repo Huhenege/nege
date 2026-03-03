@@ -13,13 +13,14 @@ import {
     getDoc,
     serverTimestamp
 } from 'firebase/firestore';
-import { ArrowLeft, FileText, Save, CheckCircle2, Plus } from 'lucide-react';
+import { ArrowLeft, FileText, Save, CheckCircle2, Plus, Image as ImageIcon, X } from 'lucide-react';
 import useAccess from '../hooks/useAccess';
 import './LetterheadTemplates.css';
 
 const defaultTemplate = {
     title: 'Миний загвар',
     orgName: 'БАЙГУУЛЛАГЫН НЭР',
+    orgLogo: null,
     orgTagline: 'БАЙГУУЛЛАГЫН ҮЙЛ АЖИЛЛАГААНЫ ЧИГЛЭЛ',
     address: 'Улаанбаатар хот, Сүхбаатар дүүрэг, 1-р хороо, Чингисийн талбай-1',
     phone: '7700-0000',
@@ -39,6 +40,7 @@ const LetterheadTemplates = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState('');
+    const [logoError, setLogoError] = useState('');
     const [formInitialized, setFormInitialized] = useState(false);
 
     useEffect(() => {
@@ -106,10 +108,36 @@ const LetterheadTemplates = () => {
         setForm(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleLogoUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const maxBytes = 400 * 1024;
+        if (file.size > maxBytes) {
+            setLogoError('Логоны хэмжээ 400KB-аас бага байх ёстой.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setStatus('');
+            setLogoError('');
+            setForm(prev => ({ ...prev, orgLogo: reader.result || null }));
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleLogoClear = () => {
+        setStatus('');
+        setLogoError('');
+        setForm(prev => ({ ...prev, orgLogo: null }));
+    };
+
     const buildTemplatePayload = () => ({
         title: form.title?.trim() || defaultTemplate.title,
         template: {
             orgName: form.orgName,
+            orgLogo: form.orgLogo || null,
             orgTagline: form.orgTagline,
             address: form.address,
             phone: form.phone,
@@ -164,7 +192,8 @@ const LetterheadTemplates = () => {
     const handleNew = () => {
         setEditingId(null);
         setStatus('');
-        setForm(defaultTemplate);
+        setLogoError('');
+        setForm({ ...defaultTemplate });
     };
 
 
@@ -231,6 +260,38 @@ const LetterheadTemplates = () => {
                                 <div className="templates-input">
                                     <label>Байгууллагын нэр</label>
                                     <input name="orgName" value={form.orgName} onChange={handleChange} />
+                                </div>
+                                <div className="templates-input templates-input--full">
+                                    <label>Лого</label>
+                                    <div className="templates-logo-controls">
+                                        <label className="templates-logo-upload">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleLogoUpload}
+                                            />
+                                            <ImageIcon size={16} />
+                                            Лого оруулах
+                                        </label>
+                                        {form.orgLogo && (
+                                            <button
+                                                type="button"
+                                                className="templates-logo-clear"
+                                                onClick={handleLogoClear}
+                                            >
+                                                <X size={14} />
+                                                Арилгах
+                                            </button>
+                                        )}
+                                    </div>
+                                    {form.orgLogo && (
+                                        <div className="templates-logo-preview">
+                                            <img src={form.orgLogo} alt="Байгууллагын лого" />
+                                        </div>
+                                    )}
+                                    {logoError && (
+                                        <div className="templates-logo-error">{logoError}</div>
+                                    )}
                                 </div>
                                 <div className="templates-input">
                                     <label>Үйл ажиллагааны чиглэл</label>

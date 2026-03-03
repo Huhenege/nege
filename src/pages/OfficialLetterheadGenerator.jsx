@@ -10,7 +10,8 @@ import {
     Loader2,
     CheckCircle2
 } from 'lucide-react';
-import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,6 +25,59 @@ import ToolPaymentDialog from '../components/ToolPaymentDialog';
 import ToolPaymentStatusCard from '../components/ToolPaymentStatusCard';
 
 const PAYMENT_STORAGE_KEY = 'letterhead-payment-grant';
+
+const normalizeContentParagraphs = (content) => {
+    const lines = String(content || '').replace(/\r/g, '').split('\n');
+    const normalized = [];
+    let previousWasEmpty = false;
+
+    lines.forEach((line) => {
+        const cleaned = line.replace(/\s+$/g, '');
+        const isEmpty = cleaned.trim() === '';
+        if (isEmpty) {
+            if (!previousWasEmpty && normalized.length > 0) {
+                normalized.push('');
+            }
+            previousWasEmpty = true;
+            return;
+        }
+        normalized.push(cleaned);
+        previousWasEmpty = false;
+    });
+
+    while (normalized.length > 0 && normalized[normalized.length - 1] === '') {
+        normalized.pop();
+    }
+
+    return normalized.length > 0 ? normalized : [''];
+};
+
+const waitForImagesReady = async (root) => {
+    if (!root) return;
+    const images = Array.from(root.querySelectorAll('img'));
+    if (!images.length) return;
+
+    await Promise.all(images.map(async (img) => {
+        if (img.complete && img.naturalWidth > 0) return;
+        if (typeof img.decode === 'function') {
+            try {
+                await img.decode();
+                return;
+            } catch (error) {
+                // Fallback to load/error listeners
+            }
+        }
+        await new Promise((resolve) => {
+            const done = () => {
+                img.removeEventListener('load', done);
+                img.removeEventListener('error', done);
+                resolve();
+            };
+            img.addEventListener('load', done, { once: true });
+            img.addEventListener('error', done, { once: true });
+        });
+    }));
+};
 
 const OfficialLetterheadGenerator = () => {
     const { currentUser, refreshUserProfile, userProfile } = useAuth();
@@ -60,7 +114,6 @@ const OfficialLetterheadGenerator = () => {
         fontFamily: 'Times New Roman', // 'Arial' | 'Times New Roman'
     });
 
-    const [logoPreview, setLogoPreview] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [paymentInvoice, setPaymentInvoice] = useState(null);
     const [paymentStatus, setPaymentStatus] = useState('idle'); // idle, creating, pending, success
@@ -76,7 +129,7 @@ const OfficialLetterheadGenerator = () => {
     const measureSubjectRef = useRef(null);
     const measureContentRef = useRef(null);
     const measureSignatureRef = useRef(null);
-    const [pages, setPages] = useState([config.content.split('\n')]);
+    const [pages, setPages] = useState([normalizeContentParagraphs(config.content)]);
     const [templates, setTemplates] = useState([]);
     const [templatesLoading, setTemplatesLoading] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -155,7 +208,12 @@ const OfficialLetterheadGenerator = () => {
     const handleApplyTemplate = () => {
         const selected = templates.find(item => item.id === selectedTemplateId);
         if (selected?.template) {
-            setConfig(prev => ({ ...prev, ...selected.template }));
+            setConfig(prev => ({
+                ...prev,
+                ...selected.template,
+                // If template does not have logo, clear previous preview.
+                orgLogo: selected.template?.orgLogo || null,
+            }));
         }
     };
 
@@ -176,7 +234,6 @@ const OfficialLetterheadGenerator = () => {
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setLogoPreview(reader.result);
                 setConfig(prev => ({ ...prev, orgLogo: reader.result }));
             };
             reader.readAsDataURL(file);
@@ -353,16 +410,44 @@ const OfficialLetterheadGenerator = () => {
         if (element) {
             element.classList.add('ob-printing');
         }
-        const opt = {
-            margin: 0,
-            filename: `official_letter_${config.docIndex.replace(/\//g, '-')}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: config.paperSize.toLowerCase(), orientation: config.orientation }
-        };
+        const filename = `official_letter_${config.docIndex.replace(/\//g, '-')}.pdf`;
 
         try {
-            await html2pdf().set(opt).from(element).save();
+            // Let layout/styles settle, then ensure all images (logo) are ready before capture.
+            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            await waitForImagesReady(element);
+            const pageNodes = Array.from(element?.querySelectorAll('.ob-paper') || []);
+            if (!pageNodes.length) {
+                throw new Error('PDF page not found');
+            }
+
+            const pdf = new jsPDF({
+                unit: 'mm',
+                format: config.paperSize.toLowerCase(),
+                orientation: config.orientation,
+                compress: true,
+            });
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            for (let i = 0; i < pageNodes.length; i += 1) {
+                const pageNode = pageNodes[i];
+                const canvas = await html2canvas(pageNode, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    imageTimeout: 0,
+                });
+                const imageData = canvas.toDataURL('image/jpeg', 0.98);
+
+                if (i > 0) {
+                    pdf.addPage();
+                }
+                pdf.addImage(imageData, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+            }
+
+            pdf.save(filename);
 
             if (activeGrant) {
                 markGrantUsed(activeGrant);
@@ -509,11 +594,11 @@ const OfficialLetterheadGenerator = () => {
         const signatureEl = measureSignatureRef.current;
 
         if (!measureEl || !headerEl || !subjectEl || !contentEl || !signatureEl) {
-            setPages([config.content.split('\n')]);
+            setPages([normalizeContentParagraphs(config.content)]);
             return;
         }
 
-        const paragraphs = config.content.split('\n');
+        const paragraphs = normalizeContentParagraphs(config.content);
         const pageHeightMm = config.paperSize === 'A4'
             ? (config.orientation === 'portrait' ? 297 : 210)
             : (config.orientation === 'portrait' ? 210 : 148);
@@ -597,14 +682,27 @@ const OfficialLetterheadGenerator = () => {
             const lastParas = newPages[lastIndex];
             const lastLimit = newPages.length === 1 ? firstAvailableWithSignature : middleAvailableWithSignature;
             if (measureContentHeight(lastParas) > lastLimit) {
-                const { head, tail } = splitTailToFit(lastParas, lastLimit);
+                let { head, tail } = splitTailToFit(lastParas, lastLimit);
+                // Never append an empty page. If signature reserve cannot fit,
+                // force at least one paragraph onto the final page.
+                if (!tail.length && head.length > 0) {
+                    tail = [head[head.length - 1]];
+                    head = head.slice(0, -1);
+                }
                 newPages.splice(lastIndex, 1);
                 if (head.length) newPages.push(head);
-                newPages.push(tail.length ? tail : ['']);
+                if (tail.length) {
+                    newPages.push(tail);
+                }
             }
         }
 
-        setPages(newPages.length ? newPages : [['']]);
+        const compactPages = newPages.filter((pageParas, idx) => {
+            if (idx === 0) return true;
+            return pageParas.some((para) => String(para || '').trim().length > 0);
+        });
+
+        setPages(compactPages.length ? compactPages : [['']]);
     }, [config, isA5]);
 
     return (
@@ -762,8 +860,8 @@ const OfficialLetterheadGenerator = () => {
                         </div>
                         <div className="ob-card-body ob-stack">
                             <div className="ob-logo-upload" onClick={() => document.getElementById('logo-input').click()}>
-                                {logoPreview ? (
-                                    <img src={logoPreview} alt="Logo" />
+                                {config.orgLogo ? (
+                                    <img src={config.orgLogo} alt="Logo" loading="eager" decoding="sync" />
                                 ) : (
                                     <div className="ob-logo-placeholder">
                                         <ImageIcon size={24} />
@@ -898,7 +996,7 @@ const OfficialLetterheadGenerator = () => {
                                                 <div className="ob-header-row">
                                                     <div className="ob-header-left">
                                                         <span className="ob-corner ob-corner--tl" />
-                                                        {logoPreview && <img src={logoPreview} alt="Logo" className="ob-doc-logo" />}
+                                                        {config.orgLogo && <img src={config.orgLogo} alt="Logo" className="ob-doc-logo" loading="eager" decoding="sync" />}
                                                         <div className="ob-doc-org-name">{config.orgName}</div>
                                                         <div className="ob-header-tagline">{config.orgTagline}</div>
                                                         <div className="ob-header-contacts">
@@ -983,7 +1081,7 @@ const OfficialLetterheadGenerator = () => {
                             <div className="ob-header-row">
                                 <div className="ob-header-left">
                                     <span className="ob-corner ob-corner--tl" />
-                                    {logoPreview && <img src={logoPreview} alt="Logo" className="ob-doc-logo" />}
+                                    {config.orgLogo && <img src={config.orgLogo} alt="Logo" className="ob-doc-logo" loading="eager" decoding="sync" />}
                                     <div className="ob-doc-org-name">{config.orgName}</div>
                                     <div className="ob-header-tagline">{config.orgTagline}</div>
                                     <div className="ob-header-contacts">

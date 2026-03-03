@@ -342,10 +342,18 @@
 
 .ob-paper-stack.ob-printing .ob-paper {
     box-shadow: none;
+    overflow: hidden;
+    margin: 0 auto;
+    break-after: page;
 }
 
 .ob-paper-stack.ob-printing {
     gap: 0;
+    display: block;
+}
+
+.ob-paper-stack.ob-printing .ob-paper:last-child {
+    break-after: auto;
 }
 
 .ob-paper {
@@ -639,7 +647,7 @@
 
 .ob-page-number {
     position: absolute;
-    bottom: 0;
+    bottom: 2mm;
     left: 0;
     width: 100%;
     text-align: center;
