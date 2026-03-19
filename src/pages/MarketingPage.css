@@ -341,7 +341,38 @@
     color: #3b82f6;
 }
 
+/* Audience Insights Section */
+.audience-deep-dive {
+    margin-top: 3rem;
+}
+
+.audience-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.location-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3rem;
+}
+
+.location-item:last-child {
+    border-bottom: none;
+}
+
 /* Responsive */
+@media (max-width: 1280px) {
+    .audience-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .location-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
 @media (max-width: 1024px) {
     .marketing-grid { grid-template-columns: repeat(2, 1fr); }
     .ai-specialist-section { grid-template-columns: 1fr; }

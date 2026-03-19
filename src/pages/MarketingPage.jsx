@@ -22,16 +22,17 @@ import { useNavigate } from 'react-router-dom';
 import { facebookService } from '../services/FacebookService';
 import './MarketingPage.css';
 import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
   Legend,
   AreaChart,
-  Area
+  Area,
+  BarChart,
+  Bar,
+  Cell,
+  YAxis,
+  XAxis,
+  CartesianGrid
 } from 'recharts';
 
 const MOCK_INSIGHTS = {
@@ -52,6 +53,7 @@ const MarketingPage = () => {
     const [historicalData, setHistoricalData] = useState([]);
     const [isDeepAnalyzing, setIsDeepAnalyzing] = useState(false);
     const [topPosts, setTopPosts] = useState([]);
+    const [audienceData, setAudienceData] = useState(null);
 
     React.useEffect(() => {
         facebookService.init().catch(err => console.error('FB SDK Load Error:', err));
@@ -93,13 +95,15 @@ const MarketingPage = () => {
         
         setIsDeepAnalyzing(true);
         try {
-            const [history, top] = await Promise.all([
+            const [history, top, audience] = await Promise.all([
                 facebookService.getHistoricalInsights(selectedPage.id, selectedPage.access_token, 180),
-                facebookService.getTopPosts(selectedPage.id, selectedPage.access_token, 10)
+                facebookService.getTopPosts(selectedPage.id, selectedPage.access_token, 10),
+                facebookService.getAudienceInsights(selectedPage.id, selectedPage.access_token)
             ]);
 
             setHistoricalData(history || []);
             setTopPosts(top || []);
+            setAudienceData(audience);
             
             // Trigger report
             setIsAnalyzing(true);
@@ -403,6 +407,103 @@ const MarketingPage = () => {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+                        {/* Audience Insights Section */}
+                        {audienceData && (
+                            <div className="audience-deep-dive animate-fade-in-up mt-8">
+                                <div className="section-header">
+                                    <Users size={20} className="text-blue-600" />
+                                    <h3>Хэрэглэгчийн гүнзгий хөрөг (Audience Insights)</h3>
+                                </div>
+                                
+                                <div className="audience-grid mt-6">
+                                    {/* Demographics Chart */}
+                                    <div className="insight-card p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                                        <h4 className="flex items-center gap-2 font-bold mb-6 text-gray-700">
+                                            <Users size={16} /> Нас ба Хүйс
+                                        </h4>
+                                        <div className="h-[300px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={audienceData.demographics}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="age" axisLine={false} tickLine={false} tick={{fontSize: 12}} />
+                                                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12}} />
+                                                    <Tooltip 
+                                                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
+                                                        cursor={{fill: '#f8fafc'}}
+                                                    />
+                                                    <Legend verticalAlign="top" align="right" iconType="circle" />
+                                                    <Bar dataKey="female" name="Эмэгтэй" fill="#fb7185" radius={[4, 4, 0, 0]} />
+                                                    <Bar dataKey="male" name="Эрэгтэй" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+
+                                    {/* Best Time to Post */}
+                                    <div className="insight-card p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                                        <h4 className="flex items-center gap-2 font-bold mb-6 text-gray-700">
+                                            <Calendar size={16} /> Пост оруулахад хамгийн тохиромжтой цаг
+                                        </h4>
+                                        <div className="h-[300px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={audienceData.onlineTimes}>
+                                                    <defs>
+                                                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                    <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                                                    <Tooltip 
+                                                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
+                                                    />
+                                                    <Area 
+                                                        type="monotone" 
+                                                        dataKey="count" 
+                                                        name="Идэвхтэй дагагчид" 
+                                                        stroke="#8b5cf6" 
+                                                        strokeWidth={3}
+                                                        fillOpacity={1} 
+                                                        fill="url(#colorCount)" 
+                                                    />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-4 italic">* Өгөгдлийг сүүлийн 24 цагийн дунджаар тооцов.</p>
+                                    </div>
+
+                                    {/* Top Locations */}
+                                    <div className="insight-card p-6 bg-white rounded-3xl border border-gray-100 shadow-sm col-span-1 lg:col-span-2">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h4 className="flex items-center gap-2 font-bold text-gray-700">
+                                                <Target size={16} /> Хаанаас хамгийн их хандаж байна?
+                                            </h4>
+                                        </div>
+                                        <div className="location-stats-grid">
+                                            <div className="location-list">
+                                                <h5 className="text-sm font-semibold text-gray-400 mb-4">ХОТУУД</h5>
+                                                {audienceData.cities.map((city, i) => (
+                                                    <div key={i} className="location-item flex justify-between items-center py-3 border-b border-gray-50">
+                                                        <span className="text-sm font-medium">{city.name}</span>
+                                                        <span className="text-sm font-bold text-blue-600">{city.count.toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="location-list">
+                                                <h5 className="text-sm font-semibold text-gray-400 mb-4">УЛСУУД</h5>
+                                                {audienceData.countries.map((country, i) => (
+                                                    <div key={i} className="location-item flex justify-between items-center py-3 border-b border-gray-50">
+                                                        <span className="text-sm font-medium">{country.name}</span>
+                                                        <span className="text-sm font-bold text-green-600">{country.count.toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}

@@ -188,6 +188,95 @@ class FacebookService {
     }
 
     /**
+     * Get audience demographics and behavioral data
+     */
+    async getAudienceInsights(pageId, accessToken) {
+        if (!window.FB) return null;
+
+        const metrics = [
+            'page_fans_gender_age',
+            'page_fans_city',
+            'page_fans_country',
+            'page_fans_online'
+        ];
+
+        return new Promise((resolve) => {
+            window.FB.api(
+                `/${pageId}/insights`,
+                'GET',
+                {
+                    metric: metrics.join(','),
+                    period: 'lifetime', // Note: page_fans_online is daily, but lifetime often works for others
+                    access_token: accessToken
+                },
+                (response) => {
+                    if (!response || response.error) {
+                        // Some metrics might need 'day' period specifically (like page_fans_online)
+                        // Retry for page_fans_online if needed, but for now wrap everything
+                        console.error('Audience Insights Error:', response?.error);
+                        resolve(null);
+                    } else {
+                        const data = response.data;
+                        resolve({
+                            demographics: this._parseDemographics(data.find(m => m.name === 'page_fans_gender_age')),
+                            cities: this._parseTopLocations(data.find(m => m.name === 'page_fans_city')),
+                            countries: this._parseTopLocations(data.find(m => m.name === 'page_fans_country')),
+                            onlineTimes: this._parseOnlineTimes(data.find(m => m.name === 'page_fans_online'))
+                        });
+                    }
+                }
+            );
+        });
+    }
+
+    /**
+     * Parse page_fans_gender_age into Recharts format
+     */
+    _parseDemographics(metric) {
+        if (!metric || !metric.values || metric.values.length === 0) return [];
+        const raw = metric.values[0].value;
+        const result = [];
+        
+        // Structure: {"F.18-24": 10, "M.25-34": 20...}
+        const ages = ['13-17', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+        
+        ages.forEach(age => {
+            result.push({
+                age: age,
+                female: raw[`F.${age}`] || 0,
+                male: raw[`M.${age}`] || 0
+            });
+        });
+        
+        return result;
+    }
+
+    /**
+     * Parse top locations (City/Country)
+     */
+    _parseTopLocations(metric) {
+        if (!metric || !metric.values || metric.values.length === 0) return [];
+        const raw = metric.values[0].value;
+        return Object.entries(raw)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+    }
+
+    /**
+     * Parse hourly online fans
+     */
+    _parseOnlineTimes(metric) {
+        if (!metric || !metric.values || metric.values.length === 0) return [];
+        const raw = metric.values[0].value;
+        // raw is { "0": 100, "1": 50 ... "23": 200 }
+        return Object.entries(raw).map(([hour, count]) => ({
+            hour: `${hour}:00`,
+            count
+        }));
+    }
+
+    /**
      * Helper to group daily data into monthly aggregates
      */
     _groupInsightsByMonth(data) {
