@@ -42,6 +42,38 @@ const MOCK_INSIGHTS = {
     clicks: { value: '0', trend: 'N/A', up: false }
 };
 
+const MOCK_AUDIENCE = {
+    demographics: [
+        { age: '13-17', female: 50, male: 40 },
+        { age: '18-24', female: 250, male: 180 },
+        { age: '25-34', female: 450, male: 380 },
+        { age: '35-44', female: 300, male: 250 },
+        { age: '45-54', female: 150, male: 120 },
+        { age: '55-64', female: 80, male: 60 },
+        { age: '65+', female: 40, male: 30 }
+    ],
+    cities: [
+        { name: 'Ulaanbaatar', count: 4500 },
+        { name: 'Erdenet', count: 850 },
+        { name: 'Darkhan', count: 720 },
+        { name: 'Choibalsan', count: 340 },
+        { name: 'Mörön', count: 210 }
+    ],
+    countries: [
+        { name: 'Mongolia', count: 6800 },
+        { name: 'South Korea', count: 450 },
+        { name: 'USA', count: 210 },
+        { name: 'Japan', count: 180 },
+        { name: 'Germany', count: 110 }
+    ],
+    onlineTimes: [
+        { hour: '0:00', count: 120 }, { hour: '2:00', count: 60 }, { hour: '4:00', count: 30 },
+        { hour: '6:00', count: 45 }, { hour: '8:00', count: 180 }, { hour: '10:00', count: 450 },
+        { hour: '12:00', count: 680 }, { hour: '14:00', count: 520 }, { hour: '16:00', count: 480 },
+        { hour: '18:00', count: 890 }, { hour: '20:00', count: 1250 }, { hour: '22:00', count: 750 }
+    ]
+};
+
 const MarketingPage = () => {
     const navigate = useNavigate();
     const [isConnected, setIsConnected] = useState(false);
@@ -56,6 +88,29 @@ const MarketingPage = () => {
     const [audienceData, setAudienceData] = useState(null);
 
     React.useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        if (queryParams.get('mock') === 'true') {
+            setIsConnected(true);
+            setInsights({
+                reach: { value: '12,450', trend: '+14%', up: true },
+                engagement: { value: '3,334', trend: '+5.2%', up: true },
+                followers: { value: '8,920', trend: '+2.1%', up: true },
+                clicks: { value: '452', trend: '+8.4%', up: true }
+            });
+            setAudienceData(MOCK_AUDIENCE);
+            setHistoricalData([
+                { month: '2023-10', reach: 4500, engagement: 1200 },
+                { month: '2023-11', reach: 5200, engagement: 1500 },
+                { month: '2023-12', reach: 8900, engagement: 2100 },
+                { month: '2024-01', reach: 7600, engagement: 1800 },
+                { month: '2024-02', reach: 11000, engagement: 2800 },
+                { month: '2024-03', reach: 12450, engagement: 3334 }
+            ]);
+            setTopPosts([
+                { id: '1', message: 'Өглөөний мэнд! Манай шинэ бүтээгдэхүүн гарлаа. #NewArrival', full_picture: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30', created_time: new Date(), insights: { data: [{name: 'post_impressions_unique', values: [{value: 4500}]}, {name: 'post_engagements', values: [{value: 850}]}] } },
+                { id: '2', message: 'Ажлын амжилт хүсэе! 🚀 #Motivation', full_picture: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174', created_time: new Date(), insights: { data: [{name: 'post_impressions_unique', values: [{value: 3200}]}, {name: 'post_engagements', values: [{value: 640}]}] } }
+            ]);
+        }
         facebookService.init().catch(err => console.error('FB SDK Load Error:', err));
     }, []);
 
@@ -417,7 +472,26 @@ const MarketingPage = () => {
                             <div className="audience-deep-dive animate-fade-in-up mt-8">
                                 <div className="section-header">
                                     <Users size={20} className="text-blue-600" />
-                                    <h3>Хэрэглэгчийн гүнзгий хөрөг (Audience Insights)</h3>
+                                    <h3>Хэрэглэгчийн гүнзгий хөрөг (Audience Dashboard)</h3>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                                    <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                                        <div className="text-xs text-gray-400 font-bold uppercase mb-1">Үндсэн Нас</div>
+                                        <div className="text-2xl font-black text-gray-800">
+                                            {audienceData.demographics.sort((a,b) => (b.female+b.male) - (a.female+a.male))[0].age}
+                                        </div>
+                                    </div>
+                                    <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                                        <div className="text-xs text-gray-400 font-bold uppercase mb-1">Топ Хот</div>
+                                        <div className="text-2xl font-black text-gray-800">{audienceData.cities[0]?.name}</div>
+                                    </div>
+                                    <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                                        <div className="text-xs text-gray-400 font-bold uppercase mb-1">Идэвхтэй Цаг</div>
+                                        <div className="text-2xl font-black text-gray-800">
+                                            {audienceData.onlineTimes.sort((a,b) => b.count - a.count)[0].hour}
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <div className="audience-grid mt-6">
@@ -487,22 +561,40 @@ const MarketingPage = () => {
                                         </div>
                                         <div className="location-stats-grid">
                                             <div className="location-list">
-                                                <h5 className="text-sm font-semibold text-gray-400 mb-4">ХОТУУД</h5>
-                                                {audienceData.cities.map((city, i) => (
-                                                    <div key={i} className="location-item flex justify-between items-center py-3 border-b border-gray-50">
-                                                        <span className="text-sm font-medium">{city.name}</span>
-                                                        <span className="text-sm font-bold text-blue-600">{city.count.toLocaleString()}</span>
-                                                    </div>
-                                                ))}
+                                                <h5 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">ХОТУУД</h5>
+                                                {audienceData.cities.map((city, i) => {
+                                                    const maxCount = audienceData.cities[0].count;
+                                                    const percent = (city.count / maxCount) * 100;
+                                                    return (
+                                                        <div key={i} className="mb-4">
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <span className="text-sm font-medium">{city.name}</span>
+                                                                <span className="text-sm font-bold text-blue-600">{city.count.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                             <div className="location-list">
-                                                <h5 className="text-sm font-semibold text-gray-400 mb-4">УЛСУУД</h5>
-                                                {audienceData.countries.map((country, i) => (
-                                                    <div key={i} className="location-item flex justify-between items-center py-3 border-b border-gray-50">
-                                                        <span className="text-sm font-medium">{country.name}</span>
-                                                        <span className="text-sm font-bold text-green-600">{country.count.toLocaleString()}</span>
-                                                    </div>
-                                                ))}
+                                                <h5 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">УЛСУУД</h5>
+                                                {audienceData.countries.map((country, i) => {
+                                                    const maxCount = audienceData.countries[0].count;
+                                                    const percent = (country.count / maxCount) * 100;
+                                                    return (
+                                                        <div key={i} className="mb-4">
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <span className="text-sm font-medium">{country.name}</span>
+                                                                <span className="text-sm font-bold text-green-600">{country.count.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-green-500 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>
