@@ -67,7 +67,7 @@ const MarketingPage = () => {
                 const page = pages[0];
                 setSelectedPage(page);
                 
-                const realInsights = await facebookService.getPageInsights(page.id, page.access_token);
+                const realInsights = await facebookService.getPageInsights(page.id, page.access_token, page);
                 setInsights(realInsights);
                 setIsConnected(true);
             } else {
@@ -369,6 +369,43 @@ const MarketingPage = () => {
                                 )}
                             </main>
                         </div>
+
+                        {/* Top Performing Content Section */}
+                        {topPosts.length > 0 && (
+                            <div className="top-posts-section animate-fade-in-up">
+                                <div className="section-header">
+                                    <Sparkles size={20} className="text-blue-600" />
+                                    <h3>Шилдэг гүйцэтгэлтэй контентууд</h3>
+                                </div>
+                                <div className="posts-grid mt-6">
+                                    {topPosts.map((post, idx) => (
+                                        <div key={post.id || idx} className="post-card">
+                                            {post.full_picture && (
+                                                <div className="post-image">
+                                                    <img src={post.full_picture} alt="Post" />
+                                                </div>
+                                            )}
+                                            <div className="post-details">
+                                                <p className="post-text">{post.message?.substring(0, 100)}{post.message?.length > 100 ? '...' : ''}</p>
+                                                <div className="post-stats">
+                                                    <div className="p-stat">
+                                                        <Eye size={14} />
+                                                        <span>{post.insights?.data?.find(d => d.name === 'post_impressions_unique')?.values[0]?.value || 0}</span>
+                                                    </div>
+                                                    <div className="p-stat">
+                                                        <MousePointer2 size={14} />
+                                                        <span>{post.insights?.data?.find(d => d.name === 'post_engagements')?.values[0]?.value || 0}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-xs text-gray-400 mt-2">
+                                                    {new Date(post.created_time).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="placeholder-view bg-white border border-dashed border-gray-300 rounded-3xl py-20 animate-fade-in">

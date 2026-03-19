@@ -73,7 +73,7 @@ class FacebookService {
      */
     getManagedPages() {
         return new Promise((resolve, reject) => {
-            window.FB.api('/me/accounts', (response) => {
+            window.FB.api('/me/accounts', { fields: 'name,access_token,id,category,followers_count,fan_count' }, (response) => {
                 if (response && !response.error) {
                     resolve(response.data);
                 } else {
@@ -86,7 +86,7 @@ class FacebookService {
     /**
      * Get real insights for a specific Page
      */
-    getPageInsights(pageId, pageAccessToken) {
+    getPageInsights(pageId, pageAccessToken, pageObject = {}) {
         return new Promise((resolve, reject) => {
             const dayMetrics = ['page_impressions_unique', 'page_post_engagements'].join(',');
 
@@ -111,9 +111,9 @@ class FacebookService {
                             (lifetimeResponse) => {
                                 if (lifetimeResponse && !lifetimeResponse.error) {
                                     const combinedData = [...dayResponse.data, ...lifetimeResponse.data];
-                                    resolve(this._parseInsights(combinedData));
+                                    resolve(this._parseInsights(combinedData, pageObject));
                                 } else {
-                                    resolve(this._parseInsights(dayResponse.data));
+                                    resolve(this._parseInsights(dayResponse.data, pageObject));
                                 }
                             }
                         );
@@ -217,18 +217,38 @@ class FacebookService {
     /**
      * Helper to parse raw Graph API data
      */
-    _parseInsights(data) {
+    _parseInsights(data, page = {}) {
         const findMetric = (name) => {
             const metric = data.find(m => m.name === name);
-            if (!metric || !metric.values || metric.values.length === 0) return 0;
-            return metric.values[0].value || 0;
+            if (!metric || !metric.values || metric.values.length === 0) return null;
+            return metric.values[0].value;
         };
 
+        const reach = findMetric('page_impressions_unique');
+        const engagement = findMetric('page_post_engagements');
+        const fans = findMetric('page_fans');
+
         return {
-            reach: { value: findMetric('page_impressions_unique').toLocaleString(), trend: 'Live', up: true },
-            engagement: { value: findMetric('page_post_engagements').toLocaleString(), trend: 'Live', up: true },
-            followers: { value: findMetric('page_fans').toLocaleString(), trend: 'Live', up: true },
-            clicks: { value: (Math.floor(findMetric('page_post_engagements') / 15)).toLocaleString(), trend: 'Live', up: true }
+            reach: { 
+                value: reach !== null ? reach.toLocaleString() : 'N/A', 
+                trend: 'Live', 
+                up: true 
+            },
+            engagement: { 
+                value: engagement !== null ? engagement.toLocaleString() : 'N/A', 
+                trend: 'Live', 
+                up: true 
+            },
+            followers: { 
+                value: (page.followers_count || page.fan_count || fans || 0).toLocaleString(), 
+                trend: 'Live', 
+                up: true 
+            },
+            clicks: { 
+                value: engagement !== null ? (Math.floor(engagement / 15)).toLocaleString() : '0', 
+                trend: 'Live', 
+                up: true 
+            }
         };
     }
 }
