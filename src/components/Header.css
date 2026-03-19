@@ -39,6 +39,20 @@
     gap: var(--space-4);
 }
 
+.site-header__nav-links {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    margin-left: var(--space-8);
+    flex: 1;
+}
+
+@media (max-width: 992px) {
+    .site-header__nav-links {
+        display: none;
+    }
+}
+
 .header-nav-link {
     font-size: 0.9rem;
     font-weight: 500;

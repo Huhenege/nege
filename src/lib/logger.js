@@ -1,5 +1,4 @@
-import { db } from './firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { apiJson } from './apiClient';
 
 /**
  * Log an administrative action to Firestore
@@ -9,12 +8,16 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
  */
 export async function logAdminAction(action, details, adminUser) {
     try {
-        await addDoc(collection(db, "audit_logs"), {
-            action,
-            details,
-            adminId: adminUser?.uid,
-            adminEmail: adminUser?.email,
-            timestamp: serverTimestamp()
+        await apiJson('/admin/logs', {
+            method: 'POST',
+            auth: true,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action,
+                details,
+                adminId: adminUser?.uid,
+                adminEmail: adminUser?.email,
+            }),
         });
     } catch (error) {
         console.error("Error logging admin action:", error);

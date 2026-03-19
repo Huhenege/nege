@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../../lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { Settings, Save, AlertTriangle, ToggleLeft, ToggleRight, Layout, Globe, Moon } from 'lucide-react';
-import { logAdminAction } from '../../lib/logger';
-import { useAuth } from '../../contexts/AuthContext';
+import { Save, AlertTriangle, ToggleLeft, ToggleRight, Layout, Globe } from 'lucide-react';
+import { apiJson } from '../../lib/apiClient';
 
 const AdminSettings = () => {
-    const { currentUser } = useAuth();
     const [settings, setSettings] = useState({
         maintenanceMode: false,
         registrationEnabled: true,
@@ -21,10 +17,9 @@ const AdminSettings = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const docRef = doc(db, "settings", "global");
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    setSettings(prev => ({ ...prev, ...docSnap.data() }));
+                const data = await apiJson('/admin/settings/global', { auth: true });
+                if (data?.settings) {
+                    setSettings(prev => ({ ...prev, ...data.settings }));
                 }
             } catch (error) {
                 console.error("Error fetching settings:", error);
@@ -42,13 +37,12 @@ const AdminSettings = () => {
         setMessage(null);
 
         try {
-            await setDoc(doc(db, "settings", "global"), {
-                ...settings,
-                updatedAt: serverTimestamp(),
-                updatedBy: currentUser?.email
-            }, { merge: true });
-
-            await logAdminAction('UPDATE_SETTINGS', { changedKeys: Object.keys(settings) }, currentUser);
+            await apiJson('/admin/settings/global', {
+                method: 'POST',
+                auth: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ settings }),
+            });
 
             setMessage({ type: 'success', text: 'Тохиргоо амжилттай хадгалагдлаа.' });
         } catch (error) {

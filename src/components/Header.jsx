@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, LogOut, ChevronDown, ShieldCheck } from 'lucide-react';
+import { User, LogOut, ChevronDown, ShieldCheck, FileText, TrendingUp } from 'lucide-react';
 import Logo from './Logo';
 import './Header.css';
 
@@ -42,6 +42,13 @@ const Header = () => {
                     <span className="site-header__brand-text">Nege AI</span>
                 </Link>
 
+                <nav className="site-header__nav-links">
+                    <Link to="/nege-ai" className="header-nav-link">AI Хэрэгслүүд</Link>
+                    <Link to="/ai-assistant/business-training" className="header-nav-link">Сургалт</Link>
+                    <Link to="/freelancers" className="header-nav-link">Фрилансер</Link>
+                    <Link to="/jobs" className="header-nav-link">Ажлын байр</Link>
+                </nav>
+
                 <nav className="site-header__nav">
                     {currentUser ? (
                         <div className="header-user-container" ref={dropdownRef}>
@@ -77,6 +84,15 @@ const Header = () => {
                                             Админ самбар
                                         </Link>
                                     )}
+
+                                    <Link to="/my-cv" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
+                                        <FileText size={18} />
+                                        Миний CV
+                                    </Link>
+                                    <Link to="/marketing" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
+                                        <TrendingUp size={18} />
+                                        Маркетинг
+                                    </Link>
 
                                     <div className="dropdown-divider"></div>
 

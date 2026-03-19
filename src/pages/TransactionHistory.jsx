@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { ArrowLeft, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
+import { apiJson } from '../lib/apiClient';
 import './TransactionHistory.css';
 
 const TransactionHistory = () => {
@@ -11,53 +10,26 @@ const TransactionHistory = () => {
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchPayments();
-    }, [currentUser]);
-
-    async function fetchPayments() {
+    const fetchPayments = useCallback(async () => {
         if (!currentUser) {
             setLoading(false);
             return;
         }
 
         try {
-            const invoicesRef = collection(db, 'qpayInvoices');
-            let paymentsData = [];
-            try {
-                const q = query(
-                    invoicesRef,
-                    where('userId', '==', currentUser.uid),
-                    orderBy('createdAt', 'desc')
-                );
-                const snapshot = await getDocs(q);
-                paymentsData = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-            } catch (error) {
-                if (error?.code !== 'failed-precondition') {
-                    throw error;
-                }
-                const q = query(invoicesRef, where('userId', '==', currentUser.uid));
-                const snapshot = await getDocs(q);
-                paymentsData = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                paymentsData.sort((a, b) => {
-                    const aTime = a?.createdAt?.toMillis?.() || new Date(a?.createdAt || 0).getTime() || 0;
-                    const bTime = b?.createdAt?.toMillis?.() || new Date(b?.createdAt || 0).getTime() || 0;
-                    return bTime - aTime;
-                });
-            }
+            const data = await apiJson('/me/transactions', { auth: true });
+            const paymentsData = Array.isArray(data?.payments) ? data.payments : [];
             setPayments(paymentsData);
         } catch (error) {
             console.error('Error fetching payment history:', error);
         } finally {
             setLoading(false);
         }
-    }
+    }, [currentUser]);
+
+    useEffect(() => {
+        fetchPayments();
+    }, [fetchPayments]);
 
     const formatDate = (timestamp) => {
         if (!timestamp) return '-';

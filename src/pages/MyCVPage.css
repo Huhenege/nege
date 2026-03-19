@@ -1,0 +1,322 @@
+/* CV Builder Layout Overhaul */
+.cv-builder {
+    padding-top: var(--header-height);
+    min-height: 100vh;
+    background-color: #f8fafc;
+    display: flex;
+    flex-direction: column;
+}
+
+.cv-builder__header {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 0.75rem 0;
+    position: sticky;
+    top: var(--header-height);
+    z-index: 100;
+}
+
+.cv-builder__header-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cv-builder__content {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - var(--header-height) - 65px);
+}
+
+/* Sidebar Stepper */
+.cv-builder__sidebar {
+    background: #ffffff;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    gap: 0.5rem;
+}
+
+.stepper-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+}
+
+.stepper-item:hover {
+    background: #f1f5f9;
+}
+
+.stepper-item.active {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e40af;
+}
+
+.stepper-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    transition: all 0.2s;
+}
+
+.stepper-item.active .stepper-icon {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.stepper-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stepper-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.stepper-status {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+/* Form Section Premium Styling */
+.cv-builder__form-pane {
+    padding: 2.5rem;
+    overflow-y: auto;
+    background: #ffffff;
+}
+
+.section-head {
+    margin-bottom: 2rem;
+}
+
+.section-head h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
+}
+
+.section-head p {
+    color: #64748b;
+}
+
+.progress-container {
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    margin-top: 1rem;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #60a5fa);
+    transition: width 0.5s ease-out;
+}
+
+/* Premium Inputs */
+.modern-field {
+    margin-bottom: 1.5rem;
+}
+
+.modern-field label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #475569;
+    margin-bottom: 0.5rem;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper svg {
+    position: absolute;
+    left: 1rem;
+    color: #94a3b8;
+}
+
+.modern-input, .modern-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    background: #f8fafc;
+}
+
+.modern-input:focus, .modern-textarea:focus {
+    background: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    outline: none;
+}
+
+.modern-textarea {
+    padding-left: 1rem; /* Textareas don't have icons usually */
+    resize: vertical;
+}
+
+/* Card-Based Multi-items */
+.entry-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.entry-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.entry-card__remove {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.entry-card__remove:hover {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+/* Preview Pane */
+.cv-builder__preview-pane {
+    background: #cbd5e1; /* Blueprint-like background */
+    padding: 3rem;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    perspective: 1000px;
+}
+
+.resume-paper {
+    width: 210mm;
+    min-height: 297mm;
+    background: #ffffff;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    padding: 20mm;
+    transform: rotateX(2deg);
+    transition: transform 0.3s;
+    position: relative;
+}
+
+.resume-paper::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.2) 0%, transparent 50%);
+}
+
+/* Professional Resume Content */
+.resume-header {
+    margin-bottom: 2rem;
+}
+
+.resume-name {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #000;
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+
+.resume-title {
+    font-size: 1.25rem;
+    color: #2563eb;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.resume-section-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #000;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+    margin: 2rem 0 1rem 0;
+}
+
+/* Skill Tags */
+.skill-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.skill-tag {
+    background: #f1f5f9;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+}
+
+/* Navigation Buttons */
+.nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 3rem;
+}
+
+/* Print */
+@media print {
+    .cv-builder__header, .cv-builder__sidebar, .cv-builder__form-pane {
+        display: none;
+    }
+    .cv-builder__content {
+        display: block;
+        height: auto;
+        overflow: visible;
+    }
+    .cv-builder__preview-pane {
+        background: none;
+        padding: 0;
+        overflow: visible;
+    }
+    .resume-paper {
+        transform: none;
+        box-shadow: none;
+        width: 100%;
+        padding: 0;
+    }
+}

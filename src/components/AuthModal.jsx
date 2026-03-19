@@ -1,8 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { X, Mail, Lock } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import Logo from './Logo';
 import './AuthModal.css';
 
@@ -30,23 +28,7 @@ const AuthModal = () => {
                 if (passwordRef.current.value !== passwordConfirmRef.current.value) {
                     throw new Error('Нууц үгнүүд таарахгүй байна');
                 }
-                const userCredential = await signup(emailRef.current.value, passwordRef.current.value);
-                const user = userCredential.user;
-                await setDoc(doc(db, "users", user.uid), {
-                    email: user.email,
-                    role: 'user',
-                    createdAt: serverTimestamp(),
-                    status: 'active',
-                    subscription: {
-                        status: 'inactive',
-                        startAt: null,
-                        endAt: null
-                    },
-                    credits: {
-                        balance: 0,
-                        updatedAt: serverTimestamp()
-                    }
-                });
+                await signup(emailRef.current.value, passwordRef.current.value);
             }
             closeAuthModal();
         } catch (err) {

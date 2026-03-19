@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useContext, useState, useEffect } from "react"
 import {
     createUserWithEmailAndPassword,
@@ -6,13 +7,26 @@ import {
     signOut,
     onAuthStateChanged
 } from "firebase/auth"
-import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore"
-import { auth, db, googleProvider } from "../lib/firebase"
+import { auth, googleProvider } from "../lib/firebase"
+import { apiFetchWithToken, apiJson } from "../lib/apiClient"
 
 const AuthContext = React.createContext()
 
 export function useAuth() {
     return useContext(AuthContext)
+}
+
+function buildSessionUser(user, profile, authz) {
+    if (!user) return null;
+    return {
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || '',
+        photoURL: user.photoURL || '',
+        role: profile?.role || 'user',
+        firestoreData: profile || null,
+        authz: authz || null,
+    };
 }
 
 export function AuthProvider({ children }) {
@@ -33,82 +47,49 @@ export function AuthProvider({ children }) {
     }
 
     async function loginWithGoogle() {
-        try {
-            const result = await signInWithPopup(auth, googleProvider);
-            const user = result.user;
+        return signInWithPopup(auth, googleProvider);
+    }
 
-            // Check if user document exists in Firestore
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (!userDoc.exists()) {
-                // Create user document for new Google user
-                await setDoc(doc(db, "users", user.uid), {
-                    email: user.email,
-                    displayName: user.displayName,
-                    photoURL: user.photoURL,
-                    role: 'user',
-                    createdAt: serverTimestamp(),
-                    status: 'active',
-                    subscription: {
-                        status: 'inactive',
-                        startAt: null,
-                        endAt: null
-                    },
-                    credits: {
-                        balance: 0,
-                        updatedAt: serverTimestamp()
-                    },
-                    authProvider: 'google'
-                });
-            }
-            return result;
-        } catch (error) {
-            throw error;
+    async function syncProfile(user) {
+        if (!user) return null;
+        const token = await user.getIdToken();
+        const response = await apiFetchWithToken('/auth/bootstrap', token, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data?.error || 'Профайл ачааллахад алдаа гарлаа.');
         }
+
+        const profile = data?.profile || null;
+        setUserProfile(profile);
+        return {
+            profile,
+            authz: data?.authz || null,
+        };
     }
 
     useEffect(() => {
-        let unsubscribeUserDoc = null;
-
         const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-            if (unsubscribeUserDoc) {
-                unsubscribeUserDoc();
-                unsubscribeUserDoc = null;
-            }
-
+            setLoading(true);
             if (user) {
                 try {
-                    const userRef = doc(db, "users", user.uid);
-                    unsubscribeUserDoc = onSnapshot(
-                        userRef,
-                        (snap) => {
-                            if (snap.exists()) {
-                                const userData = snap.data();
-                                user.role = userData.role;
-                                user.firestoreData = userData;
-                                setUserProfile(userData);
-                            } else {
-                                setUserProfile(null);
-                            }
-                        },
-                        (error) => {
-                            console.error("Error listening to user data:", error);
-                            setUserProfile(null);
-                        }
-                    );
+                    const synced = await syncProfile(user);
+                    setCurrentUser(buildSessionUser(user, synced?.profile, synced?.authz));
                 } catch (error) {
-                    console.error("Error setting up user listener:", error);
+                    console.error("Error syncing user data:", error);
                     setUserProfile(null);
+                    setCurrentUser(buildSessionUser(user, null, null));
                 }
             } else {
                 setUserProfile(null);
+                setCurrentUser(null);
             }
-
-            setCurrentUser(user);
             setLoading(false);
         });
 
         return () => {
-            if (unsubscribeUserDoc) unsubscribeUserDoc();
             unsubscribeAuth();
         };
     }, []);
@@ -126,11 +107,16 @@ export function AuthProvider({ children }) {
     async function refreshUserProfile() {
         if (!currentUser?.uid) return null;
         try {
-            const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-            if (userDoc.exists()) {
-                const data = userDoc.data();
-                setUserProfile(data);
-                return data;
+            const data = await apiJson('/me/profile', { auth: true });
+            if (data?.profile) {
+                setUserProfile(data.profile);
+                setCurrentUser((prev) => prev ? {
+                    ...prev,
+                    role: data.profile.role,
+                    firestoreData: data.profile,
+                    authz: data?.authz || null,
+                } : prev);
+                return data.profile;
             }
         } catch (error) {
             console.error("Error refreshing user data:", error);

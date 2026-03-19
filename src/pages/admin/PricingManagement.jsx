@@ -1,23 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../../lib/firebase';
-import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    increment,
-    limit,
-    orderBy,
-    query,
-    serverTimestamp,
-    setDoc,
-    startAfter,
-    where,
-    writeBatch,
-} from 'firebase/firestore';
 import { Save, Plus, Trash2 } from 'lucide-react';
-import { logAdminAction } from '../../lib/logger';
-import { useAuth } from '../../contexts/AuthContext';
+import { apiJson } from '../../lib/apiClient';
 
 const DEFAULT_CONFIG = {
     subscription: {
@@ -50,9 +33,7 @@ const TOOL_LABELS = {
 };
 
 const PricingManagement = () => {
-    const { currentUser } = useAuth();
     const [config, setConfig] = useState(DEFAULT_CONFIG);
-    const [originalConfig, setOriginalConfig] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
@@ -61,45 +42,37 @@ const PricingManagement = () => {
         const loadConfig = async () => {
             setLoading(true);
             try {
-                const docRef = doc(db, 'settings', 'billing');
-                const snap = await getDoc(docRef);
-                if (snap.exists()) {
+                const data = await apiJson('/billing/config');
+                if (data?.config) {
                     const mergedTools = {
                         ...DEFAULT_CONFIG.tools,
-                        ...(snap.data().tools || {})
+                        ...(data.config.tools || {})
                     };
                     Object.keys(DEFAULT_CONFIG.tools).forEach((toolKey) => {
                         mergedTools[toolKey] = {
                             ...DEFAULT_CONFIG.tools[toolKey],
-                            ...(snap.data().tools?.[toolKey] || {})
+                            ...(data.config.tools?.[toolKey] || {})
                         };
                     });
 
                     const normalized = {
                         ...DEFAULT_CONFIG,
-                        ...snap.data(),
+                        ...data.config,
                         subscription: {
                             ...DEFAULT_CONFIG.subscription,
-                            ...(snap.data().subscription || {})
+                            ...(data.config.subscription || {})
                         },
                         tools: {
                             ...mergedTools
                         },
                         credits: {
                             ...DEFAULT_CONFIG.credits,
-                            ...(snap.data().credits || {})
+                            ...(data.config.credits || {})
                         }
                     };
                     setConfig(normalized);
-                    setOriginalConfig(normalized);
                 } else {
-                    await setDoc(docRef, {
-                        ...DEFAULT_CONFIG,
-                        createdAt: serverTimestamp(),
-                        updatedAt: serverTimestamp()
-                    });
                     setConfig(DEFAULT_CONFIG);
-                    setOriginalConfig(DEFAULT_CONFIG);
                 }
             } catch (error) {
                 console.error('Error loading billing config:', error);
@@ -110,70 +83,6 @@ const PricingManagement = () => {
 
         loadConfig();
     }, []);
-
-    const syncActiveSubscriptionCredits = async (delta, nextMonthlyCredits) => {
-        if (!Number.isFinite(delta) || delta <= 0) {
-            return { updated: 0, scanned: 0, skipped: true };
-        }
-
-        const usersRef = collection(db, 'users');
-        let lastDoc = null;
-        let updated = 0;
-        let scanned = 0;
-        const now = Date.now();
-
-        while (true) {
-            let q = query(
-                usersRef,
-                where('subscription.status', '==', 'active'),
-                orderBy('__name__'),
-                limit(400)
-            );
-            if (lastDoc) {
-                q = query(
-                    usersRef,
-                    where('subscription.status', '==', 'active'),
-                    orderBy('__name__'),
-                    startAfter(lastDoc),
-                    limit(400)
-                );
-            }
-
-            const snap = await getDocs(q);
-            if (snap.empty) break;
-
-            const batch = writeBatch(db);
-            let batchCount = 0;
-
-            snap.docs.forEach((docSnap) => {
-                scanned += 1;
-                const data = docSnap.data() || {};
-                const endValue = data?.subscription?.endAt;
-                const endAt = endValue?.toDate ? endValue.toDate() : (endValue ? new Date(endValue) : null);
-                if (!endAt || Number.isNaN(endAt.getTime()) || endAt.getTime() <= now) {
-                    return;
-                }
-
-                batch.update(docSnap.ref, {
-                    'credits.balance': increment(delta),
-                    'credits.updatedAt': serverTimestamp(),
-                    'subscription.planMonthlyCredits': Number(nextMonthlyCredits || 0),
-                    'subscription.creditsSyncedAt': serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                });
-                batchCount += 1;
-            });
-
-            if (batchCount > 0) {
-                await batch.commit();
-                updated += batchCount;
-            }
-
-            lastDoc = snap.docs[snap.docs.length - 1];
-        }
-
-        return { updated, scanned, skipped: false };
-    };
 
     const handleToolChange = (toolKey, field, value) => {
         const parsedValue = field === 'active' ? !!value : Number(value);
@@ -253,75 +162,37 @@ const PricingManagement = () => {
         setSaving(true);
         setMessage(null);
         try {
-            const prevMonthlyCredits = Number(originalConfig?.subscription?.monthlyCredits || 0);
-            const nextMonthlyCredits = Number(config.subscription?.monthlyCredits || 0);
-            const monthlyDelta = nextMonthlyCredits - prevMonthlyCredits;
-
             const normalizedBundles = (config.credits?.bundles || []).map((bundle) => ({
                 ...bundle,
                 id: bundle.id || crypto.randomUUID(),
             }));
-            const docRef = doc(db, 'settings', 'billing');
-            await setDoc(docRef, {
-                ...config,
-                credits: {
-                    ...config.credits,
-                    bundles: normalizedBundles
-                },
-                updatedAt: serverTimestamp(),
-                updatedBy: currentUser?.email || 'admin'
-            }, { merge: true });
+            const data = await apiJson('/admin/settings/billing', {
+                method: 'POST',
+                auth: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    config: {
+                        ...config,
+                        credits: {
+                            ...config.credits,
+                            bundles: normalizedBundles,
+                        },
+                    },
+                }),
+            });
 
-            await logAdminAction('UPDATE_BILLING_CONFIG', {
-                toolKeys: Object.keys(config.tools || {}),
-                bundleCount: config.credits?.bundles?.length || 0
-            }, currentUser);
+            const syncResult = data?.syncResult || null;
+            const summary = syncResult && !syncResult.skipped && Number(syncResult.updated) > 0
+                ? `Идэвхтэй ${syncResult.updated} хэрэглэгчийн credits +${syncResult.delta} нэмэгдлээ.`
+                : (syncResult && Number(syncResult.delta) < 0)
+                    ? 'Сарын credits багассан тул идэвхтэй хэрэглэгчдийн үлдэгдэлд өөрчлөлт оруулаагүй.'
+                    : '';
 
-            let syncResult = null;
-            let syncFailed = false;
-            const canSync = !!originalConfig && Number.isFinite(prevMonthlyCredits) && Number.isFinite(nextMonthlyCredits);
-
-            if (canSync && monthlyDelta > 0) {
-                try {
-                    syncResult = await syncActiveSubscriptionCredits(monthlyDelta, nextMonthlyCredits);
-                    await logAdminAction('SYNC_SUBSCRIPTION_CREDITS', {
-                        previousCredits: prevMonthlyCredits,
-                        nextCredits: nextMonthlyCredits,
-                        delta: monthlyDelta,
-                        updatedUsers: syncResult.updated || 0,
-                        scannedUsers: syncResult.scanned || 0,
-                    }, currentUser);
-                } catch (syncError) {
-                    syncFailed = true;
-                    console.error('Error syncing subscription credits:', syncError);
-                }
-            }
-
-            if (syncFailed) {
-                setMessage({
-                    type: 'error',
-                    text: 'Billing тохиргоо хадгалагдлаа, гэхдээ subscription credits шинэчлэхэд алдаа гарлаа.',
-                });
-            } else {
-                const summary = syncResult
-                    ? `Идэвхтэй ${syncResult.updated} хэрэглэгчийн credits +${monthlyDelta} нэмэгдлээ.`
-                    : monthlyDelta < 0
-                        ? 'Сарын credits багассан тул идэвхтэй хэрэглэгчдийн үлдэгдэлд өөрчлөлт оруулаагүй.'
-                        : '';
-
-                setMessage({
-                    type: 'success',
-                    text: summary
-                        ? `Billing тохиргоо хадгалагдлаа. ${summary}`
-                        : 'Billing тохиргоо хадгалагдлаа.',
-                });
-            }
-            setOriginalConfig({
-                ...config,
-                credits: {
-                    ...config.credits,
-                    bundles: normalizedBundles,
-                },
+            setMessage({
+                type: 'success',
+                text: summary
+                    ? `Billing тохиргоо хадгалагдлаа. ${summary}`
+                    : 'Billing тохиргоо хадгалагдлаа.',
             });
         } catch (error) {
             console.error('Error saving billing config:', error);

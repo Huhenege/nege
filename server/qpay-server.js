@@ -2859,6 +2859,55 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === '/api/auth/bootstrap' || url.pathname === '/api/me/profile') {
+    const userId = resolveUserId(req, {});
+    const store = readStore();
+    const balance = Number(store.credits?.[userId]?.balance || 0);
+
+    const mockProfile = {
+      uid: userId || 'mock-user-id',
+      email: 'mock@nege.mn',
+      displayName: 'Mock User',
+      photoURL: 'https://avatar.vercel.sh/mock',
+      role: 'admin',
+      status: 'active',
+      credits: {
+        balance,
+        updatedAt: new Date().toISOString(),
+      },
+      subscription: {
+        status: 'active',
+        endAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    };
+
+    const mockOrg = {
+      id: 'mock-org-id',
+      name: 'Mock Organization',
+      slug: 'mock-org',
+      ownerUserId: userId || 'mock-user-id',
+    };
+
+    const mockWorkspace = {
+      id: 'default',
+      name: 'Main workspace',
+      organizationId: 'mock-org-id',
+    };
+
+    jsonResponse(res, 200, {
+      profile: mockProfile,
+      organization: mockOrg,
+      workspace: mockWorkspace,
+      authz: {
+        isAuthenticated: true,
+        isSystemAdmin: true,
+        tenantRole: 'owner',
+        canManageOrganization: true,
+      },
+    });
+    return;
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/ndsh/parse') {
     try {
       const body = await readJson(req);

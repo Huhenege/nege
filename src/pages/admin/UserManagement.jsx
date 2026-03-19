@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../../lib/firebase';
-import { collection, getDocs, doc, updateDoc, serverTimestamp, query, orderBy, increment, addDoc } from 'firebase/firestore';
 import { Shield, ShieldOff, Ban, CheckCircle, Search, AlertCircle, RefreshCw, Calendar, DollarSign, X } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { logAdminAction } from '../../lib/logger';
+import { apiJson } from '../../lib/apiClient';
 
 const UserManagement = () => {
-    const { currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [filteredUsers, setFilteredUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -45,13 +41,8 @@ const UserManagement = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            // Fetch all users (for now - optimized pagination would use startAfter)
-            const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
-            const querySnapshot = await getDocs(q);
-            const usersData = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            const data = await apiJson('/admin/users', { auth: true });
+            const usersData = Array.isArray(data?.users) ? data.users : [];
             setUsers(usersData);
             setFilteredUsers(usersData);
         } catch (error) {
@@ -89,21 +80,15 @@ const UserManagement = () => {
         if (!window.confirm(`Энэ хэрэглэгчийн эрхийг ${newRole} болгохдоо итгэлтэй байна уу?`)) return;
 
         try {
-            const userRef = doc(db, "users", userId);
-            await updateDoc(userRef, {
-                role: newRole,
-                updatedAt: serverTimestamp()
+            const data = await apiJson(`/admin/users/${encodeURIComponent(userId)}/role`, {
+                method: 'POST',
+                auth: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: newRole }),
             });
 
-            // Log action
-            await logAdminAction('CHANGE_USER_ROLE', {
-                targetUid: userId,
-                targetEmail: users.find(u => u.id === userId)?.email,
-                newRole
-            }, currentUser);
-
             // Optimistic update
-            setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+            setUsers(users.map(u => u.id === userId ? { ...u, ...(data?.user || {}), role: newRole } : u));
         } catch (error) {
             console.error("Error updating role:", error);
             alert("Эрх өөрчлөхөд алдаа гарлаа.");
@@ -115,20 +100,15 @@ const UserManagement = () => {
         if (!window.confirm(`Энэ хэрэглэгчийг ${action} үйлдэлдээ итгэлтэй байна уу?`)) return;
 
         try {
-            const userRef = doc(db, "users", userId);
-            await updateDoc(userRef, {
-                status: newStatus,
-                updatedAt: serverTimestamp()
+            const data = await apiJson(`/admin/users/${encodeURIComponent(userId)}/status`, {
+                method: 'POST',
+                auth: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus }),
             });
 
-            // Log action
-            await logAdminAction(newStatus === 'banned' ? 'BAN_USER' : 'UNBAN_USER', {
-                targetUid: userId,
-                targetEmail: users.find(u => u.id === userId)?.email
-            }, currentUser);
-
             // Optimistic update
-            setUsers(users.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+            setUsers(users.map(u => u.id === userId ? { ...u, ...(data?.user || {}), status: newStatus } : u));
         } catch (error) {
             console.error("Error updating status:", error);
             alert("Төлөв өөрчлөхөд алдаа гарлаа.");
@@ -152,32 +132,21 @@ const UserManagement = () => {
         const startAt = target?.subscription?.startAt || new Date().toISOString();
 
         try {
-            const userRef = doc(db, "users", userId);
-            await updateDoc(userRef, {
-                subscription: {
-                    status,
-                    startAt,
-                    endAt: endDate.toISOString(),
-                    updatedAt: serverTimestamp(),
-                    updatedBy: currentUser?.email || 'admin'
-                },
-                updatedAt: serverTimestamp()
+            const data = await apiJson(`/admin/users/${encodeURIComponent(userId)}/subscription`, {
+                method: 'POST',
+                auth: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endAt: endDate.toISOString() }),
             });
-
-            await logAdminAction('UPDATE_SUBSCRIPTION', {
-                targetUid: userId,
-                targetEmail: target?.email,
-                status,
-                endAt: endDate.toISOString()
-            }, currentUser);
 
             setUsers(users.map(u => u.id === userId ? {
                 ...u,
-                subscription: {
+                ...(data?.user || {}),
+                subscription: data?.user?.subscription || {
                     status,
                     startAt,
                     endAt: endDate.toISOString()
-                }
+                },
             } : u));
         } catch (error) {
             console.error("Error updating subscription:", error);
@@ -213,42 +182,24 @@ const UserManagement = () => {
         setTopupLoading(true);
         setTopupError('');
         try {
-            const userRef = doc(db, "users", creditTopupUser.id);
-            await updateDoc(userRef, {
-                'credits.balance': increment(amount),
-                'credits.updatedAt': serverTimestamp(),
-                updatedAt: serverTimestamp()
-            });
-
-            try {
-                await addDoc(collection(db, "creditTransactions"), {
-                    userId: creditTopupUser.id,
-                    credits: amount,
-                    amount: 0,
-                    type: 'admin_topup',
+            const data = await apiJson(`/admin/users/${encodeURIComponent(creditTopupUser.id)}/credits/topup`, {
+                method: 'POST',
+                auth: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount,
                     note: topupNote?.trim() || null,
-                    adminId: currentUser?.uid || null,
-                    adminEmail: currentUser?.email || null,
-                    createdAt: serverTimestamp()
-                });
-            } catch (error) {
-                console.error("Error logging credit transaction:", error);
-            }
-
-            await logAdminAction('TOPUP_CREDITS', {
-                targetUid: creditTopupUser.id,
-                targetEmail: creditTopupUser?.email,
-                credits: amount,
-                note: topupNote?.trim() || null
-            }, currentUser);
+                }),
+            });
 
             setUsers(prev => prev.map(u => u.id === creditTopupUser.id ? {
                 ...u,
-                credits: {
+                ...(data?.user || {}),
+                credits: data?.user?.credits || {
                     ...u.credits,
                     balance: (u.credits?.balance || 0) + amount,
                     updatedAt: new Date().toISOString()
-                }
+                },
             } : u));
 
             closeTopupModal(true);

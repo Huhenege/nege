@@ -31,6 +31,11 @@ import ContractGenerator from './pages/ContractGenerator';
 import EisenhowerPlanner from './pages/EisenhowerPlanner';
 import SwotAnalyzer from './pages/SwotAnalyzer';
 import NegeAI from './pages/NegeAI';
+import JobsPage from './pages/JobsPage';
+import FreelancersPage from './pages/FreelancersPage';
+import FreelancerDetailPage from './pages/FreelancerDetailPage';
+import MarketingPage from './pages/MarketingPage';
+import MyCVPage from './pages/MyCVPage';
 import './pages/Home.css';
 
 import AuthModal from './components/AuthModal';
@@ -66,6 +71,11 @@ const AppShell = () => {
           <Route path="/ai-assistant/account-statement-organizer" element={<AccountStatementOrganizer />} />
           <Route path="/ai-assistant/social-insurance-holiday" element={<SocialInsuranceHoliday />} />
           <Route path="/nege-ai" element={<NegeAI />} />
+          <Route path="/jobs" element={<JobsPage />} />
+          <Route path="/freelancers" element={<FreelancersPage />} />
+          <Route path="/freelancers/:id" element={<FreelancerDetailPage />} />
+          <Route path="/marketing" element={<ProtectedRoute><MarketingPage /></ProtectedRoute>} />
+          <Route path="/my-cv" element={<ProtectedRoute><MyCVPage /></ProtectedRoute>} />
           <Route path="/ai-assistant/official-letterhead" element={<OfficialLetterheadGenerator />} />
           <Route path="/ai-assistant/business-card" element={<BusinessCardGenerator />} />
           <Route path="/ai-assistant/business-training" element={<BusinessTraining />} />

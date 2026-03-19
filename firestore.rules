@@ -1,84 +1,117 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if user is an admin
-    function isAdmin() {
-      return request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDocExists() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isSystemAdmin() {
+      return userDocExists()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOrgMember(orgId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/organizations/$(orgId)/memberships/$(request.auth.uid));
+    }
+
+    function isOrgAdmin(orgId) {
+      return isSystemAdmin()
+        || (isOrgMember(orgId)
+          && get(/databases/$(database)/documents/organizations/$(orgId)/memberships/$(request.auth.uid)).data.role in ['owner', 'admin']);
     }
 
     // Role-based access for the users collection
     match /users/{userId} {
-      // Allow creating own profile during signup
-      allow create: if request.auth != null && request.auth.uid == userId;
-      
-      // Allow user to read/update own profile
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      
-      // Admins can manage all users
-      allow list, delete: if isAdmin();
-      allow read, update: if isAdmin();
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow get, list: if isSystemAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /organizations/{orgId} {
+      allow get: if isOrgMember(orgId) || isSystemAdmin();
+      allow list: if isSystemAdmin();
+      allow create, update, delete: if false;
+
+      match /memberships/{memberId} {
+        allow get: if (isSignedIn() && request.auth.uid == memberId) || isOrgAdmin(orgId);
+        allow list: if isOrgAdmin(orgId);
+        allow create, update, delete: if false;
+      }
+
+      match /workspaces/{workspaceId} {
+        allow get: if isOrgMember(orgId) || isSystemAdmin();
+        allow list: if isOrgAdmin(orgId) || isSystemAdmin();
+        allow create, update, delete: if false;
+      }
     }
 
     // Admin-only collections (Sensitive data)
     match /qpayInvoices/{invoiceId} {
-      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
-      allow write: if isAdmin();
+      allow read: if isSystemAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
     }
 
     match /qpayGrants/{grantId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow read: if isSystemAdmin();
+      allow write: if false;
     }
 
     match /creditTransactions/{txId} {
-      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
-      allow write: if isAdmin();
+      allow read: if isSystemAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
     }
 
     match /usageLogs/{logId} {
-      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
-      allow write: if isAdmin();
+      allow read: if isSystemAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
     }
     
     match /bookings/{bookingId} {
-      allow read: if isAdmin();
-      allow create: if request.auth != null;
-      allow update, delete: if isAdmin();
+      allow read: if isSystemAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isSystemAdmin();
     }
 
     match /bookingKeys/{keyId} {
-      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow read: if isSystemAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSystemAdmin();
     }
     
     match /trainings/{trainingId} {
       allow read: if true; // Publicly readable for the booking page
-      allow create, update, delete: if isAdmin();
+      allow create, update, delete: if isSystemAdmin();
     }
 
     match /logs/{logId} {
-      allow read, write: if isAdmin();
+      allow read: if isSystemAdmin();
+      allow write: if false;
     }
     
     match /settings/{settingId} {
       allow read: if true; // Some settings might be public
-      allow write: if isAdmin();
+      allow write: if false;
     }
 
     match /audit_logs/{logId} {
-      allow read, write: if isAdmin();
+      allow read: if isSystemAdmin();
+      allow write: if false;
     }
 
     match /letterheadTemplates/{templateId} {
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
         && resource.data.userId == request.auth.uid
         && request.resource.data.userId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     // Default deny for anything else

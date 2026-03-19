@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { doc, getDoc, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
 import {
     AlertCircle,
     CalendarClock,
@@ -12,12 +11,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBilling } from '../contexts/BillingContext';
-import { db } from '../lib/firebase';
 import { apiFetch } from '../lib/apiClient';
 import './UserProfile.css';
 
 const UserProfile = () => {
-    const { currentUser, refreshUserProfile } = useAuth();
+    const { currentUser, refreshUserProfile, userProfile } = useAuth();
     const { config: billingConfig } = useBilling();
 
     const [loading, setLoading] = useState(true);
@@ -36,26 +34,36 @@ const UserProfile = () => {
 
     const fetchUserData = useCallback(async () => {
         if (!currentUser) {
+            setUserInfo(null);
             setLoading(false);
             return;
         }
 
         setLoading(true);
         try {
-            const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-            if (userDoc.exists()) {
-                setUserInfo(userDoc.data());
+            if (userProfile) {
+                setUserInfo(userProfile);
+            } else {
+                const profile = await refreshUserProfile();
+                setUserInfo(profile || null);
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
         } finally {
             setLoading(false);
         }
-    }, [currentUser]);
+    }, [currentUser, refreshUserProfile, userProfile]);
 
     useEffect(() => {
         fetchUserData();
     }, [fetchUserData]);
+
+    useEffect(() => {
+        if (userProfile) {
+            setUserInfo(userProfile);
+            setLoading(false);
+        }
+    }, [userProfile]);
 
     const formatDate = (timestamp) => {
         if (!timestamp) return '-';
@@ -166,18 +174,7 @@ const UserProfile = () => {
 
             if (data.paid) {
                 if (creditPurchase?.source === 'qpay') {
-                    if (!import.meta.env.DEV) {
-                        throw new Error('Credits цэнэглэх сервер олдсонгүй. Дахин оролдоно уу.');
-                    }
-                    if (creditPurchase?.credits > 0 && currentUser?.uid) {
-                        await updateDoc(doc(db, 'users', currentUser.uid), {
-                            credits: {
-                                balance: increment(creditPurchase.credits),
-                                updatedAt: serverTimestamp(),
-                            },
-                            updatedAt: serverTimestamp(),
-                        });
-                    }
+                    throw new Error('Billing entitlement sync шаардлагатай. `/billing/check` endpoint ашиглана уу.');
                 }
                 setCreditStatus('success');
                 setCreditInvoice(null);
@@ -191,12 +188,6 @@ const UserProfile = () => {
         } finally {
             setIsCheckingCredit(false);
         }
-    };
-
-    const addOneMonth = (date) => {
-        const next = new Date(date);
-        next.setMonth(next.getMonth() + 1);
-        return next;
     };
 
     const createSubscriptionInvoice = async () => {
@@ -278,24 +269,7 @@ const UserProfile = () => {
 
             if (data.paid) {
                 if (subscriptionPurchase?.source === 'qpay') {
-                    if (!import.meta.env.DEV) {
-                        throw new Error('Subscription төлбөрийн сервер олдсонгүй. Дахин оролдоно уу.');
-                    }
-                    if (currentUser?.uid) {
-                        const baseDate = subscriptionEndAt && subscriptionEndAt.getTime() > Date.now()
-                            ? subscriptionEndAt
-                            : new Date();
-                        const nextEnd = addOneMonth(baseDate);
-                        await updateDoc(doc(db, 'users', currentUser.uid), {
-                            'credits.balance': increment(subscriptionCredits),
-                            'credits.updatedAt': serverTimestamp(),
-                            'subscription.status': 'active',
-                            'subscription.startAt': userInfo?.subscription?.startAt || new Date().toISOString(),
-                            'subscription.endAt': nextEnd.toISOString(),
-                            'subscription.updatedAt': serverTimestamp(),
-                            updatedAt: serverTimestamp(),
-                        });
-                    }
+                    throw new Error('Billing entitlement sync шаардлагатай. `/billing/check` endpoint ашиглана уу.');
                 }
                 setSubscriptionStatus('success');
                 setSubscriptionInvoice(null);

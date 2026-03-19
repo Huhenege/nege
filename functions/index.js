@@ -8,6 +8,14 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 admin.initializeApp();
 const db = admin.firestore();
 
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
+  }
+}
+
 const QPAY_CLIENT_ID = defineSecret('QPAY_CLIENT_ID');
 const QPAY_CLIENT_SECRET = defineSecret('QPAY_CLIENT_SECRET');
 const QPAY_INVOICE_CODE = defineSecret('QPAY_INVOICE_CODE');
@@ -43,6 +51,279 @@ const DEFAULT_BILLING_CONFIG = {
     bundles: [],
   },
 };
+
+const DEFAULT_WORKSPACE_ID = 'default';
+
+function toIsoString(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (value && typeof value.toDate === 'function') return value.toDate().toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function serializeForClient(value) {
+  if (value === null || value === undefined) return value;
+  if (value instanceof Date) return value.toISOString();
+  if (value && typeof value.toDate === 'function') return value.toDate().toISOString();
+  if (Array.isArray(value)) return value.map((item) => serializeForClient(item));
+  if (value && typeof value === 'object') {
+    return Object.keys(value).reduce((acc, key) => {
+      acc[key] = serializeForClient(value[key]);
+      return acc;
+    }, {});
+  }
+  return value;
+}
+
+function createTimestampValue(existing) {
+  return existing || admin.firestore.FieldValue.serverTimestamp();
+}
+
+function sanitizeSlugPart(value, fallback) {
+  const normalized = String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized || fallback;
+}
+
+function buildOrganizationName(authUser) {
+  const base = authUser?.displayName || authUser?.email?.split('@')[0] || 'Nege workspace';
+  return `${base} workspace`;
+}
+
+function buildUserProfileDefaults(authUser, existing = {}) {
+  return {
+    email: authUser?.email || existing.email || '',
+    displayName: authUser?.displayName || existing.displayName || '',
+    photoURL: authUser?.photoURL || existing.photoURL || '',
+    role: existing.role || 'user',
+    status: existing.status || 'active',
+    authProvider: existing.authProvider || authUser?.firebase?.sign_in_provider || 'password',
+    subscription: {
+      status: existing.subscription?.status || 'inactive',
+      startAt: existing.subscription?.startAt || null,
+      endAt: existing.subscription?.endAt || null,
+      updatedAt: existing.subscription?.updatedAt || null,
+    },
+    credits: {
+      balance: Number(existing.credits?.balance || 0),
+      updatedAt: existing.credits?.updatedAt || null,
+    },
+  };
+}
+
+async function getUserProfileByUid(uid) {
+  if (!uid) return null;
+  const snap = await db.collection('users').doc(uid).get();
+  return snap.exists ? snap.data() : null;
+}
+
+async function bootstrapUserProfile(authUser) {
+  if (!authUser?.uid) {
+    throw new HttpError(401, 'Нэвтэрсэн хэрэглэгч шаардлагатай');
+  }
+
+  const userId = authUser.uid;
+  const userRef = db.collection('users').doc(userId);
+
+  return db.runTransaction(async (tx) => {
+    const userSnap = await tx.get(userRef);
+    const existingUser = userSnap.exists ? (userSnap.data() || {}) : {};
+    const organizationId = existingUser.activeOrganizationId || existingUser.tenantId || `org_${userId}`;
+    const workspaceId = existingUser.activeWorkspaceId || DEFAULT_WORKSPACE_ID;
+    const organizationRef = db.collection('organizations').doc(organizationId);
+    const membershipRef = organizationRef.collection('memberships').doc(userId);
+    const workspaceRef = organizationRef.collection('workspaces').doc(workspaceId);
+
+    const [organizationSnap, membershipSnap, workspaceSnap] = await Promise.all([
+      tx.get(organizationRef),
+      tx.get(membershipRef),
+      tx.get(workspaceRef),
+    ]);
+
+    const defaults = buildUserProfileDefaults(authUser, existingUser);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const organizationName = organizationSnap.exists
+      ? (organizationSnap.data()?.name || buildOrganizationName(authUser))
+      : buildOrganizationName(authUser);
+
+    const nextUser = {
+      ...defaults,
+      createdAt: createTimestampValue(existingUser.createdAt),
+      updatedAt: now,
+      tenantId: organizationId,
+      activeOrganizationId: organizationId,
+      activeWorkspaceId: workspaceId,
+      lastLoginAt: now,
+    };
+
+    tx.set(userRef, nextUser, { merge: true });
+
+    if (!organizationSnap.exists) {
+      tx.set(organizationRef, {
+        name: organizationName,
+        slug: sanitizeSlugPart(organizationName, `org-${userId.slice(0, 8)}`),
+        ownerUserId: userId,
+        kind: 'personal',
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      tx.set(organizationRef, {
+        updatedAt: now,
+      }, { merge: true });
+    }
+
+    if (!workspaceSnap.exists) {
+      tx.set(workspaceRef, {
+        name: 'Main workspace',
+        slug: 'main',
+        organizationId,
+        isDefault: true,
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    if (!membershipSnap.exists) {
+      tx.set(membershipRef, {
+        userId,
+        organizationId,
+        workspaceId,
+        role: 'owner',
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      tx.set(membershipRef, {
+        status: membershipSnap.data()?.status || 'active',
+        updatedAt: now,
+      }, { merge: true });
+    }
+
+    return {
+      profile: {
+        ...existingUser,
+        ...defaults,
+        tenantId: organizationId,
+        activeOrganizationId: organizationId,
+        activeWorkspaceId: workspaceId,
+        createdAt: toIsoString(existingUser.createdAt),
+        updatedAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+      },
+      organization: organizationSnap.exists
+        ? { ...organizationSnap.data(), id: organizationId }
+        : {
+          id: organizationId,
+          name: organizationName,
+          slug: sanitizeSlugPart(organizationName, `org-${userId.slice(0, 8)}`),
+          ownerUserId: userId,
+          kind: 'personal',
+          status: 'active',
+        },
+      workspace: workspaceSnap.exists
+        ? { ...workspaceSnap.data(), id: workspaceId }
+        : {
+          id: workspaceId,
+          name: 'Main workspace',
+          slug: 'main',
+          organizationId,
+          isDefault: true,
+          status: 'active',
+        },
+      membership: membershipSnap.exists
+        ? { ...membershipSnap.data(), id: userId }
+        : {
+          id: userId,
+          userId,
+          organizationId,
+          workspaceId,
+          role: 'owner',
+          status: 'active',
+        },
+    };
+  });
+}
+
+async function getUserContextByUid(uid) {
+  const profile = await getUserProfileByUid(uid);
+  if (!profile) return null;
+  const organizationId = profile.activeOrganizationId || profile.tenantId || null;
+  const workspaceId = profile.activeWorkspaceId || DEFAULT_WORKSPACE_ID;
+
+  let organization = null;
+  let workspace = null;
+  let membership = null;
+
+  if (organizationId) {
+    const organizationRef = db.collection('organizations').doc(organizationId);
+    const [organizationSnap, workspaceSnap, membershipSnap] = await Promise.all([
+      organizationRef.get(),
+      organizationRef.collection('workspaces').doc(workspaceId).get(),
+      organizationRef.collection('memberships').doc(uid).get(),
+    ]);
+
+    organization = organizationSnap.exists ? { id: organizationSnap.id, ...organizationSnap.data() } : null;
+    workspace = workspaceSnap.exists ? { id: workspaceSnap.id, ...workspaceSnap.data() } : null;
+    membership = membershipSnap.exists ? { id: membershipSnap.id, ...membershipSnap.data() } : null;
+  }
+
+  return { profile, organization, workspace, membership };
+}
+
+function buildAuthzPayload(profile, membership) {
+  const isSystemAdmin = profile?.role === 'admin';
+  const membershipRole = membership?.role || 'member';
+  return {
+    isAuthenticated: true,
+    isSystemAdmin,
+    tenantRole: membershipRole,
+    canManageOrganization: isSystemAdmin || membershipRole === 'owner' || membershipRole === 'admin',
+  };
+}
+
+async function requireAuthContext(req) {
+  const authUser = await getAuthUser(req);
+  if (!authUser?.uid) {
+    throw new HttpError(401, 'Нэвтрэх шаардлагатай');
+  }
+
+  const bootstrap = await bootstrapUserProfile(authUser);
+  const profile = await getUserProfileByUid(authUser.uid);
+
+  return {
+    authUser,
+    profile,
+    organization: bootstrap.organization,
+    workspace: bootstrap.workspace,
+    membership: bootstrap.membership,
+    authz: buildAuthzPayload(profile, bootstrap.membership),
+  };
+}
+
+async function requireAdminContext(req) {
+  const context = await requireAuthContext(req);
+  if (context.profile?.role !== 'admin') {
+    throw new HttpError(403, 'Админ эрх шаардлагатай');
+  }
+  return context;
+}
+
+async function writeAuditLog({ action, details, actor }) {
+  await db.collection('audit_logs').add({
+    action,
+    details: details || {},
+    adminId: actor?.uid || null,
+    adminEmail: actor?.email || null,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
 
 async function getBillingConfig() {
   const snap = await db.collection('settings').doc('billing').get();
@@ -109,7 +390,15 @@ async function getAuthUser(req) {
   }
 }
 
-async function createGrantToken({ invoiceId = null, userId = null, toolKey = null, source = 'pay_per_use' }) {
+async function createGrantToken({
+  invoiceId = null,
+  userId = null,
+  toolKey = null,
+  source = 'pay_per_use',
+  tenantId = null,
+  organizationId = null,
+  workspaceId = null,
+}) {
   const grantToken = crypto.randomUUID();
   const now = new Date().toISOString();
   await db.collection('qpayGrants').doc(grantToken).set({
@@ -117,6 +406,9 @@ async function createGrantToken({ invoiceId = null, userId = null, toolKey = nul
     userId,
     toolKey,
     source,
+    tenantId,
+    organizationId,
+    workspaceId,
     remainingUses: 1,
     status: 'available',
     createdAt: now,
@@ -286,6 +578,9 @@ async function issueGrantForInvoice(invoiceId) {
     userId: invoiceData?.userId || null,
     toolKey: invoiceData?.toolKey || null,
     source: 'pay_per_use',
+    tenantId: invoiceData?.tenantId || invoiceData?.organizationId || null,
+    organizationId: invoiceData?.organizationId || invoiceData?.tenantId || null,
+    workspaceId: invoiceData?.workspaceId || null,
   });
 
   await invoiceRef.set({
@@ -528,6 +823,458 @@ app.all(['/', '/health', '/qpay/health'], (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString(), note: 'API is running' });
 });
 
+async function queryUsersForAdmin() {
+  try {
+    const snap = await db.collection('users').orderBy('createdAt', 'desc').limit(500).get();
+    return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    const snap = await db.collection('users').limit(500).get();
+    return snap.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => {
+        const aTime = new Date(toIsoString(a.createdAt) || 0).getTime() || 0;
+        const bTime = new Date(toIsoString(b.createdAt) || 0).getTime() || 0;
+        return bTime - aTime;
+      });
+  }
+}
+
+async function syncActiveSubscriptionCredits(nextMonthlyCredits, previousMonthlyCredits) {
+  const delta = Number(nextMonthlyCredits || 0) - Number(previousMonthlyCredits || 0);
+  if (!Number.isFinite(delta) || delta <= 0) {
+    return { updated: 0, scanned: 0, skipped: true, delta: Number.isFinite(delta) ? delta : 0 };
+  }
+
+  const usersRef = db.collection('users');
+  let lastDoc = null;
+  let updated = 0;
+  let scanned = 0;
+  const now = Date.now();
+
+  while (true) {
+    let q = usersRef
+      .where('subscription.status', '==', 'active')
+      .orderBy(admin.firestore.FieldPath.documentId())
+      .limit(400);
+
+    if (lastDoc) {
+      q = usersRef
+        .where('subscription.status', '==', 'active')
+        .orderBy(admin.firestore.FieldPath.documentId())
+        .startAfter(lastDoc)
+        .limit(400);
+    }
+
+    const snap = await q.get();
+    if (snap.empty) break;
+
+    const batch = db.batch();
+    let batchCount = 0;
+
+    snap.docs.forEach((docSnap) => {
+      scanned += 1;
+      const data = docSnap.data() || {};
+      const endAt = parseDateValue(data?.subscription?.endAt);
+      if (!endAt || endAt.getTime() <= now) {
+        return;
+      }
+
+      batch.update(docSnap.ref, {
+        'credits.balance': admin.firestore.FieldValue.increment(delta),
+        'credits.updatedAt': new Date().toISOString(),
+        'subscription.planMonthlyCredits': Number(nextMonthlyCredits || 0),
+        'subscription.creditsSyncedAt': new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      batchCount += 1;
+    });
+
+    if (batchCount > 0) {
+      await batch.commit();
+      updated += batchCount;
+    }
+
+    lastDoc = snap.docs[snap.docs.length - 1];
+  }
+
+  return { updated, scanned, skipped: false, delta };
+}
+
+function normalizeBillingConfigInput(input = {}) {
+  const mergedTools = {
+    ...DEFAULT_BILLING_CONFIG.tools,
+    ...(input.tools || {}),
+  };
+
+  Object.keys(DEFAULT_BILLING_CONFIG.tools).forEach((toolKey) => {
+    const source = input.tools?.[toolKey] || {};
+    mergedTools[toolKey] = {
+      ...DEFAULT_BILLING_CONFIG.tools[toolKey],
+      payPerUsePrice: Number(source.payPerUsePrice ?? DEFAULT_BILLING_CONFIG.tools[toolKey].payPerUsePrice),
+      creditCost: Number(source.creditCost ?? DEFAULT_BILLING_CONFIG.tools[toolKey].creditCost),
+      active: source.active !== false,
+    };
+  });
+
+  return {
+    ...DEFAULT_BILLING_CONFIG,
+    ...input,
+    subscription: {
+      ...DEFAULT_BILLING_CONFIG.subscription,
+      ...(input.subscription || {}),
+      monthlyPrice: Number(input.subscription?.monthlyPrice ?? DEFAULT_BILLING_CONFIG.subscription.monthlyPrice),
+      discountPercent: Number(input.subscription?.discountPercent ?? DEFAULT_BILLING_CONFIG.subscription.discountPercent),
+      monthlyCredits: Number(input.subscription?.monthlyCredits ?? DEFAULT_BILLING_CONFIG.subscription.monthlyCredits),
+    },
+    tools: mergedTools,
+    credits: {
+      ...DEFAULT_BILLING_CONFIG.credits,
+      ...(input.credits || {}),
+      bundles: Array.isArray(input.credits?.bundles)
+        ? input.credits.bundles.map((bundle) => ({
+          id: bundle.id || crypto.randomUUID(),
+          name: String(bundle.name || '').trim() || 'Credits bundle',
+          credits: Number(bundle.credits || 0),
+          price: Number(bundle.price || 0),
+          active: bundle.active !== false,
+        }))
+        : [],
+    },
+  };
+}
+
+app.post('/auth/bootstrap', async (req, res) => {
+  try {
+    const context = await requireAuthContext(req);
+    res.json({
+      profile: serializeForClient(context.profile),
+      organization: serializeForClient(context.organization),
+      workspace: serializeForClient(context.workspace),
+      membership: serializeForClient(context.membership),
+      authz: context.authz,
+    });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.get('/me/profile', async (req, res) => {
+  try {
+    const context = await requireAuthContext(req);
+    res.json({
+      profile: serializeForClient(context.profile),
+      organization: serializeForClient(context.organization),
+      workspace: serializeForClient(context.workspace),
+      membership: serializeForClient(context.membership),
+      authz: context.authz,
+    });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.get('/me/transactions', async (req, res) => {
+  try {
+    const context = await requireAuthContext(req);
+    let invoices = [];
+    try {
+      const snap = await db.collection('qpayInvoices')
+        .where('userId', '==', context.authUser.uid)
+        .orderBy('createdAt', 'desc')
+        .limit(100)
+        .get();
+      invoices = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      const snap = await db.collection('qpayInvoices')
+        .where('userId', '==', context.authUser.uid)
+        .get();
+      invoices = snap.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => {
+          const aTime = new Date(toIsoString(a.createdAt) || 0).getTime() || 0;
+          const bTime = new Date(toIsoString(b.createdAt) || 0).getTime() || 0;
+          return bTime - aTime;
+        });
+    }
+
+    res.json({ payments: serializeForClient(invoices) });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.get('/admin/users', async (req, res) => {
+  try {
+    await requireAdminContext(req);
+    const users = await queryUsersForAdmin();
+    res.json({ users: serializeForClient(users) });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.post('/admin/logs', async (req, res) => {
+  try {
+    const context = await requireAdminContext(req);
+    const action = String(req.body?.action || '').trim();
+    if (!action) {
+      res.status(400).json({ error: 'action шаардлагатай' });
+      return;
+    }
+
+    await writeAuditLog({
+      action,
+      details: req.body?.details || {},
+      actor: context.authUser,
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.post('/admin/users/:userId/role', async (req, res) => {
+  try {
+    const context = await requireAdminContext(req);
+    const userId = String(req.params.userId || '');
+    const role = String(req.body?.role || '').trim();
+    if (!userId || !role) {
+      res.status(400).json({ error: 'userId болон role шаардлагатай' });
+      return;
+    }
+
+    const target = await getUserProfileByUid(userId);
+
+    await db.collection('users').doc(userId).set({
+      role,
+      updatedAt: new Date().toISOString(),
+      updatedBy: context.authUser.email || null,
+    }, { merge: true });
+
+    await writeAuditLog({
+      action: 'CHANGE_USER_ROLE',
+      details: { targetUid: userId, targetEmail: target?.email || null, newRole: role },
+      actor: context.authUser,
+    });
+
+    const updated = await getUserProfileByUid(userId);
+    res.json({ user: serializeForClient({ id: userId, ...(updated || {}) }) });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.post('/admin/users/:userId/status', async (req, res) => {
+  try {
+    const context = await requireAdminContext(req);
+    const userId = String(req.params.userId || '');
+    const statusValue = String(req.body?.status || '').trim();
+    if (!userId || !statusValue) {
+      res.status(400).json({ error: 'userId болон status шаардлагатай' });
+      return;
+    }
+
+    const target = await getUserProfileByUid(userId);
+
+    await db.collection('users').doc(userId).set({
+      status: statusValue,
+      updatedAt: new Date().toISOString(),
+      updatedBy: context.authUser.email || null,
+    }, { merge: true });
+
+    await writeAuditLog({
+      action: statusValue === 'banned' ? 'BAN_USER' : 'UNBAN_USER',
+      details: { targetUid: userId, targetEmail: target?.email || null, status: statusValue },
+      actor: context.authUser,
+    });
+
+    const updated = await getUserProfileByUid(userId);
+    res.json({ user: serializeForClient({ id: userId, ...(updated || {}) }) });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.post('/admin/users/:userId/subscription', async (req, res) => {
+  try {
+    const context = await requireAdminContext(req);
+    const userId = String(req.params.userId || '');
+    const endAt = toIsoString(req.body?.endAt);
+    if (!userId || !endAt) {
+      res.status(400).json({ error: 'userId болон endAt шаардлагатай' });
+      return;
+    }
+
+    const target = await getUserProfileByUid(userId);
+    const statusValue = new Date(endAt).getTime() > Date.now() ? 'active' : 'inactive';
+    const startAt = target?.subscription?.startAt || new Date().toISOString();
+
+    await db.collection('users').doc(userId).set({
+      subscription: {
+        status: statusValue,
+        startAt,
+        endAt,
+        updatedAt: new Date().toISOString(),
+        updatedBy: context.authUser.email || null,
+      },
+      updatedAt: new Date().toISOString(),
+      updatedBy: context.authUser.email || null,
+    }, { merge: true });
+
+    await writeAuditLog({
+      action: 'UPDATE_SUBSCRIPTION',
+      details: { targetUid: userId, targetEmail: target?.email || null, status: statusValue, endAt },
+      actor: context.authUser,
+    });
+
+    const updated = await getUserProfileByUid(userId);
+    res.json({ user: serializeForClient({ id: userId, ...(updated || {}) }) });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.post('/admin/users/:userId/credits/topup', async (req, res) => {
+  try {
+    const context = await requireAdminContext(req);
+    const userId = String(req.params.userId || '');
+    const amount = Number(req.body?.amount);
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim() : null;
+
+    if (!userId || !Number.isFinite(amount) || amount <= 0) {
+      res.status(400).json({ error: 'userId болон эерэг amount шаардлагатай' });
+      return;
+    }
+
+    const targetContext = await getUserContextByUid(userId);
+    await db.collection('users').doc(userId).set({
+      credits: {
+        balance: admin.firestore.FieldValue.increment(amount),
+        updatedAt: new Date().toISOString(),
+      },
+      updatedAt: new Date().toISOString(),
+      updatedBy: context.authUser.email || null,
+    }, { merge: true });
+
+    await db.collection('creditTransactions').add({
+      userId,
+      tenantId: targetContext?.profile?.tenantId || targetContext?.profile?.activeOrganizationId || null,
+      organizationId: targetContext?.profile?.activeOrganizationId || targetContext?.profile?.tenantId || null,
+      workspaceId: targetContext?.profile?.activeWorkspaceId || null,
+      credits: amount,
+      amount: 0,
+      type: 'admin_topup',
+      note: note || null,
+      adminId: context.authUser.uid,
+      adminEmail: context.authUser.email || null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    await writeAuditLog({
+      action: 'TOPUP_CREDITS',
+      details: { targetUid: userId, targetEmail: targetContext?.profile?.email || null, credits: amount, note: note || null },
+      actor: context.authUser,
+    });
+
+    const updated = await getUserProfileByUid(userId);
+    res.json({ user: serializeForClient({ id: userId, ...(updated || {}) }) });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.get('/admin/settings/global', async (req, res) => {
+  try {
+    await requireAdminContext(req);
+    const snap = await db.collection('settings').doc('global').get();
+    res.json({ settings: serializeForClient(snap.exists ? (snap.data() || {}) : {}) });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.post('/admin/settings/global', async (req, res) => {
+  try {
+    const context = await requireAdminContext(req);
+    const settings = req.body?.settings && typeof req.body.settings === 'object' ? req.body.settings : req.body;
+    await db.collection('settings').doc('global').set({
+      ...settings,
+      updatedAt: new Date().toISOString(),
+      updatedBy: context.authUser.email || null,
+    }, { merge: true });
+
+    await writeAuditLog({
+      action: 'UPDATE_SETTINGS',
+      details: { changedKeys: Object.keys(settings || {}) },
+      actor: context.authUser,
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
+app.post('/admin/settings/billing', async (req, res) => {
+  try {
+    const context = await requireAdminContext(req);
+    const previousConfig = await getBillingConfig();
+    const incoming = req.body?.config && typeof req.body.config === 'object' ? req.body.config : req.body;
+    const nextConfig = normalizeBillingConfigInput(incoming);
+    const syncResult = await syncActiveSubscriptionCredits(
+      nextConfig.subscription?.monthlyCredits,
+      previousConfig.subscription?.monthlyCredits,
+    );
+
+    await db.collection('settings').doc('billing').set({
+      ...nextConfig,
+      updatedAt: new Date().toISOString(),
+      updatedBy: context.authUser.email || null,
+    }, { merge: true });
+
+    await writeAuditLog({
+      action: 'UPDATE_BILLING_CONFIG',
+      details: {
+        toolKeys: Object.keys(nextConfig.tools || {}),
+        bundleCount: nextConfig.credits?.bundles?.length || 0,
+        monthlyCredits: Number(nextConfig.subscription?.monthlyCredits || 0),
+        previousMonthlyCredits: Number(previousConfig.subscription?.monthlyCredits || 0),
+        syncedUsers: syncResult.updated || 0,
+      },
+      actor: context.authUser,
+    });
+
+    if (!syncResult.skipped) {
+      await writeAuditLog({
+        action: 'SYNC_SUBSCRIPTION_CREDITS',
+        details: syncResult,
+        actor: context.authUser,
+      });
+    }
+
+    res.json({
+      ok: true,
+      config: serializeForClient(nextConfig),
+      syncResult,
+    });
+  } catch (err) {
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Server error' });
+  }
+});
+
 app.post('/qpay/invoice', async (req, res) => {
   try {
     const invoice = await createInvoice({
@@ -611,6 +1358,10 @@ app.post('/billing/invoice', async (req, res) => {
     const billingConfig = await getBillingConfig();
     const authUserId = authUser?.uid || null;
     const authUserEmail = authUser?.email || null;
+    const userContext = authUserId ? await getUserContextByUid(authUserId) : null;
+    const tenantId = userContext?.profile?.tenantId || userContext?.profile?.activeOrganizationId || null;
+    const organizationId = userContext?.profile?.activeOrganizationId || tenantId;
+    const workspaceId = userContext?.profile?.activeWorkspaceId || null;
 
     if (!type) {
       res.status(400).json({ error: 'type шаардлагатай' });
@@ -658,6 +1409,9 @@ app.post('/billing/invoice', async (req, res) => {
           toolKey,
           userId,
           userEmail: authUserEmail,
+          tenantId,
+          organizationId,
+          workspaceId,
           baseAmount,
           discountPercent,
         },
@@ -699,6 +1453,9 @@ app.post('/billing/invoice', async (req, res) => {
           credits,
           userId: authUserId,
           userEmail: authUserEmail,
+          tenantId,
+          organizationId,
+          workspaceId,
         },
       });
 
@@ -732,6 +1489,9 @@ app.post('/billing/invoice', async (req, res) => {
           type: 'subscription',
           userId: authUserId,
           userEmail: authUserEmail,
+          tenantId,
+          organizationId,
+          workspaceId,
           monthlyPrice,
           monthlyCredits,
           subscriptionMonths: 1,
@@ -782,6 +1542,9 @@ app.post('/billing/invoice', async (req, res) => {
           type: 'training_remaining',
           bookingId,
           trainingId: booking.trainingId || null,
+          tenantId,
+          organizationId,
+          workspaceId,
           totalAmount: Number(booking.totalAmount || 0),
           advanceAmount: Number(booking.amount || 0),
           remainingAmount,
@@ -824,6 +1587,9 @@ app.post('/billing/invoice', async (req, res) => {
         metadata: {
           type: 'training',
           trainingId,
+          tenantId,
+          organizationId,
+          workspaceId,
           totalPrice,
           advanceAmount,
           remainingAmount,
@@ -871,10 +1637,18 @@ app.post('/billing/check', async (req, res) => {
       return;
     }
 
-    if (authUserId && !invoiceData?.userId) {
+    const authContext = authUserId ? await getUserContextByUid(authUserId) : null;
+    const authTenantId = authContext?.profile?.tenantId || authContext?.profile?.activeOrganizationId || null;
+    const authOrganizationId = authContext?.profile?.activeOrganizationId || authTenantId;
+    const authWorkspaceId = authContext?.profile?.activeWorkspaceId || null;
+
+    if (authUserId && (!invoiceData?.userId || !invoiceData?.tenantId || !invoiceData?.organizationId)) {
       await invoiceRef.set({
         userId: authUserId,
         userEmail: authUserEmail || null,
+        tenantId: invoiceData?.tenantId || authTenantId,
+        organizationId: invoiceData?.organizationId || authOrganizationId,
+        workspaceId: invoiceData?.workspaceId || authWorkspaceId,
         updatedAt: new Date().toISOString(),
       }, { merge: true });
     }
@@ -906,6 +1680,9 @@ app.post('/billing/check', async (req, res) => {
 
         await db.collection('creditTransactions').add({
           userId,
+          tenantId: invoiceData?.tenantId || invoiceData?.organizationId || null,
+          organizationId: invoiceData?.organizationId || invoiceData?.tenantId || null,
+          workspaceId: invoiceData?.workspaceId || null,
           invoiceId,
           credits,
           amount: invoiceData?.amount || 0,
@@ -953,6 +1730,9 @@ app.post('/billing/check', async (req, res) => {
 
         await db.collection('creditTransactions').add({
           userId,
+          tenantId: invoiceData?.tenantId || invoiceData?.organizationId || null,
+          organizationId: invoiceData?.organizationId || invoiceData?.tenantId || null,
+          workspaceId: invoiceData?.workspaceId || null,
           invoiceId,
           credits: monthlyCredits * Math.max(months, 1),
           amount: invoiceData?.amount || 0,
@@ -1016,6 +1796,7 @@ app.post('/credits/consume', async (req, res) => {
     }
 
     const userRef = db.collection('users').doc(authUser.uid);
+    const userContext = await getUserContextByUid(authUser.uid);
     let nextBalance = 0;
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(userRef);
@@ -1037,10 +1818,16 @@ app.post('/credits/consume', async (req, res) => {
       userId: authUser.uid,
       toolKey,
       source: 'credits',
+      tenantId: userContext?.profile?.tenantId || userContext?.profile?.activeOrganizationId || null,
+      organizationId: userContext?.profile?.activeOrganizationId || userContext?.profile?.tenantId || null,
+      workspaceId: userContext?.profile?.activeWorkspaceId || null,
     });
 
     await db.collection('creditTransactions').add({
       userId: authUser.uid,
+      tenantId: userContext?.profile?.tenantId || userContext?.profile?.activeOrganizationId || null,
+      organizationId: userContext?.profile?.activeOrganizationId || userContext?.profile?.tenantId || null,
+      workspaceId: userContext?.profile?.activeWorkspaceId || null,
       credits: -creditCost,
       amount: 0,
       type: 'consume',
@@ -1078,8 +1865,12 @@ app.post('/usage/log', async (req, res) => {
       return;
     }
 
+    const userContext = authUser?.uid ? await getUserContextByUid(authUser.uid) : null;
     await db.collection('usageLogs').add({
       userId: authUser?.uid || null,
+      tenantId: userContext?.profile?.tenantId || userContext?.profile?.activeOrganizationId || null,
+      organizationId: userContext?.profile?.activeOrganizationId || userContext?.profile?.tenantId || null,
+      workspaceId: userContext?.profile?.activeWorkspaceId || null,
       guestSessionId: authUser?.uid ? null : guestSessionId,
       toolKey,
       paymentMethod: paymentMethod || 'pay_per_use',
