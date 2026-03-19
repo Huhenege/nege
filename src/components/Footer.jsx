@@ -1,5 +1,5 @@
-import React from 'react';
-import { Mail, Phone } from 'lucide-react';
+import { Mail, Phone, ShieldCheck, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Logo from './Logo';
 import './Footer.css';
 
@@ -25,6 +25,19 @@ const Footer = () => {
                         <li>
                             <Phone size={18} />
                             <span>+976 88104099</span>
+                        </li>
+                    </ul>
+                </div>
+                <div className="footer-legal">
+                    <h4 className="footer-title">Хууль эрх зүй</h4>
+                    <ul className="contact-list">
+                        <li>
+                            <ShieldCheck size={18} />
+                            <Link to="/privacy">Нууцлалын бодлого</Link>
+                        </li>
+                        <li>
+                            <FileText size={18} />
+                            <Link to="/terms">Үйлчилгээний нөхцөл</Link>
                         </li>
                     </ul>
                 </div>

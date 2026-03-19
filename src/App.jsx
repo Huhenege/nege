@@ -36,6 +36,8 @@ import FreelancersPage from './pages/FreelancersPage';
 import FreelancerDetailPage from './pages/FreelancerDetailPage';
 import MarketingPage from './pages/MarketingPage';
 import MyCVPage from './pages/MyCVPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
 import './pages/Home.css';
 
 import AuthModal from './components/AuthModal';
@@ -83,6 +85,8 @@ const AppShell = () => {
           <Route path="/ai-assistant/swot-analyzer" element={<SwotAnalyzer />} />
           <Route path="/ai-assistant/contract-generator" element={<ContractGenerator />} />
           <Route path="/ai-assistant/contract-generator/:templateId" element={<ContractGenerator />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={
