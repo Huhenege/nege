@@ -110,6 +110,8 @@ const MarketingPage = () => {
                 { id: '1', message: 'Өглөөний мэнд! Манай шинэ бүтээгдэхүүн гарлаа. #NewArrival', full_picture: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30', created_time: new Date(), insights: { data: [{name: 'post_impressions_unique', values: [{value: 4500}]}, {name: 'post_engagements', values: [{value: 850}]}] } },
                 { id: '2', message: 'Ажлын амжилт хүсэе! 🚀 #Motivation', full_picture: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174', created_time: new Date(), insights: { data: [{name: 'post_impressions_unique', values: [{value: 3200}]}, {name: 'post_engagements', values: [{value: 640}]}] } }
             ]);
+            setSelectedPage({ name: 'NEGE Mock Page', id: 'mock_id' });
+            setShowReport(true);
         }
         facebookService.init().catch(err => console.error('FB SDK Load Error:', err));
     }, []);
