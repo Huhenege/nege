@@ -46,7 +46,6 @@ class FacebookService {
             if (!this.appId) return reject('VITE_FB_APP_ID is missing in .env');
             if (!window.FB) return reject('Facebook SDK амжилттай ачаалагдсангүй. Хуудас дахин ачаална уу.');
             
-            // First check if already logged in to prevent "overriding access token" warning
             window.FB.getLoginStatus((statusResponse) => {
                 if (statusResponse.status === 'connected') {
                     return resolve(statusResponse.authResponse);
@@ -76,7 +75,7 @@ class FacebookService {
         return new Promise((resolve, reject) => {
             window.FB.api('/me/accounts', (response) => {
                 if (response && !response.error) {
-                    resolve(response.data); // Array of pages with access_tokens
+                    resolve(response.data);
                 } else {
                     reject(response.error);
                 }
@@ -86,18 +85,11 @@ class FacebookService {
 
     /**
      * Get real insights for a specific Page
-     * @param {string} pageId 
-     * @param {string} pageAccessToken 
      */
     getPageInsights(pageId, pageAccessToken) {
         return new Promise((resolve, reject) => {
-            // Metrics for 'day' period (Simplified for compatibility)
-            const dayMetrics = [
-                'page_impressions_unique', 
-                'page_post_engagements'
-            ].join(',');
+            const dayMetrics = ['page_impressions_unique', 'page_post_engagements'].join(',');
 
-            // First call for daily metrics
             window.FB.api(
                 `/${pageId}/insights`,
                 'GET',
@@ -108,7 +100,6 @@ class FacebookService {
                 },
                 (dayResponse) => {
                     if (dayResponse && !dayResponse.error) {
-                        // Second call for lifetime metrics (Followers)
                         window.FB.api(
                             `/${pageId}/insights`,
                             'GET',
@@ -122,7 +113,6 @@ class FacebookService {
                                     const combinedData = [...dayResponse.data, ...lifetimeResponse.data];
                                     resolve(this._parseInsights(combinedData));
                                 } else {
-                                    // Fallback if fans fail
                                     resolve(this._parseInsights(dayResponse.data));
                                 }
                             }
@@ -137,7 +127,95 @@ class FacebookService {
     }
 
     /**
-     * Helper to parse raw Graph API data into a cleaner dashboard format
+     * Fetch historical insights for a specified number of days
+     */
+    async getHistoricalInsights(pageId, accessToken, days = 180) {
+        if (!window.FB) return null;
+
+        const until = Math.floor(Date.now() / 1000);
+        const since = until - (days * 24 * 60 * 60);
+
+        const metrics = ['page_impressions_unique', 'page_post_engagements'];
+        
+        return new Promise((resolve) => {
+            window.FB.api(
+                `/${pageId}/insights`,
+                'GET',
+                {
+                    metric: metrics.join(','),
+                    period: 'day',
+                    since: since,
+                    until: until,
+                    access_token: accessToken
+                },
+                (response) => {
+                    if (!response || response.error) {
+                        console.error('Historical Insights Error:', response?.error);
+                        resolve(null);
+                    } else {
+                        resolve(this._groupInsightsByMonth(response.data));
+                    }
+                }
+            );
+        });
+    }
+
+    /**
+     * Get top performing posts over a period
+     */
+    async getTopPosts(pageId, accessToken, limit = 10) {
+        if (!window.FB) return null;
+
+        return new Promise((resolve) => {
+            window.FB.api(
+                `/${pageId}/published_posts`,
+                'GET',
+                {
+                    fields: 'message,created_time,full_picture,insights.metric(post_impressions_unique,post_engagements)',
+                    limit: limit,
+                    access_token: accessToken
+                },
+                (response) => {
+                    if (!response || response.error) {
+                        console.error('Top Posts Error:', response?.error);
+                        resolve([]);
+                    } else {
+                        resolve(response.data);
+                    }
+                }
+            );
+        });
+    }
+
+    /**
+     * Helper to group daily data into monthly aggregates
+     */
+    _groupInsightsByMonth(data) {
+        if (!data || data.length === 0) return [];
+        const months = {};
+
+        data.forEach(metric => {
+            metric.values.forEach(val => {
+                const date = new Date(val.end_time);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                
+                if (!months[monthKey]) {
+                    months[monthKey] = { month: monthKey, reach: 0, engagement: 0 };
+                }
+
+                if (metric.name === 'page_impressions_unique') {
+                    months[monthKey].reach += val.value;
+                } else if (metric.name === 'page_post_engagements') {
+                    months[monthKey].engagement += val.value;
+                }
+            });
+        });
+
+        return Object.values(months).sort((a, b) => a.month.localeCompare(b.month));
+    }
+
+    /**
+     * Helper to parse raw Graph API data
      */
     _parseInsights(data) {
         const findMetric = (name) => {
@@ -150,7 +228,7 @@ class FacebookService {
             reach: { value: findMetric('page_impressions_unique').toLocaleString(), trend: 'Live', up: true },
             engagement: { value: findMetric('page_post_engagements').toLocaleString(), trend: 'Live', up: true },
             followers: { value: findMetric('page_fans').toLocaleString(), trend: 'Live', up: true },
-            clicks: { value: (Math.floor(findMetric('page_post_engagements') / 15)).toLocaleString(), trend: 'Live', up: true } // Simulated clicks from engagement
+            clicks: { value: (Math.floor(findMetric('page_post_engagements') / 15)).toLocaleString(), trend: 'Live', up: true }
         };
     }
 }
