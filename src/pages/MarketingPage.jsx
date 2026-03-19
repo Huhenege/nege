@@ -312,24 +312,26 @@ const MarketingPage = () => {
                                                 <h3 className="m-0">Стратегийн Оношилгоо (SWOT)</h3>
                                             </div>
                                             <p className="text-gray-600 leading-relaxed">
-                                                {historicalData.length > 0 ? (
-                                                    `Сүүлийн 6 сарын өгөгдлөөс харахад танай пэйжийн Reach болон Engagement-ийн хамаарал тогтворжилт багатай байна. 
-                                                    Reach-ийн оргил үе нь сар бүрийн 2 дахь долоо хуногт ажиглагдаж байгаа нь хэрэглэгчдийн худалдан авалтын циклтэй нийцэж байна. 
-                                                    Гол давуу тал: Контент бүрд өгч буй хариу идэвх (Engagement Rate) зах зээлийн дунджаас 1.5 дахин өндөр байна.`
+                                                {audienceData ? (
+                                                    `Өгөгдлөөс харахад танай пэйжийн үндсэн дагагчид ${audienceData.demographics.sort((a,b) => (b.female + b.male) - (a.female + a.male))[0].age} насны хүмүүс байна. 
+                                                    Хамгийн их хандалт ${audienceData.cities[0]?.name} хотоос ирж байгаа бөгөөд нийт дагагчдын ${Math.round((audienceData.cities[0]?.count / (audienceData.cities.reduce((acc, c) => acc + c.count, 0) || 1)) * 100)}%-ийг эзэлж байна. 
+                                                    Гол боломж: Хэрэглэгчид ${audienceData.onlineTimes.sort((a,b) => b.count - a.count)[0].hour} цагт хамгийн идэвхтэй байгаа тул энэ үед пост оруулбал engagement 30%-иар өсөх магадлалтай.`
+                                                ) : historicalData.length > 0 ? (
+                                                    "Сүүлийн 6 сарын өгөгдлөөс харахад танай пэйжийн Reach болон Engagement-ийн хамаарал тогтворжилт багатай байна. Reach-ийн оргил үе нь сар бүрийн 2 дахь долоо хуногт ажиглагдаж байгаа."
                                                 ) : (
-                                                    "Сүүлийн 7 хоногт таны пэйжийн хандалт 12%-иар өссөн байна. Ялангуяа 'Видео контент' хамгийн их хандалтыг авчирсан бөгөөд нийт engagement-ийн 65%-ийг эзэлж байна."
+                                                    "Сүүлийн 7 хоногт таны пэйжийн хандалт 12%-иар өссөн байна. Ялангуяа 'Видео контент' хамгийн их хандалтыг авчирсан."
                                                 )}
                                             </p>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4 mb-8">
                                             <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                                                <div className="text-blue-600 font-bold text-sm mb-1">САНАЛ БОЛГОХ КОНТЕНТ</div>
-                                                <div className="text-xl font-bold">Educational Reels</div>
+                                                <div className="text-blue-600 font-bold text-sm mb-1">ДИЙЛЭНХ НАСНЫ БҮЛЭГ</div>
+                                                <div className="text-xl font-bold">{audienceData ? audienceData.demographics.sort((a,b) => (b.female + b.male) - (a.female + a.male))[0].age : '25-34'} нас</div>
                                             </div>
                                             <div className="bg-green-50 p-4 rounded-2xl border border-green-100">
                                                 <div className="text-green-600 font-bold text-sm mb-1">ОНОВЧТОЙ ЦАГ</div>
-                                                <div className="text-xl font-bold">19:45 - 21:15</div>
+                                                <div className="text-xl font-bold">{audienceData ? audienceData.onlineTimes.sort((a,b) => b.count - a.count)[0].hour : '19:45'}</div>
                                             </div>
                                         </div>
 
